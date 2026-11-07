@@ -1,0 +1,110 @@
+"""
+PlanzyPop - Event Planning and Budget Management System
+Academic Mini-Project for M.Sc. Computer Science (Data Science)
+
+Core FastAPI Application Entry Point:
+- Initializes FastAPI application with metadata and Swagger/OpenAPI docs.
+- Configures Cross-Origin Resource Sharing (CORS) for frontend client.
+- Mounts modular routers: Events, Expenses & Budget, Tasks & Timeline, Suggestions.
+- Provides system root and health check endpoints.
+"""
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+from database import engine
+import models
+from routers import events, expenses, tasks, suggestions
+
+# Automatically create all database tables (events, expenses, tasks) defined in models.py
+models.Base.metadata.create_all(bind=engine)
+
+# Initialize FastAPI application
+app = FastAPI(
+    title="PlanzyPop - Event Planning and Budget Management System",
+    description=(
+        "A student-friendly event planning and budget management REST API designed "
+        "for affordable celebrations and small events in INR (₹)."
+    ),
+    version="1.0.0"
+)
+
+# Configure CORS (Cross-Origin Resource Sharing)
+origins = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "*"
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+# ============================================================================
+# Basic System Endpoints (Stage 1)
+# ============================================================================
+
+@app.get("/", tags=["General"], summary="Root endpoint & service information")
+def read_root():
+    """
+    Root endpoint: Provides a welcome message and system status.
+    """
+    return {
+        "app": "PlanzyPop - Event Planning and Budget Management System",
+        "status": "online",
+        "currency": "INR",
+        "message": "Welcome to the PlanzyPop Event Planning and Budget Management API!"
+    }
+
+
+@app.get("/health", tags=["General"], summary="Health check endpoint")
+def health_check():
+    """
+    Health check endpoint: Verifies that the API service is active and responsive.
+    """
+    return {
+        "status": "healthy",
+        "service": "PlanzyPop Backend"
+    }
+
+
+# ============================================================================
+# Mount Modular Domain Routers
+# ============================================================================
+
+app.include_router(events.router)
+app.include_router(expenses.router)
+app.include_router(tasks.router)
+app.include_router(suggestions.router)
+
+
+# ============================================================================
+# Backward Compatibility Re-exports
+# ============================================================================
+
+create_event = events.create_event
+get_all_events = events.get_all_events
+get_event_by_id = events.get_event_by_id
+update_event = events.update_event
+delete_event = events.delete_event
+
+add_expense = expenses.add_expense
+get_event_expenses = expenses.get_event_expenses
+update_expense = expenses.update_expense
+delete_expense = expenses.delete_expense
+get_event_budget_summary = expenses.get_event_budget_summary
+calculate_expense_split = expenses.calculate_expense_split
+split_event_expenses = expenses.split_event_expenses
+
+create_task = tasks.create_task
+get_event_tasks = tasks.get_event_tasks
+update_task = tasks.update_task
+delete_task = tasks.delete_task
+get_task_summary = tasks.get_task_summary
+
+get_event_suggestions = suggestions.get_event_suggestions

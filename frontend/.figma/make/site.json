@@ -1,0 +1,10 @@
+{
+  "description": "Plan affordable celebrations with AI-generated ideas, budgets, checklists, nearby venues, and inspiration for students, friends, and families.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}
