@@ -102,15 +102,16 @@ const CAFE_CATEGORIES: CafeSearchCategory[] = [
   },
 ]
 
-type LocationState =
-  | { status: "idle" }
-  | { status: "loading" }
-  | { status: "granted"; latitude: number; longitude: number }
-  | { status: "denied"; message: string }
-  | { status: "error"; message: string }
+type LocationState = { status: "idle" } | { status: "loading" } | {
+  status: "granted"
+  latitude: number
+  longitude: number
+} | { status: "denied" message: string } | { status: "error" message: string }
 
 export function CafeSuggestions() {
-  const [locationState, setLocationState] = useState<LocationState>({ status: "idle" })
+  const [locationState, setLocationState] = useState<LocationState>({
+    status: "idle",
+  })
   const [manualCity, setManualCity] = useState("")
   const [appliedCity, setAppliedCity] = useState("")
   const manualCityInputId = useId()
@@ -119,7 +120,8 @@ export function CafeSuggestions() {
     if (!("geolocation" in navigator)) {
       setLocationState({
         status: "error",
-        message: "Browser geolocation is not supported on this device. Please enter your city or area manually.",
+        message:
+          "Browser geolocation is not supported on this device. Please enter your city or area manually.",
       })
       return
     }
@@ -137,13 +139,16 @@ export function CafeSuggestions() {
       (error) => {
         let msg = "Could not access location."
         if (error.code === error.PERMISSION_DENIED) {
-          msg = "Location permission was denied. You can enter your city or area manually below."
+          msg =
+            "Location permission was denied. You can enter your city or area manually below."
           setLocationState({ status: "denied", message: msg })
         } else if (error.code === error.POSITION_UNAVAILABLE) {
-          msg = "Location information is unavailable on your device. Please enter your city manually."
+          msg =
+            "Location information is unavailable on your device. Please enter your city manually."
           setLocationState({ status: "error", message: msg })
         } else if (error.code === error.TIMEOUT) {
-          msg = "Location request timed out. Please try again or enter your city manually."
+          msg =
+            "Location request timed out. Please try again or enter your city manually."
           setLocationState({ status: "error", message: msg })
         } else {
           setLocationState({ status: "error", message: msg })
@@ -153,7 +158,7 @@ export function CafeSuggestions() {
         enableHighAccuracy: true,
         timeout: 10000,
         maximumAge: 60000,
-      }
+      },
     )
   }
 
@@ -191,7 +196,15 @@ export function CafeSuggestions() {
   }
 
   return (
-    <div className="cafe-suggestions-section" style={{ display: "flex", flexDirection: "column", gap: 20, width: "100%" }}>
+    <div
+      className="cafe-suggestions-section"
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: 20,
+        width: "100%",
+      }}
+    >
       {/* Informational Hero Card */}
       <div
         className="cafe-hero-card"
@@ -232,13 +245,28 @@ export function CafeSuggestions() {
             >
               GOOGLE MAPS VERIFIED FINDER
             </span>
-            <h3 style={{ margin: "2px 0 6px", fontSize: 18, color: "var(--ink)", fontWeight: 800 }}>
+            <h3
+              style={{
+                margin: "2px 0 6px",
+                fontSize: 18,
+                color: "var(--ink)",
+                fontWeight: 800,
+              }}
+            >
               Nearby Café & Venue Suggestions
             </h3>
-            <p style={{ margin: 0, fontSize: 13, color: "var(--muted)", lineHeight: 1.45 }}>
-              Explore real local venues for cake cutting, group hangouts, budget coffee, and celebration catering.
-              PlanzyPop opens verified Google Maps searches so you always see authentic operating hours, real customer
-              photos, and genuine reviews.
+            <p
+              style={{
+                margin: 0,
+                fontSize: 13,
+                color: "var(--muted)",
+                lineHeight: 1.45,
+              }}
+            >
+              Explore real local venues for cake cutting, group hangouts, budget
+              coffee, and celebration catering. PlanzyPop opens verified Google
+              Maps searches so you always see authentic operating hours, real
+              customer photos, and genuine reviews.
             </p>
           </div>
         </div>
@@ -256,9 +284,21 @@ export function CafeSuggestions() {
             gap: 10,
           }}
         >
-          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 8,
+            }}
+          >
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontSize: 13, fontWeight: 700, color: "var(--ink)" }}>Search Location:</span>
+              <span
+                style={{ fontSize: 13, fontWeight: 700, color: "var(--ink)" }}
+              >
+                Search Location:
+              </span>
               {locationState.status === "granted" && (
                 <span
                   style={{
@@ -275,11 +315,18 @@ export function CafeSuggestions() {
                   }}
                 >
                   <Icon name="pin" size={13} />
-                  GPS Active ({locationState.latitude.toFixed(3)}°, {locationState.longitude.toFixed(3)}°)
+                  GPS Active ({locationState.latitude.toFixed(3)}°,{" "}
+                  {locationState.longitude.toFixed(3)}°)
                 </span>
               )}
               {locationState.status === "loading" && (
-                <span style={{ fontSize: 12, color: "var(--coral)", fontWeight: 600 }}>
+                <span
+                  style={{
+                    fontSize: 12,
+                    color: "var(--coral)",
+                    fontWeight: 600,
+                  }}
+                >
                   Detecting current coordinates…
                 </span>
               )}
@@ -303,7 +350,9 @@ export function CafeSuggestions() {
                 </span>
               )}
               {locationState.status === "idle" && !appliedCity && (
-                <span style={{ fontSize: 12, color: "var(--muted)" }}>Default (Near Current Area)</span>
+                <span style={{ fontSize: 12, color: "var(--muted)" }}>
+                  Default (Near Current Area)
+                </span>
               )}
             </div>
 
@@ -315,9 +364,17 @@ export function CafeSuggestions() {
                   disabled={locationState.status === "loading"}
                   style={{ padding: "6px 12px", fontSize: 12 }}
                 >
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+                  <span
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 5,
+                    }}
+                  >
                     <Icon name="pin" size={14} />
-                    {locationState.status === "loading" ? "Detecting…" : "Use My Location"}
+                    {locationState.status === "loading"
+                      ? "Detecting…"
+                      : "Use My Location"}
                   </span>
                 </Button>
               )}
@@ -341,7 +398,8 @@ export function CafeSuggestions() {
           </div>
 
           {/* Feedback messages for permission denied or unavailable */}
-          {(locationState.status === "denied" || locationState.status === "error") && (
+          {(locationState.status === "denied" ||
+            locationState.status === "error") && (
             <div
               style={{
                 fontSize: 12,
@@ -367,7 +425,17 @@ export function CafeSuggestions() {
               marginTop: 2,
             }}
           >
-            <label htmlFor={manualCityInputId} className="sr-only" style={{ position: "absolute", width: 1, height: 1, overflow: "hidden", clip: "rect(0 0 0 0)" }}>
+            <label
+              htmlFor={manualCityInputId}
+              className="sr-only"
+              style={{
+                position: "absolute",
+                width: 1,
+                height: 1,
+                overflow: "hidden",
+                clip: "rect(0 0 0 0)",
+              }}
+            >
               Search city or area
             </label>
             <input
@@ -388,7 +456,11 @@ export function CafeSuggestions() {
             <Button
               type="submit"
               variant="dark"
-              style={{ padding: "8px 14px", fontSize: 12, whiteSpace: "nowrap" }}
+              style={{
+                padding: "8px 14px",
+                fontSize: 12,
+                whiteSpace: "nowrap",
+              }}
             >
               Set Area
             </Button>
@@ -425,8 +497,17 @@ export function CafeSuggestions() {
               }}
             >
               <div>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "flex-start",
+                    gap: 8,
+                  }}
+                >
+                  <div
+                    style={{ display: "flex", alignItems: "center", gap: 10 }}
+                  >
                     <span
                       style={{
                         width: 36,
@@ -458,7 +539,14 @@ export function CafeSuggestions() {
                       >
                         {cat.tag}
                       </span>
-                      <strong style={{ display: "block", fontSize: 15, color: "var(--ink)", lineHeight: 1.25 }}>
+                      <strong
+                        style={{
+                          display: "block",
+                          fontSize: 15,
+                          color: "var(--ink)",
+                          lineHeight: 1.25,
+                        }}
+                      >
                         {cat.title}
                       </strong>
                     </div>
@@ -478,7 +566,14 @@ export function CafeSuggestions() {
                   </span>
                 </div>
 
-                <p style={{ margin: "10px 0 8px", fontSize: 13, color: "var(--muted)", lineHeight: 1.4 }}>
+                <p
+                  style={{
+                    margin: "10px 0 8px",
+                    fontSize: 13,
+                    color: "var(--muted)",
+                    lineHeight: 1.4,
+                  }}
+                >
                   {cat.description}
                 </p>
 
@@ -497,7 +592,14 @@ export function CafeSuggestions() {
                 </div>
               </div>
 
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 4 }}>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  marginTop: 4,
+                }}
+              >
                 <span style={{ fontSize: 11, color: "var(--muted)" }}>
                   {locationState.status === "granted"
                     ? "📍 Nearest to your GPS"
@@ -545,10 +647,12 @@ export function CafeSuggestions() {
       >
         <span style={{ fontSize: 15 }}>ℹ️</span>
         <div>
-          <strong>Authentic Google Maps Results:</strong> PlanzyPop initiates direct Google Maps search queries to
-          provide live, real-time venue listings, verified business hours, real customer reviews, and actual photos.
-          PlanzyPop does not fabricate listings or invent artificial star ratings. Venue results will vary depending on
-          your current geographic location.
+          <strong>Authentic Google Maps Results:</strong> PlanzyPop initiates
+          direct Google Maps search queries to provide live, real-time venue
+          listings, verified business hours, real customer reviews, and actual
+          photos. PlanzyPop does not fabricate listings or invent artificial
+          star ratings. Venue results will vary depending on your current
+          geographic location.
         </div>
       </div>
     </div>

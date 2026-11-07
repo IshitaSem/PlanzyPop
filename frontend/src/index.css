@@ -815,15 +815,15 @@
 .task-next { color: var(--muted); font-size: 9px; }
 
 .bottom-nav {
-  height: 82px;
+  height: 74px;
   position: fixed;
   z-index: 20;
   bottom: 0;
   left: 50%;
   width: 100%;
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  padding: 8px 10px 12px;
+  grid-template-columns: repeat(7, 1fr);
+  padding: 6px 2px 8px;
   transform: translateX(-50%);
   background: rgba(255, 255, 255, .96);
   border-top: 1px solid var(--line);
@@ -836,26 +836,35 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: 2px;
   color: #8c8696;
   border: 0;
   background: none;
-  font-size: 9px;
+  font-size: 8px;
   font-weight: 700;
+  padding: 2px 1px;
+}
+
+.bottom-nav button span:last-child {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 8px;
 }
 
 .bottom-nav button.active { color: var(--purple); }
-.nav-icon { height: 30px; display: grid; place-items: center; }
+.nav-icon { height: 26px; display: grid; place-items: center; }
 
 .planner-nav .nav-icon {
-  width: 48px;
-  height: 48px;
-  margin-top: -30px;
+  width: 28px;
+  height: 28px;
+  margin-top: 0;
   color: #fff;
   background: var(--purple);
-  border: 2px solid var(--ink);
-  border-radius: 17px;
-  box-shadow: 3px 4px 0 var(--ink);
+  border: 1.5px solid var(--ink);
+  border-radius: 9px;
+  box-shadow: 1.5px 2px 0 var(--ink);
 }
 
 .planner-nav.active .nav-icon { color: var(--yellow); }
@@ -3796,4 +3805,206 @@
     width: 100%;
     margin: 0;
   }
+}
+
+/* PlanzyPop PopPlan Sections (A-G) & Responsive Controls */
+.plan-tabs-bar {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 8px 2px 14px;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.plan-tabs-bar::-webkit-scrollbar {
+  display: none;
+}
+.plan-tab-pill {
+  flex-shrink: 0;
+  padding: 6px 13px;
+  background: #fff;
+  border: 1.5px solid var(--line);
+  border-radius: 99px;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.plan-tab-pill.active {
+  background: var(--purple);
+  color: #fff;
+  border-color: var(--ink);
+  box-shadow: 2px 2px 0 var(--ink);
+}
+.plan-section-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 99px;
+  font-size: 7.5px;
+  font-weight: 900;
+  letter-spacing: 0.8px;
+  color: var(--purple);
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.event-overview-card {
+  background: #fff;
+  border: 1.5px solid var(--ink);
+  border-radius: 20px;
+  padding: 20px;
+  margin-bottom: 16px;
+  box-shadow: 3px 4px 0 var(--ink);
+}
+.overview-grid-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+.overview-grid-stats > div {
+  padding: 10px 12px;
+  background: var(--paper);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.overview-grid-stats span {
+  font-size: 7.5px;
+  color: var(--muted);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.overview-grid-stats strong {
+  font-size: 13px;
+  color: var(--ink);
+  font-weight: 800;
+}
+.plan-shopping-list > span.completed {
+  opacity: 0.55;
+  background: #fbfbfe;
+}
+.plan-shopping-list > span.completed strong {
+  text-decoration: line-through;
+  color: var(--muted);
+}
+.plan-check-btn {
+  width: 22px;
+  height: 22px;
+  border-radius: 7px;
+  display: grid;
+  place-items: center;
+  border: 1.5px solid var(--ink);
+  cursor: pointer;
+  background: #fff;
+  color: #fff;
+  transition: all 0.15s ease;
+  padding: 0;
+}
+.plan-check-btn.checked {
+  background: var(--green);
+  border-color: var(--ink);
+  color: var(--ink);
+}
+.shopping-add-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--line);
+}
+.shopping-add-input {
+  flex: 1;
+  font-size: 8px;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper);
+}
+.shopping-add-btn {
+  padding: 6px 12px;
+  font-size: 8px;
+  font-weight: 800;
+  border: 1.5px solid var(--ink);
+  border-radius: 8px;
+  background: var(--yellow);
+  color: var(--ink);
+  cursor: pointer;
+}
+.section-edit-form {
+  background: var(--paper);
+  border: 1.5px dashed var(--purple);
+  border-radius: 14px;
+  padding: 14px;
+  margin-top: 12px;
+  display: grid;
+  gap: 10px;
+}
+.section-edit-form .split-fields {
+  margin: 0;
+}
+.section-edit-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 8px;
+  font-weight: 700;
+}
+.section-edit-form input {
+  font-size: 9px;
+  padding: 6px 9px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+.cake-card {
+  padding: 12px;
+  background: #fff8eb;
+  border: 1px solid #ffd8a8;
+  border-radius: 12px;
+  margin-bottom: 12px;
+}
+.cake-card strong {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  color: #d97706;
+}
+.cake-card p {
+  margin: 4px 0 0;
+  font-size: 8.5px;
+  color: #78350f;
+}
+.diy-card-item {
+  padding: 10px;
+  background: var(--paper);
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  border: 1px solid var(--line);
+}
+.diy-card-item strong {
+  font-size: 8.5px;
+  color: var(--ink);
+}
+.diy-card-item p {
+  margin: 0;
+  font-size: 7.5px;
+  color: var(--muted);
+  line-height: 1.35;
+}
+.diy-card-item small {
+  font-weight: 800;
+  color: var(--purple);
+  font-size: 7.5px;
+  margin-top: 2px;
 }

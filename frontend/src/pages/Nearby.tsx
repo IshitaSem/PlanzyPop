@@ -85,8 +85,10 @@ export function Nearby() {
             flex: 1,
             padding: "9px 14px",
             borderRadius: 10,
-            border: activeTab === "supplies" ? "1.5px solid var(--ink)" : "none",
-            background: activeTab === "supplies" ? "var(--lavender)" : "transparent",
+            border:
+              activeTab === "supplies" ? "1.5px solid var(--ink)" : "none",
+            background:
+              activeTab === "supplies" ? "var(--lavender)" : "transparent",
             fontWeight: 700,
             fontSize: 13,
             cursor: "pointer",
@@ -94,7 +96,8 @@ export function Nearby() {
             alignItems: "center",
             justifyContent: "center",
             gap: 6,
-            boxShadow: activeTab === "supplies" ? "2px 2px 0 var(--ink)" : "none",
+            boxShadow:
+              activeTab === "supplies" ? "2px 2px 0 var(--ink)" : "none",
             transition: "all 0.15s ease",
           }}
         >
@@ -136,18 +139,24 @@ export function Nearby() {
           </div>
 
           <div className="filter-row">
-            {["All", "Bakery", "Decor", "Food", "Venues", "Printing", "Audio"].map(
-              (item) => (
-                <button
-                  type="button"
-                  key={item}
-                  className={filter === item ? "active" : ""}
-                  onClick={() => setFilter(item)}
-                >
-                  {item}
-                </button>
-              )
-            )}
+            {[
+              "All",
+              "Bakery",
+              "Decor",
+              "Food",
+              "Venues",
+              "Printing",
+              "Audio",
+            ].map((item) => (
+              <button
+                type="button"
+                key={item}
+                className={filter === item ? "active" : ""}
+                onClick={() => setFilter(item)}
+              >
+                {item}
+              </button>
+            ))}
           </div>
 
           <div className="nearby-heading">
@@ -184,7 +193,9 @@ export function Nearby() {
                     gap: 8,
                   }}
                 >
-                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <div
+                    style={{ display: "flex", alignItems: "center", gap: 10 }}
+                  >
                     <span
                       style={{
                         width: 36,
@@ -276,7 +287,7 @@ export function Nearby() {
                 >
                   <a
                     href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-                      cat.mapsQuery
+                      cat.mapsQuery,
                     )}`}
                     target="_blank"
                     rel="noopener noreferrer"

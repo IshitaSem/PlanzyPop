@@ -4,7 +4,13 @@
  */
 
 import { useEffect, useState, type FormEvent } from "react"
-import type { BudgetSummary, EventItem, ExpenseItem, ExpenseSplit, Screen } from "../types"
+import type {
+  BudgetSummary,
+  EventItem,
+  ExpenseItem,
+  ExpenseSplit,
+  Screen,
+} from "../types"
 import {
   addExpense,
   deleteExpense,
@@ -98,7 +104,10 @@ export function Budget({
     }
   }
 
-  const handleDeleteExpense = async (expenseId: number, e: React.MouseEvent) => {
+  const handleDeleteExpense = async (
+    expenseId: number,
+    e: React.MouseEvent,
+  ) => {
     e.stopPropagation()
     try {
       await deleteExpense(expenseId)
@@ -109,10 +118,14 @@ export function Budget({
     }
   }
 
-  const planned = budgetSummary ? budgetSummary.planned_budget : activeEvent.budget
+  const planned = budgetSummary
+    ? budgetSummary.planned_budget
+    : activeEvent.budget
   const totalSpent = budgetSummary ? budgetSummary.total_expenses : 0
   const remaining = budgetSummary ? budgetSummary.remaining_budget : planned
-  const utilPercent = budgetSummary ? Math.round(budgetSummary.utilisation_percentage) : 0
+  const utilPercent = budgetSummary
+    ? Math.round(budgetSummary.utilisation_percentage)
+    : 0
 
   return (
     <div className="screen budget-screen">
@@ -150,17 +163,26 @@ export function Budget({
             <strong>{formatINR(remaining)}</strong>
           </div>
         </div>
-        <Progress value={utilPercent} color={utilPercent > 80 ? "coral" : "yellow"} />
+        <Progress
+          value={utilPercent}
+          color={utilPercent > 80 ? "coral" : "yellow"}
+        />
       </div>
       <div className="budget-tools">
         {budgetSummary?.is_over_budget ? (
-          <div className="budget-warning" style={{ background: "#ffe6e6", borderColor: "#e57373" }}>
+          <div
+            className="budget-warning"
+            style={{ background: "#ffe6e6", borderColor: "#e57373" }}
+          >
             <span>
               <Icon name="bell" size={19} />
             </span>
             <div>
               <strong>Budget Warning!</strong>
-              <p>You have exceeded your planned budget by {formatINR(Math.abs(remaining))}.</p>
+              <p>
+                You have exceeded your planned budget by{" "}
+                {formatINR(Math.abs(remaining))}.
+              </p>
             </div>
           </div>
         ) : (
@@ -169,7 +191,9 @@ export function Budget({
               <Icon name="bell" size={19} />
             </span>
             <div>
-              <strong>{remaining > 0 ? "Budget on track" : "Budget utilized"}</strong>
+              <strong>
+                {remaining > 0 ? "Budget on track" : "Budget utilized"}
+              </strong>
               <p>
                 {remaining > 0
                   ? `${formatINR(remaining)} remains available for this celebration.`
@@ -186,7 +210,9 @@ export function Budget({
             <div>
               <strong>Equal expense split</strong>
               <p>
-                {formatINR(split.total_amount)} ({split.split_basis.replace("_", " ")}) ÷ {split.num_people} guests
+                {formatINR(split.total_amount)} (
+                {split.split_basis.replace("_", " ")}) ÷ {split.num_people}{" "}
+                guests
               </p>
             </div>
             <strong>{formatINR(split.share_per_person)} each</strong>
@@ -195,7 +221,8 @@ export function Budget({
       </div>
       <SectionTitle title="Spending by category" />
       <div className="category-budget-list">
-        {budgetSummary && Object.keys(budgetSummary.category_breakdown).length > 0 ? (
+        {budgetSummary &&
+        Object.keys(budgetSummary.category_breakdown).length > 0 ? (
           Object.entries(budgetSummary.category_breakdown).map(([cat, amt]) => {
             const pct = Math.min(100, Math.round((amt / (planned || 1)) * 100))
             return (
@@ -212,7 +239,14 @@ export function Budget({
             )
           })
         ) : (
-          <div style={{ padding: "12px", color: "var(--muted)", fontSize: "11px", textAlign: "center" }}>
+          <div
+            style={{
+              padding: "12px",
+              color: "var(--muted)",
+              fontSize: "11px",
+              textAlign: "center",
+            }}
+          >
             No category expenses logged yet. Tap Add Expense below!
           </div>
         )}
@@ -244,7 +278,14 @@ export function Budget({
             </div>
           ))
         ) : (
-          <div style={{ padding: "16px", color: "var(--muted)", fontSize: "11px", textAlign: "center" }}>
+          <div
+            style={{
+              padding: "16px",
+              color: "var(--muted)",
+              fontSize: "11px",
+              textAlign: "center",
+            }}
+          >
             No expenses recorded yet.
           </div>
         )}
@@ -296,7 +337,9 @@ export function Budget({
                     onChange={(e) => setCategory(e.target.value)}
                   >
                     {EXPENSE_CATEGORIES.map((c) => (
-                      <option key={c} value={c}>{c}</option>
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
                     ))}
                   </select>
                 </label>

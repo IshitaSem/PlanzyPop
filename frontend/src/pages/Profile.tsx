@@ -28,18 +28,19 @@ export function Profile({
   const [editingName, setEditingName] = useState(false)
   const [tempName, setTempName] = useState(userName)
   const [collegeGroup, setCollegeGroup] = useState(
-    () => localStorage.getItem("planzypop_group") || "Hostel Batch / University"
+    () =>
+      localStorage.getItem("planzypop_group") || "Hostel Batch / University",
   )
   const [editingGroup, setEditingGroup] = useState(false)
   const [tempGroup, setTempGroup] = useState(collegeGroup)
   const [defaultStyle, setDefaultStyle] = useState(
-    () => localStorage.getItem("planzypop_style") || "Hostel & Casual"
+    () => localStorage.getItem("planzypop_style") || "Hostel & Casual",
   )
   const [reminders, setReminders] = useState(
-    () => localStorage.getItem("planzypop_reminders") !== "false"
+    () => localStorage.getItem("planzypop_reminders") !== "false",
   )
   const [tips, setTips] = useState(
-    () => localStorage.getItem("planzypop_tips") !== "false"
+    () => localStorage.getItem("planzypop_tips") !== "false",
   )
 
   const handleSaveName = () => {
@@ -76,15 +77,14 @@ export function Profile({
     const next = !tips
     setTips(next)
     localStorage.setItem("planzypop_tips", String(next))
-    notify(next ? "Smart suggestion tips enabled" : "Smart suggestion tips paused")
+    notify(
+      next ? "Smart suggestion tips enabled" : "Smart suggestion tips paused",
+    )
   }
 
   return (
     <div className="screen profile-screen">
-      <Header
-        title="Preferences"
-        eyebrow="STUDENT HOST SETTINGS"
-      />
+      <Header title="Preferences" eyebrow="STUDENT HOST SETTINGS" />
 
       <div className="profile-card">
         <div className="profile-avatar">
@@ -137,7 +137,14 @@ export function Profile({
           )}
 
           {editingGroup ? (
-            <div style={{ display: "flex", gap: 6, alignItems: "center", marginTop: 4 }}>
+            <div
+              style={{
+                display: "flex",
+                gap: 6,
+                alignItems: "center",
+                marginTop: 4,
+              }}
+            >
               <input
                 className="text-field"
                 value={tempGroup}
@@ -173,7 +180,10 @@ export function Profile({
               <Icon name="edit" size={12} />
             </p>
           )}
-          <span className="plan-badge" style={{ marginTop: 6, display: "inline-block" }}>
+          <span
+            className="plan-badge"
+            style={{ marginTop: 6, display: "inline-block" }}
+          >
             STUDENT HOST
           </span>
         </div>
@@ -211,7 +221,13 @@ export function Profile({
             </span>
             <div>
               <strong>Event Reminders</strong>
-              <small style={{ display: "block", color: "var(--muted)", fontSize: 11 }}>
+              <small
+                style={{
+                  display: "block",
+                  color: "var(--muted)",
+                  fontSize: 11,
+                }}
+              >
                 Active alerts in notification panel
               </small>
             </div>
@@ -241,7 +257,13 @@ export function Profile({
             </span>
             <div>
               <strong>Rule Engine Guidance</strong>
-              <small style={{ display: "block", color: "var(--muted)", fontSize: 11 }}>
+              <small
+                style={{
+                  display: "block",
+                  color: "var(--muted)",
+                  fontSize: 11,
+                }}
+              >
                 Smart celebration & budget tips
               </small>
             </div>
@@ -255,14 +277,30 @@ export function Profile({
           </button>
         </div>
 
-        <div style={{ padding: "14px 16px", borderTop: "1px solid var(--line)" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
+        <div
+          style={{ padding: "14px 16px", borderTop: "1px solid var(--line)" }}
+        >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 12,
+              marginBottom: 8,
+            }}
+          >
             <span className="menu-icon">
               <Icon name="party" size={20} />
             </span>
             <strong>Default Celebration Style</strong>
           </div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginLeft: 32 }}>
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: 6,
+              marginLeft: 32,
+            }}
+          >
             {[
               "Hostel & Casual",
               "Potluck & DIY",
@@ -278,8 +316,12 @@ export function Profile({
                   fontSize: 11.5,
                   padding: "5px 10px",
                   borderRadius: 14,
-                  border: defaultStyle === s ? "1.5px solid var(--ink)" : "1px solid var(--line)",
-                  background: defaultStyle === s ? "var(--yellow)" : "var(--paper)",
+                  border:
+                    defaultStyle === s
+                      ? "1.5px solid var(--ink)"
+                      : "1px solid var(--line)",
+                  background:
+                    defaultStyle === s ? "var(--yellow)" : "var(--paper)",
                   fontWeight: defaultStyle === s ? 700 : 500,
                   cursor: "pointer",
                 }}
@@ -305,7 +347,13 @@ export function Profile({
             </span>
             <div>
               <strong>Currency Standard</strong>
-              <small style={{ display: "block", color: "var(--muted)", fontSize: 11 }}>
+              <small
+                style={{
+                  display: "block",
+                  color: "var(--muted)",
+                  fontSize: 11,
+                }}
+              >
                 Standard Indian Rupee formatting
               </small>
             </div>
@@ -323,11 +371,29 @@ export function Profile({
           <p style={{ margin: "0 0 8px", color: "var(--muted)", fontSize: 12 }}>
             M.Sc. Computer Science (Data Science) University Mini-Project.
           </p>
-          <ul style={{ margin: "4px 0 0", paddingLeft: 18, fontSize: 12, color: "var(--muted)" }}>
-            <li><strong>Backend:</strong> Python 3.14 + FastAPI REST API</li>
-            <li><strong>Database:</strong> SQLite with SQLAlchemy ORM and cascade constraints</li>
-            <li><strong>Recommendation Engine:</strong> Rule-based heuristic expert engine</li>
-            <li><strong>Frontend:</strong> React 19 + TypeScript + Vite responsive SPA</li>
+          <ul
+            style={{
+              margin: "4px 0 0",
+              paddingLeft: 18,
+              fontSize: 12,
+              color: "var(--muted)",
+            }}
+          >
+            <li>
+              <strong>Backend:</strong> Python 3.14 + FastAPI REST API
+            </li>
+            <li>
+              <strong>Database:</strong> SQLite with SQLAlchemy ORM and cascade
+              constraints
+            </li>
+            <li>
+              <strong>Recommendation Engine:</strong> Rule-based heuristic
+              expert engine
+            </li>
+            <li>
+              <strong>Frontend:</strong> React 19 + TypeScript + Vite responsive
+              SPA
+            </li>
           </ul>
         </div>
       </div>

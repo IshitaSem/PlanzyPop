@@ -32,6 +32,11 @@ const images = {
   cafe: "https://images.unsplash.com/photo-1552566626-52f8b828add9?auto=format&fit=crop&w=900&q=82",
   games:
     "https://images.unsplash.com/photo-1610890716171-6b1bb98ffd09?auto=format&fit=crop&w=900&q=82",
+  picnic:
+    "https://images.unsplash.com/photo-1496545672447-f699b503d270?auto=format&fit=crop&w=900&q=82",
+  cake: "https://images.unsplash.com/photo-1555607124-8531c7c702d0?crop=entropy&cs=tinysrgb&fit=crop&fm=jpg&q=82&w=900",
+  balloons:
+    "https://images.unsplash.com/photo-1530103862676-de8c9debad1d?crop=entropy&cs=tinysrgb&fit=crop&fm=jpg&q=82&w=900",
 }
 
 const iconPaths: Record<IconName, ReactNode> = {
@@ -370,24 +375,35 @@ function BottomNav({
 }) {
   const items: NavItem[] = [
     { screen: "overview", icon: "home", label: "Overview" },
-    { screen: "planner", icon: "sparkle", label: "PopPlan" },
-    { screen: "nearby", icon: "pin", label: "Explore" },
+    { screen: "planner", icon: "sparkle", label: "AI Planner" },
+    { screen: "nearby", icon: "pin", label: "Explore Spots" },
     { screen: "events", icon: "calendar", label: "My Plans" },
-    { screen: "budget", icon: "wallet", label: "Budget" },
+    { screen: "budget", icon: "wallet", label: "My Budget" },
+    { screen: "insights", icon: "star", label: "Insights" },
+    { screen: "settings", icon: "settings", label: "Settings" },
   ]
+  const activeScreen =
+    screen === "event-detail" || screen === "checklist"
+      ? "events"
+      : screen === "place-detail"
+        ? "nearby"
+        : screen === "profile"
+          ? "settings"
+          : screen
+
   return (
     <nav className="bottom-nav">
       {items.map((item) => (
         <button
           type="button"
           key={item.screen}
-          className={`${screen === item.screen ? "active" : ""} ${
+          className={`${activeScreen === item.screen ? "active" : ""} ${
             item.screen === "planner" ? "planner-nav" : ""
           }`}
           onClick={() => onNavigate(item.screen)}
         >
           <span className="nav-icon">
-            <Icon name={item.icon} filled={screen === item.screen} />
+            <Icon name={item.icon} filled={activeScreen === item.screen} />
           </span>
           <span>{item.label}</span>
         </button>
@@ -677,40 +693,58 @@ function Overview({
   )
 }
 
-function MyEvents({ go }: { go: (s: Screen) => void }) {
+type EventPlan = {
+  name: string
+  type: string
+  date: string
+  place: string
+  guests: number
+  budget: string
+  progress: number
+  image: string
+}
+
+const defaultEvents: EventPlan[] = [
+  {
+    name: "Aanya’s Birthday",
+    type: "Birthday",
+    date: "12 Nov · 6:30 PM",
+    place: "Indiranagar, Bengaluru",
+    guests: 18,
+    budget: "₹6,000",
+    progress: 68,
+    image: images.birthday,
+  },
+  {
+    name: "College Fresher Party",
+    type: "College",
+    date: "18 Nov · 4:00 PM",
+    place: "Campus Activity Hall",
+    guests: 60,
+    budget: "₹12,000",
+    progress: 42,
+    image: images.decor,
+  },
+  {
+    name: "Friends’ Game Night",
+    type: "Get-together",
+    date: "22 Nov · 7:30 PM",
+    place: "Meera’s apartment",
+    guests: 8,
+    budget: "₹2,000",
+    progress: 24,
+    image: images.games,
+  },
+]
+
+function MyEvents({
+  go,
+  events = defaultEvents,
+}: {
+  go: (s: Screen) => void
+  events?: EventPlan[]
+}) {
   const [tab, setTab] = useState("Upcoming")
-  const events = [
-    {
-      name: "Aanya’s Birthday",
-      type: "Birthday",
-      date: "12 Nov · 6:30 PM",
-      place: "Indiranagar, Bengaluru",
-      guests: 18,
-      budget: "₹6,000",
-      progress: 68,
-      image: images.birthday,
-    },
-    {
-      name: "College Fresher Party",
-      type: "College",
-      date: "18 Nov · 4:00 PM",
-      place: "Campus Activity Hall",
-      guests: 60,
-      budget: "₹12,000",
-      progress: 42,
-      image: images.decor,
-    },
-    {
-      name: "Friends’ Game Night",
-      type: "Get-together",
-      date: "22 Nov · 7:30 PM",
-      place: "Meera’s apartment",
-      guests: 8,
-      budget: "₹2,000",
-      progress: 24,
-      image: images.games,
-    },
-  ]
   return (
     <div className="screen">
       <Header
@@ -931,21 +965,412 @@ function EventDetail({ go }: { go: (s: Screen) => void }) {
   )
 }
 
+type ShoppingItem = {
+  id: string
+  name: string
+  category: string
+  cost: number
+  completed: boolean
+}
+
 function Planner({
   go,
   notify,
+  onSaveEvent,
 }: {
   go: (s: Screen) => void
   notify: (m: string) => void
+  onSaveEvent?: (event: {
+    name: string
+    type: string
+    date: string
+    place: string
+    guests: number
+    budget: string
+    progress: number
+    image: string
+  }) => void
 }) {
   const [step, setStep] = useState<"form" | "loading" | "results">("form")
   const [eventType, setEventType] = useState("Birthday")
+  const [eventName, setEventName] = useState("Aanya's Birthday Bash")
+  const [eventDate, setEventDate] = useState("12 Nov 2025")
+  const [guests, setGuests] = useState(18)
+  const [location, setLocation] = useState("Indiranagar, Bengaluru")
+  const [foodPreference, setFoodPreference] = useState("Vegetarian")
+  const [setting, setSetting] = useState("Indoor")
   const [budget, setBudget] = useState("₹3,000–₹5,000")
   const [style, setStyle] = useState("Casual")
+  const [notes, setNotes] = useState("")
+
+  // Active section tab for mobile / tablet responsive navigation
+  const [activeTab, setActiveTab] =
+    useState<"all" | "overview" | "theme" | "food" | "decor" | "activities" | "shopping" | "budget">(
+      "all",
+    )
+
+  // Inline editing state for Section A (Event Overview)
+  const [isEditingBasics, setIsEditingBasics] = useState(false)
+  const [editName, setEditName] = useState(eventName)
+  const [editDate, setEditDate] = useState(eventDate)
+  const [editLocation, setEditLocation] = useState(location)
+  const [editGuests, setEditGuests] = useState(guests)
+  const [editBudget, setEditBudget] = useState(budget)
+
+  // Section-level adaptation variations
+  const [themeIndex, setThemeIndex] = useState(0)
+  const [foodIndex, setFoodIndex] = useState(0)
+  const [decorIndex, setDecorIndex] = useState(0)
+  const [activityIndex, setActivityIndex] = useState(0)
+
+  // Curated theme presets
+  const themePresets = [
+    {
+      title: "Pastel Pop Celebration",
+      description:
+        "A cheerful lavender, blush, peach, and soft-yellow palette tailored for a home, terrace, or hostel common room. Bright, photo-ready, and comfortable.",
+      swatches: [
+        { name: "Lavender", color: "#C8B6FF" },
+        { name: "Blush", color: "#FFD6E0" },
+        { name: "Peach", color: "#FFD8BE" },
+        { name: "Soft Yellow", color: "#FFF0A5" },
+      ],
+      colorNames: "Lavender · Blush · Peach · Soft Yellow",
+      themeCost: 850,
+    },
+    {
+      title: "Neon Glow & Midnight Arcade",
+      description:
+        "High-energy celebration featuring fluorescent highlights, glow accents, LED light strips, and bold party aesthetics for an evening crowd.",
+      swatches: [
+        { name: "Electric Purple", color: "#9D4EDD" },
+        { name: "Neon Cyan", color: "#00F5D4" },
+        { name: "Hot Pink", color: "#F72585" },
+        { name: "Cyber Amber", color: "#FFBE0B" },
+      ],
+      colorNames: "Electric Purple · Neon Cyan · Hot Pink · Cyber Amber",
+      themeCost: 950,
+    },
+    {
+      title: "Boho Sunset Glow",
+      description:
+        "Warm terracotta tones, dried botanical accents, jute runners, fairy light bottles, and an ambient acoustic vibe for relaxed conversations.",
+      swatches: [
+        { name: "Terracotta", color: "#E07A5F" },
+        { name: "Warm Sand", color: "#F4F1DE" },
+        { name: "Sage Olive", color: "#81B29A" },
+        { name: "Deep Ochre", color: "#F2CC8F" },
+      ],
+      colorNames: "Terracotta · Warm Sand · Sage Olive · Deep Ochre",
+      themeCost: 780,
+    },
+  ]
+
+  // Curated food & cake presets
+  const foodPresets = [
+    {
+      cakeTitle: "1.2 kg Customized Pastel Bento Cake",
+      cakeFlavor:
+        "Belgian Chocolate Truffle with buttercream florals and personalized lettering",
+      cakeCost: 700,
+      snackRecommendations:
+        "Mini Paneer Tikka Sliders, Peri-Peri Crinkle Fries, Veg Dimsums, Cheesy Corn Triangles, Nachos with House Salsa",
+      drinks: "Chilled Vanilla Cold Coffee & Mint Lemonade Spritzers",
+      dietTag: "100% Vegetarian Crowd-Pleaser",
+      foodCost: 1600,
+    },
+    {
+      cakeTitle: "24-piece Tiered Cupcake Tower with Sparklers",
+      cakeFlavor:
+        "Red Velvet Cream Cheese & Salted Caramel with edible pearl dusting",
+      cakeCost: 750,
+      snackRecommendations:
+        "Gourmet Pinwheel Sandwiches, Masala Garlic Breadsticks, Jalapeño Cheese Poppers, Crispy Potato Wedges",
+      drinks: "Iced Peach Tea & Fizzy Blueberry Mocktails",
+      dietTag: "Mixed / Vegetarian & Vegan Friendly",
+      foodCost: 1700,
+    },
+    {
+      cakeTitle: "1.5 kg Classic Chocolate Fudge Party Slab",
+      cakeFlavor:
+        "Rich Dutch Chocolate Fudge with confetti sprinkles and sparklers",
+      cakeCost: 550,
+      snackRecommendations:
+        "Samosa Chaat Platter, Butter Maggi Cups, Chilli Cheese Toasties, Popcorn Bar with peri-peri seasonings",
+      drinks: "Nimbu Paani & Tang Mango Punch",
+      dietTag: "Student Budget Friendly & Easy Clean-up",
+      foodCost: 1350,
+    },
+  ]
+
+  // Curated decoration & DIY presets (integrates celebration craft concepts)
+  const decorPresets = [
+    {
+      recommendation:
+        "Fairy light curtain backdrop, pastel balloon clusters at the entrance, printed welcome banner, and table bunting.",
+      diyIdeas: [
+        {
+          title: "Paper streamer fringe backdrop",
+          cost: "Under ₹180",
+          desc: "Layered crepe streamer fringe attached with double-sided tape",
+        },
+        {
+          title: "Printed photo props & greeting cutouts",
+          cost: "Under ₹60",
+          desc: "Fun cardboard cutouts printed on local shop cardstock",
+        },
+        {
+          title: "Reusable pastel bunting",
+          cost: "Under ₹120",
+          desc: "Triangular pennants threaded on baker's twine",
+        },
+        {
+          title: "Warm fairy-light selfie corner",
+          cost: "Under ₹250",
+          desc: "10-metre warm micro-LED string draped along curtains",
+        },
+      ],
+      decorCost: 610,
+    },
+    {
+      recommendation:
+        "Organic balloon garland over seating, DIY polaroid photo memory string with wooden clips, ambient lighting.",
+      diyIdeas: [
+        {
+          title: "Organic balloon cluster garland",
+          cost: "Under ₹220",
+          desc: "Dual-size balloons tied in clusters on fishing line",
+        },
+        {
+          title: "Polaroid photo timeline on jute string",
+          cost: "Under ₹140",
+          desc: "Guest memories printed 2x3 on card with mini wooden pegs",
+        },
+        {
+          title: "Upcycled glass bottle fairy lights",
+          cost: "Under ₹90",
+          desc: "Cleaned glass jars with cork micro-LED wire lights",
+        },
+        {
+          title: "Hand-lettered greeting chalkboard",
+          cost: "Under ₹70",
+          desc: "Kraft card with liquid chalk welcoming guests",
+        },
+      ],
+      decorCost: 680,
+    },
+    {
+      recommendation:
+        "Geometric paper lanterns, origami crane curtain, dried leaf table runners, warm micro-lights.",
+      diyIdeas: [
+        {
+          title: "Accordion paper honeycomb lanterns",
+          cost: "Under ₹150",
+          desc: "Handmade folding paper spheres in pastel tones",
+        },
+        {
+          title: "Jute string paper tassel bunting",
+          cost: "Under ₹100",
+          desc: "Tissue paper tassels twisted onto natural twine",
+        },
+        {
+          title: "Tabletop confetti & tea-light holders",
+          cost: "Under ₹80",
+          desc: "Perforated craft paper lanterns with LED tea lights",
+        },
+        {
+          title: "Custom cardboard photo frame prop",
+          cost: "Under ₹60",
+          desc: "Upcycled shipping box cutout with painted borders",
+        },
+      ],
+      decorCost: 490,
+    },
+  ]
+
+  // Curated activity presets
+  const activityPresets = [
+    {
+      activities:
+        "Bollywood Dumb Charades, Two Truths & a Lie, 'Who Knows the Host Best?' speed trivia quiz",
+      entertainment:
+        "Collaborative Spotify Jam Session party playlist, Instant Polaroid photo challenge",
+      cost: 0,
+    },
+    {
+      activities:
+        "Uno Flip & Exploding Kittens tournament, Mobile Karaoke showdown via Bluetooth mic, Pictionary on whiteboards",
+      entertainment:
+        "Chill Lo-Fi / Acoustic party stream, Snack-tasting blindfold challenge",
+      cost: 150,
+    },
+    {
+      activities:
+        "Name That Tune 5-second buzzer round, Freeze Dance, Group Tik-Tok video memory challenge",
+      entertainment:
+        "High-energy party DJ soundscape, Glow-in-the-dark accessory station",
+      cost: 100,
+    },
+  ]
+
+  // Interactive Shopping Checklist State
+  const [shoppingItems, setShoppingItems] = useState<ShoppingItem[]>([
+    {
+      id: "s1",
+      name: "30 Pastel balloons (Lavender & Peach)",
+      category: "Decor",
+      cost: 240,
+      completed: true,
+    },
+    {
+      id: "s2",
+      name: "3 Crepe paper streamer rolls",
+      category: "Decor",
+      cost: 180,
+      completed: true,
+    },
+    {
+      id: "s3",
+      name: "Warm fairy string lights (10m)",
+      category: "Decor",
+      cost: 250,
+      completed: false,
+    },
+    {
+      id: "s4",
+      name: "Custom celebration cake",
+      category: "Food",
+      cost: 700,
+      completed: false,
+    },
+    {
+      id: "s5",
+      name: "Party snack platters & finger foods",
+      category: "Food",
+      cost: 1600,
+      completed: false,
+    },
+    {
+      id: "s6",
+      name: "Beverages & cold coffee cartons",
+      category: "Food",
+      cost: 650,
+      completed: false,
+    },
+    {
+      id: "s7",
+      name: "Eco-friendly paper plates & cups",
+      category: "Supplies",
+      cost: 160,
+      completed: false,
+    },
+    {
+      id: "s8",
+      name: "Double-sided tape & photo props",
+      category: "DIY",
+      cost: 80,
+      completed: true,
+    },
+  ])
+  const [newShoppingName, setNewShoppingName] = useState("")
+  const [newShoppingCost, setNewShoppingCost] = useState("100")
+
+  const currentTheme = themePresets[themeIndex]
+  const currentFood = foodPresets[foodIndex]
+  const currentDecor = decorPresets[decorIndex]
+  const currentActivity = activityPresets[activityIndex]
+
+  // Dynamic budget computations
+  const themeCost = currentTheme.themeCost
+  const decorCost = currentDecor.decorCost
+  const foodCost = currentFood.foodCost
+  const cakeCost = currentFood.cakeCost
+  const drinksCost = 650
+  const activityCost = currentActivity.cost + 300
+  const bufferCost = 350
+  const totalEstimated =
+    themeCost +
+    decorCost +
+    foodCost +
+    cakeCost +
+    drinksCost +
+    activityCost +
+    bufferCost
+
+  const parseBudgetNum = (b: string) => {
+    if (b.includes("500") && b.includes("1,000")) return 1000
+    if (b.includes("1,000")) return 2500
+    if (b.includes("3,000")) return 5000
+    if (b.includes("5,000+")) return 7500
+    return 5000
+  }
+  const targetBudgetNum = parseBudgetNum(budget)
+  const savings = Math.max(0, targetBudgetNum - totalEstimated)
+
+  const toggleShoppingItem = (id: string) => {
+    setShoppingItems((prev) =>
+      prev.map((item) =>
+        item.id === id ? { ...item, completed: !item.completed } : item,
+      ),
+    )
+  }
+
+  const addShoppingItem = (e: FormEvent) => {
+    e.preventDefault()
+    if (!newShoppingName.trim()) return
+    const cost = Number(newShoppingCost) || 100
+    setShoppingItems((prev) => [
+      ...prev,
+      {
+        id: `s-${Date.now()}`,
+        name: newShoppingName.trim(),
+        category: "Custom",
+        cost,
+        completed: false,
+      },
+    ])
+    setNewShoppingName("")
+    setNewShoppingCost("100")
+    notify("Shopping item added!")
+  }
+
+  const handleSaveBasics = () => {
+    setEventName(editName)
+    setEventDate(editDate)
+    setLocation(editLocation)
+    setGuests(editGuests)
+    setBudget(editBudget)
+    setIsEditingBasics(false)
+    notify("Event details updated!")
+  }
+
+  const handleSavePlan = () => {
+    const newPlan = {
+      name: eventName,
+      type: eventType,
+      date: eventDate,
+      place: location,
+      guests,
+      budget: `₹${totalEstimated.toLocaleString("en-IN")}`,
+      progress: 35,
+      image:
+        eventType === "Birthday"
+          ? images.birthday
+          : eventType === "Picnic"
+            ? images.picnic
+            : images.decor,
+    }
+    if (onSaveEvent) {
+      onSaveEvent(newPlan)
+    } else {
+      notify(`Plan "${eventName}" saved to My Plans!`)
+      go("events")
+    }
+  }
 
   const generate = () => {
     setStep("loading")
-    window.setTimeout(() => setStep("results"), 1450)
+    window.setTimeout(() => setStep("results"), 1400)
   }
 
   if (step === "loading") {
@@ -959,17 +1384,26 @@ function Planner({
           <i />
           <i />
         </div>
-        <div className="loading-title">Making your party pop!</div>
-        <p>Mixing a fun plan for 18 friends within ₹5,000…</p>
+        <div className="loading-title">Making your celebration pop!</div>
+        <p>
+          Synthesizing themes, food, decor, activities & budget for {guests}{" "}
+          friends…
+        </p>
         <div className="loading-steps">
           <span className="done">
-            <Icon name="check" size={16} /> Finding theme ideas
+            <Icon name="check" size={16} /> Generating celebration theme &
+            palette
           </span>
           <span className="done">
-            <Icon name="check" size={16} /> Balancing your budget
+            <Icon name="check" size={16} /> Selecting food, cake & snack menu
+          </span>
+          <span className="done">
+            <Icon name="check" size={16} /> Crafting DIY decor & shopping
+            checklist
           </span>
           <span>
-            <span className="tiny-loader" /> Adding snacks & games
+            <span className="tiny-loader" /> Balancing budget & activity
+            itinerary
           </span>
         </div>
       </div>
@@ -977,232 +1411,638 @@ function Planner({
   }
 
   if (step === "results") {
+    const completedCount = shoppingItems.filter((i) => i.completed).length
+    const checklistPercent = Math.round(
+      (completedCount / (shoppingItems.length || 1)) * 100,
+    )
+
     return (
       <div className="screen planner-results">
         <Header
-          title="Your party plan"
+          title="AI Planner"
           eyebrow="PLANZY RECOMMENDATION ENGINE"
           onBack={() => setStep("form")}
           action={
             <IconButton
               icon="bookmark"
               label="Save plan"
-              onClick={() => notify("Plan saved to your ideas")}
+              onClick={handleSavePlan}
             />
           }
         />
-        <div className="result-banner">
-          <div className="result-badge">
-            <Icon name="sparkle" /> SMART PLAN
-          </div>
-          <div className="result-title">
-            Pastel Pop
-            <br />
-            Birthday Bash
-          </div>
-          <p>A cosy, colourful house party for 18 friends.</p>
-          <div className="result-stats">
-            <span>
-              <Icon name="wallet" size={16} /> ₹4,650
-            </span>
-            <span>
-              <Icon name="people" size={16} /> 18 guests
-            </span>
-            <span>
-              <Icon name="clock" size={16} /> 3 hrs
-            </span>
-          </div>
-        </div>
-        <div className="ai-note">
-          <span>
-            <Icon name="sparkle" size={19} />
-          </span>
-          <p>
-            <strong>Why this works</strong> It uses DIY decor and crowd-friendly
-            snacks, leaving ₹350 as a safety cushion.
-          </p>
-        </div>
-        <SectionTitle title="Your plan, sorted" />
-        <div className="result-section lavender">
-          <span className="result-icon">
-            <Icon name="party" />
-          </span>
-          <div>
-            <div className="result-kicker">THEME & DECOR</div>
-            <strong>Pastel Pop</strong>
-            <p>
-              Lavender streamers, coral balloons, fairy lights and a DIY photo
-              corner.
-            </p>
-            <div className="chip-line">
-              <span>₹850 est.</span>
-              <span>45 min setup</span>
-            </div>
-            <button type="button" className="adapt-section">
-              <Icon name="refresh" size={13} /> Adapt decor
+
+        {/* Section Tabs for Responsive / Mobile Navigation */}
+        <div
+          className="plan-tabs-bar"
+          role="tablist"
+          aria-label="Plan sections"
+        >
+          {[
+            { id: "all", label: "All Sections" },
+            { id: "overview", label: "A. Overview" },
+            { id: "theme", label: "B. Theme" },
+            { id: "food", label: "C. Food & Cake" },
+            { id: "decor", label: "D. Decor & DIY" },
+            { id: "activities", label: "E. Activities" },
+            { id: "shopping", label: "F. Shopping" },
+            { id: "budget", label: "G. Budget" },
+          ].map((tab) => (
+            <button
+              type="button"
+              key={tab.id}
+              className={`plan-tab-pill ${
+                activeTab === tab.id ? "active" : ""
+              }`}
+              onClick={() => setActiveTab(tab.id as typeof activeTab)}
+            >
+              {tab.label}
             </button>
-          </div>
+          ))}
         </div>
-        <div className="result-section peach">
-          <span className="result-icon">
-            <Icon name="food" />
-          </span>
-          <div>
-            <div className="result-kicker">FOOD & SNACKS</div>
-            <strong>Easy crowd favourites</strong>
-            <p>
-              Mini sandwiches, masala fries, momos, cold coffee and a 1 kg
-              chocolate cake.
-            </p>
-            <div className="chip-line">
-              <span>₹2,300 est.</span>
-              <span>Vegetarian</span>
-            </div>
-            <button type="button" className="adapt-section">
-              <Icon name="refresh" size={13} /> Adapt food
-            </button>
-          </div>
-        </div>
-        <div className="result-section yellow">
-          <span className="result-icon">
-            <Icon name="music" />
-          </span>
-          <div>
-            <div className="result-kicker">GAMES & MUSIC</div>
-            <strong>Keep everyone moving</strong>
-            <p>
-              Two Truths & a Lie, Bollywood charades and a shared party
-              playlist.
-            </p>
-            <div className="chip-line">
-              <span>Free</span>
-              <span>90 min</span>
-            </div>
-            <button type="button" className="adapt-section">
-              <Icon name="refresh" size={13} /> Adapt activities
-            </button>
-          </div>
-        </div>
-        <div className="creative-plan-grid">
-          <section className="creative-plan-card palette-plan">
-            <div className="creative-plan-head">
-              <span>
-                <Icon name="sparkle" size={19} />
+
+        {/* SECTION A: EVENT OVERVIEW */}
+        {(activeTab === "all" || activeTab === "overview") && (
+          <section className="event-overview-card">
+            <div className="spread">
+              <span className="plan-section-badge">
+                <Icon name="sparkle" size={13} /> SECTION A · EVENT OVERVIEW
               </span>
-              <div>
-                <div className="result-kicker">THEME & COLOUR PALETTE</div>
-                <strong>Pastel Pop celebration</strong>
-              </div>
-              <button type="button" className="adapt-section">
-                <Icon name="refresh" size={13} /> Adapt
+              <button
+                type="button"
+                className="adapt-section"
+                onClick={() => {
+                  setEditName(eventName)
+                  setEditDate(eventDate)
+                  setEditLocation(location)
+                  setEditGuests(guests)
+                  setEditBudget(budget)
+                  setIsEditingBasics(!isEditingBasics)
+                }}
+              >
+                <Icon name="edit" size={13} />{" "}
+                {isEditingBasics ? "Cancel Edit" : "Edit Basics"}
               </button>
             </div>
-            <p>
-              A cheerful lavender, blush, peach and soft-yellow palette that
-              works for a home, terrace or hostel common room.
+
+            <div className="result-title" style={{ marginTop: 8 }}>
+              {eventName}
+            </div>
+            <p
+              style={{ margin: "4px 0 0", color: "var(--muted)", fontSize: 10 }}
+            >
+              Curated {style.toLowerCase()} {eventType.toLowerCase()} experience
+              for {guests} guests at {location}.
             </p>
+
+            {isEditingBasics ? (
+              <div className="section-edit-form">
+                <label>
+                  <span>Event Name</span>
+                  <input
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                  />
+                </label>
+                <div className="split-fields">
+                  <label>
+                    <span>Date</span>
+                    <input
+                      value={editDate}
+                      onChange={(e) => setEditDate(e.target.value)}
+                    />
+                  </label>
+                  <label>
+                    <span>Guests</span>
+                    <input
+                      type="number"
+                      value={editGuests}
+                      onChange={(e) => setEditGuests(Number(e.target.value))}
+                    />
+                  </label>
+                </div>
+                <div className="split-fields">
+                  <label>
+                    <span>Location</span>
+                    <input
+                      value={editLocation}
+                      onChange={(e) => setEditLocation(e.target.value)}
+                    />
+                  </label>
+                  <label>
+                    <span>Budget Range</span>
+                    <input
+                      value={editBudget}
+                      onChange={(e) => setEditBudget(e.target.value)}
+                    />
+                  </label>
+                </div>
+                <Button onClick={handleSaveBasics} variant="primary">
+                  Save Changes
+                </Button>
+              </div>
+            ) : (
+              <div className="overview-grid-stats">
+                <div>
+                  <span>Celebration Type</span>
+                  <strong>{eventType}</strong>
+                </div>
+                <div>
+                  <span>Date & Schedule</span>
+                  <strong>{eventDate}</strong>
+                </div>
+                <div>
+                  <span>Location</span>
+                  <strong>{location}</strong>
+                </div>
+                <div>
+                  <span>Guest Count</span>
+                  <strong>{guests} Friends</strong>
+                </div>
+                <div>
+                  <span>Target Budget</span>
+                  <strong>{budget}</strong>
+                </div>
+                <div>
+                  <span>Vibe & Setting</span>
+                  <strong>
+                    {style} · {setting}
+                  </strong>
+                </div>
+              </div>
+            )}
+          </section>
+        )}
+
+        {/* SECTION B: THEME & COLOUR PALETTE */}
+        {(activeTab === "all" || activeTab === "theme") && (
+          <section
+            className="creative-plan-card palette-plan"
+            style={{ marginBottom: 16 }}
+          >
+            <div className="spread">
+              <span className="plan-section-badge">
+                <Icon name="sparkle" size={13} /> SECTION B · THEME & COLOUR
+                PALETTE
+              </span>
+              <button
+                type="button"
+                className="adapt-section"
+                onClick={() => {
+                  setThemeIndex((prev) => (prev + 1) % themePresets.length)
+                  notify("Theme & colour palette adapted!")
+                }}
+              >
+                <Icon name="refresh" size={13} /> Adapt Theme ({themeIndex + 1}/
+                {themePresets.length})
+              </button>
+            </div>
+
+            <div style={{ marginTop: 10 }}>
+              <div className="result-kicker">SUGGESTED CELEBRATION THEME</div>
+              <strong
+                style={{ fontSize: 16, display: "block", margin: "4px 0" }}
+              >
+                {currentTheme.title}
+              </strong>
+            </div>
+
+            <p
+              style={{
+                margin: "8px 0 14px",
+                color: "var(--muted)",
+                fontSize: 10,
+              }}
+            >
+              {currentTheme.description}
+            </p>
+
             <div className="plan-palette" aria-label="Suggested colour palette">
-              <span className="palette-lavender" />
-              <span className="palette-blush" />
-              <span className="palette-peach" />
-              <span className="palette-yellow" />
-              <small>Lavender · Blush · Peach · Soft yellow</small>
+              {currentTheme.swatches.map((swatch) => (
+                <span
+                  key={swatch.name}
+                  style={{
+                    backgroundColor: swatch.color,
+                    border: "1.5px solid rgba(41,36,58,0.2)",
+                    borderRadius: 9,
+                  }}
+                  title={`${swatch.name} (${swatch.color})`}
+                />
+              ))}
+              <small
+                style={{ fontWeight: 700, color: "var(--ink)", marginLeft: 6 }}
+              >
+                {currentTheme.colorNames}
+              </small>
             </div>
+
             <div className="theme-cost">
-              <span>Estimated theme + decoration cost</span>
-              <strong>₹850</strong>
+              <span>Estimated theme + styling cost</span>
+              <strong>₹{themeCost.toLocaleString("en-IN")}</strong>
             </div>
           </section>
-          <section className="creative-plan-card diy-plan">
-            <div className="creative-plan-head">
-              <span>
-                <Icon name="bulb" size={19} />
+        )}
+
+        {/* SECTION C: FOOD & CAKE */}
+        {(activeTab === "all" || activeTab === "food") && (
+          <section
+            className="result-section peach"
+            style={{ display: "block", marginBottom: 16 }}
+          >
+            <div className="spread">
+              <span className="plan-section-badge">
+                <Icon name="food" size={13} /> SECTION C · FOOD & CAKE
               </span>
-              <div>
-                <div className="result-kicker">DIY DECORATION IDEAS</div>
-                <strong>Simple, reusable setup</strong>
-              </div>
-              <button type="button" className="adapt-section">
-                <Icon name="refresh" size={13} /> Adapt
+              <button
+                type="button"
+                className="adapt-section"
+                onClick={() => {
+                  setFoodIndex((prev) => (prev + 1) % foodPresets.length)
+                  notify("Food & cake menu adapted!")
+                }}
+              >
+                <Icon name="refresh" size={13} /> Adapt Menu ({foodIndex + 1}/
+                {foodPresets.length})
               </button>
             </div>
-            <div className="diy-idea-list">
-              <span>
-                <Icon name="check" size={14} /> Paper streamer backdrop
+
+            {/* Cake Suggestion Card */}
+            <div className="cake-card" style={{ marginTop: 12 }}>
+              <strong>
+                <span>
+                  <Icon name="cake" size={14} /> {currentFood.cakeTitle}
+                </span>
+                <span>₹{currentFood.cakeCost}</span>
+              </strong>
+              <p>{currentFood.cakeFlavor}</p>
+            </div>
+
+            {/* Food Recommendations */}
+            <div style={{ marginTop: 8 }}>
+              <div className="result-kicker">FOOD & SNACK RECOMMENDATIONS</div>
+              <p
+                style={{
+                  margin: "6px 0 10px",
+                  fontSize: 10,
+                  color: "var(--ink)",
+                  lineHeight: 1.5,
+                }}
+              >
+                {currentFood.snackRecommendations}
+              </p>
+              <div
+                style={{ fontSize: 9, color: "var(--muted)", marginBottom: 10 }}
+              >
+                <strong>Beverages:</strong> {currentFood.drinks}
+              </div>
+            </div>
+
+            <div className="chip-line spread">
+              <div style={{ display: "flex", gap: 6 }}>
+                <span
+                  style={{
+                    background: "#fff",
+                    border: "1px solid var(--line)",
+                  }}
+                >
+                  {foodPreference} ({currentFood.dietTag})
+                </span>
+                <span
+                  style={{
+                    background: "#fff",
+                    border: "1px solid var(--line)",
+                  }}
+                >
+                  ₹{(foodCost + cakeCost).toLocaleString("en-IN")} est.
+                </span>
+              </div>
+              <small style={{ color: "var(--muted)", fontWeight: 700 }}>
+                ~₹{Math.round((foodCost + cakeCost) / guests)} / guest
+              </small>
+            </div>
+          </section>
+        )}
+
+        {/* SECTION D: DECORATIONS & DIY */}
+        {(activeTab === "all" || activeTab === "decor") && (
+          <section
+            className="creative-plan-card diy-plan"
+            style={{ marginBottom: 16 }}
+          >
+            <div className="spread">
+              <span className="plan-section-badge">
+                <Icon name="bulb" size={13} /> SECTION D · DECORATIONS & DIY
               </span>
-              <span>
-                <Icon name="check" size={14} /> Printed photo props
+              <button
+                type="button"
+                className="adapt-section"
+                onClick={() => {
+                  setDecorIndex((prev) => (prev + 1) % decorPresets.length)
+                  notify("Decor & DIY ideas adapted!")
+                }}
+              >
+                <Icon name="refresh" size={13} /> Adapt Decor ({decorIndex + 1}/
+                {decorPresets.length})
+              </button>
+            </div>
+
+            <div style={{ marginTop: 10 }}>
+              <div className="result-kicker">DECORATION RECOMMENDATIONS</div>
+              <p
+                style={{
+                  margin: "4px 0 12px",
+                  fontSize: 10,
+                  color: "var(--ink)",
+                }}
+              >
+                {currentDecor.recommendation}
+              </p>
+            </div>
+
+            <div className="result-kicker">AFFORDABLE DIY DECORATION IDEAS</div>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+                gap: 8,
+                marginTop: 8,
+              }}
+            >
+              {currentDecor.diyIdeas.map((idea) => (
+                <div key={idea.title} className="diy-card-item">
+                  <div className="spread">
+                    <strong>{idea.title}</strong>
+                    <small>{idea.cost}</small>
+                  </div>
+                  <p>{idea.desc}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="theme-cost">
+              <span>Estimated decoration expense</span>
+              <strong>₹{decorCost.toLocaleString("en-IN")}</strong>
+            </div>
+          </section>
+        )}
+
+        {/* SECTION E: ACTIVITIES */}
+        {(activeTab === "all" || activeTab === "activities") && (
+          <section
+            className="result-section yellow"
+            style={{ display: "block", marginBottom: 16 }}
+          >
+            <div className="spread">
+              <span className="plan-section-badge">
+                <Icon name="music" size={13} /> SECTION E · ACTIVITIES &
+                ENTERTAINMENT
               </span>
-              <span>
-                <Icon name="check" size={14} /> Reusable bunting
+              <button
+                type="button"
+                className="adapt-section"
+                onClick={() => {
+                  setActivityIndex(
+                    (prev) => (prev + 1) % activityPresets.length,
+                  )
+                  notify("Activities adapted!")
+                }}
+              >
+                <Icon name="refresh" size={13} /> Adapt Activities (
+                {activityIndex + 1}/{activityPresets.length})
+              </button>
+            </div>
+
+            <div style={{ marginTop: 10 }}>
+              <div className="result-kicker">SUGGESTED PARTY ACTIVITIES</div>
+              <p
+                style={{
+                  margin: "6px 0 12px",
+                  fontSize: 10,
+                  color: "var(--ink)",
+                  lineHeight: 1.5,
+                }}
+              >
+                {currentActivity.activities}
+              </p>
+            </div>
+
+            <div>
+              <div className="result-kicker">ENTERTAINMENT IDEAS</div>
+              <p
+                style={{
+                  margin: "6px 0 12px",
+                  fontSize: 10,
+                  color: "var(--muted)",
+                }}
+              >
+                {currentActivity.entertainment}
+              </p>
+            </div>
+
+            <div className="chip-line spread">
+              <span
+                style={{ background: "#fff", border: "1px solid var(--line)" }}
+              >
+                {currentActivity.cost === 0
+                  ? "100% Free Games"
+                  : `₹${currentActivity.cost} props`}
               </span>
-              <span>
-                <Icon name="check" size={14} /> Fairy-light photo corner
+              <span
+                style={{ background: "#fff", border: "1px solid var(--line)" }}
+              >
+                60–90 min entertainment
               </span>
             </div>
           </section>
-          <section className="creative-plan-card shopping-plan">
-            <div className="creative-plan-head">
-              <span>
-                <Icon name="gift" size={19} />
+        )}
+
+        {/* SECTION F: SHOPPING CHECKLIST */}
+        {(activeTab === "all" || activeTab === "shopping") && (
+          <section
+            className="creative-plan-card shopping-plan"
+            style={{ marginBottom: 16 }}
+          >
+            <div className="spread">
+              <span className="plan-section-badge">
+                <Icon name="gift" size={13} /> SECTION F · SHOPPING CHECKLIST
               </span>
-              <div>
-                <div className="result-kicker">SHOPPING CHECKLIST</div>
-                <strong>Everything to pick up</strong>
-              </div>
+              <span
+                style={{
+                  fontSize: 8,
+                  fontWeight: 800,
+                  padding: "4px 8px",
+                  borderRadius: 99,
+                  background:
+                    checklistPercent === 100 ? "var(--green)" : "var(--paper)",
+                  border: "1px solid var(--line)",
+                }}
+              >
+                {completedCount} / {shoppingItems.length} checked (
+                {checklistPercent}%)
+              </span>
             </div>
+
+            <div style={{ marginTop: 8 }}>
+              <div className="result-kicker">
+                CHECKLIST ITEMS & ESTIMATED COSTS
+              </div>
+              <small style={{ color: "var(--muted)", fontSize: 8 }}>
+                Tap checkbox to toggle item completion status
+              </small>
+            </div>
+
             <div className="plan-shopping-list">
-              {[
-                ["30 pastel balloons", "₹240"],
-                ["3 paper streamer rolls", "₹180"],
-                ["Warm fairy lights", "₹250"],
-                ["Reusable bunting", "₹120"],
-                ["Tape and photo props", "₹60"],
-              ].map(([item, cost]) => (
-                <span key={item}>
-                  <i>
-                    <Icon name="check" size={12} />
-                  </i>
-                  <strong>{item}</strong>
-                  <small>{cost}</small>
+              {shoppingItems.map((item) => (
+                <span
+                  key={item.id}
+                  className={item.completed ? "completed" : ""}
+                  style={{ cursor: "pointer" }}
+                  onClick={() => toggleShoppingItem(item.id)}
+                >
+                  <button
+                    type="button"
+                    className={`plan-check-btn ${
+                      item.completed ? "checked" : ""
+                    }`}
+                    aria-label={
+                      item.completed ? "Mark incomplete" : "Mark complete"
+                    }
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      toggleShoppingItem(item.id)
+                    }}
+                  >
+                    {item.completed && <Icon name="check" size={12} />}
+                  </button>
+                  <div>
+                    <strong>{item.name}</strong>
+                    <span
+                      style={{
+                        marginLeft: 6,
+                        fontSize: 7,
+                        color: "var(--muted)",
+                        padding: "2px 5px",
+                        background: "var(--paper)",
+                        borderRadius: 4,
+                      }}
+                    >
+                      {item.category}
+                    </span>
+                  </div>
+                  <small>₹{item.cost}</small>
                 </span>
               ))}
             </div>
+
+            {/* Quick Add Custom Item */}
+            <form onSubmit={addShoppingItem} className="shopping-add-row">
+              <input
+                className="shopping-add-input"
+                placeholder="Add checklist item (e.g. Extra napkins, Party poppers)"
+                value={newShoppingName}
+                onChange={(e) => setNewShoppingName(e.target.value)}
+              />
+              <input
+                className="shopping-add-input"
+                style={{ maxWidth: 80 }}
+                type="number"
+                placeholder="₹ Cost"
+                value={newShoppingCost}
+                onChange={(e) => setNewShoppingCost(e.target.value)}
+              />
+              <button type="submit" className="shopping-add-btn">
+                + Add
+              </button>
+            </form>
           </section>
-        </div>
-        <div className="expense-plan">
-          <SectionTitle title="Estimated expenses" />
-          {[
-            ["Food & cake", "₹2,300", 49],
-            ["Decorations", "₹850", 18],
-            ["Drinks", "₹700", 15],
-            ["Return gifts", "₹500", 11],
-            ["Buffer", "₹300", 7],
-          ].map(([label, amount, width]) => (
-            <div className="expense-plan-row" key={String(label)}>
-              <span>{label}</span>
-              <div>
-                <i style={{ width: `${width}%` }} />
-              </div>
-              <strong>{amount}</strong>
+        )}
+
+        {/* SECTION G: BUDGET BREAKDOWN */}
+        {(activeTab === "all" || activeTab === "budget") && (
+          <section className="expense-plan" style={{ marginBottom: 16 }}>
+            <div className="spread">
+              <span className="plan-section-badge">
+                <Icon name="wallet" size={13} /> SECTION G · BUDGET BREAKDOWN
+              </span>
+              <span
+                style={{ fontSize: 9, fontWeight: 800, color: "var(--green)" }}
+              >
+                {savings > 0
+                  ? `₹${savings.toLocaleString("en-IN")} buffer remaining`
+                  : "Within target"}
+              </span>
             </div>
-          ))}
-          <div className="total-row">
-            <span>Estimated total</span>
-            <strong>₹4,650</strong>
-          </div>
-        </div>
+
+            <div style={{ marginTop: 8 }}>
+              <div className="result-kicker">ITEMIZED EXPENDITURE ESTIMATE</div>
+            </div>
+
+            {[
+              [
+                "Food & cake",
+                `₹${(foodCost + cakeCost).toLocaleString("en-IN")}`,
+                Math.round(((foodCost + cakeCost) / totalEstimated) * 100),
+              ],
+              [
+                "Theme styling",
+                `₹${themeCost.toLocaleString("en-IN")}`,
+                Math.round((themeCost / totalEstimated) * 100),
+              ],
+              [
+                "Decorations & DIY",
+                `₹${decorCost.toLocaleString("en-IN")}`,
+                Math.round((decorCost / totalEstimated) * 100),
+              ],
+              [
+                "Drinks & refreshments",
+                `₹${drinksCost.toLocaleString("en-IN")}`,
+                Math.round((drinksCost / totalEstimated) * 100),
+              ],
+              [
+                "Activities & return gifts",
+                `₹${activityCost.toLocaleString("en-IN")}`,
+                Math.round((activityCost / totalEstimated) * 100),
+              ],
+              [
+                "Safety buffer",
+                `₹${bufferCost.toLocaleString("en-IN")}`,
+                Math.round((bufferCost / totalEstimated) * 100),
+              ],
+            ].map(([label, amount, width]) => (
+              <div className="expense-plan-row" key={String(label)}>
+                <span>{label}</span>
+                <div>
+                  <i style={{ width: `${width}%` }} />
+                </div>
+                <strong>{amount}</strong>
+              </div>
+            ))}
+
+            <div className="total-row">
+              <div>
+                <span>Total Estimated Expenditure</span>
+                <small
+                  style={{
+                    display: "block",
+                    color: "var(--muted)",
+                    fontSize: 8,
+                  }}
+                >
+                  Target: {budget} (~₹{targetBudgetNum.toLocaleString("en-IN")})
+                </small>
+              </div>
+              <strong style={{ color: "var(--purple)", fontSize: 16 }}>
+                ₹{totalEstimated.toLocaleString("en-IN")}
+              </strong>
+            </div>
+          </section>
+        )}
+
+        {/* Sticky Actions */}
         <div className="sticky-actions">
           <Button variant="secondary" onClick={() => generate()}>
             <Icon name="refresh" size={18} /> Regenerate
           </Button>
-          <Button
-            onClick={() => {
-              notify("Event created! Your plan is ready.")
-              go("event-detail")
-            }}
-            icon="arrow"
-          >
+          <Button onClick={handleSavePlan} icon="arrow">
             Add to My Events
           </Button>
         </div>
@@ -1212,7 +2052,7 @@ function Planner({
 
   return (
     <div className="screen planner-screen">
-      <Header title="PopPlan" eyebrow="AI-POWERED PARTY PLANNING" />
+      <Header title="AI Planner" eyebrow="AI-POWERED PARTY PLANNING" />
       <div className="planner-intro">
         <span>
           <Icon name="sparkle" size={28} />
@@ -1220,8 +2060,8 @@ function Planner({
         <div>
           <strong>Let’s make it happen!</strong>
           <p>
-            Answer a few quick questions and get a practical recommendation that
-            fits your vibe and budget.
+            Answer a few quick questions and get an organized plan covering
+            themes, food & cake, decor & DIY, activities, shopping and budget.
           </p>
         </div>
       </div>
@@ -1258,16 +2098,26 @@ function Planner({
         <input
           id="event-name"
           className="text-field"
-          defaultValue="Aanya's Birthday"
+          value={eventName}
+          onChange={(e) => setEventName(e.target.value)}
         />
         <div className="split-fields">
           <label>
             <span className="field-label">Date</span>
-            <input className="text-field" defaultValue="12 Nov 2025" />
+            <input
+              className="text-field"
+              value={eventDate}
+              onChange={(e) => setEventDate(e.target.value)}
+            />
           </label>
           <label>
             <span className="field-label">Guests</span>
-            <input className="text-field" type="number" defaultValue="18" />
+            <input
+              className="text-field"
+              type="number"
+              value={guests}
+              onChange={(e) => setGuests(Number(e.target.value))}
+            />
           </label>
         </div>
         <label>
@@ -1276,14 +2126,19 @@ function Planner({
             <Icon name="location" size={18} />
             <input
               className="text-field"
-              defaultValue="Indiranagar, Bengaluru"
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
             />
           </div>
         </label>
         <div className="split-fields">
           <label>
             <span className="field-label">Food preference</span>
-            <select className="text-field" defaultValue="Vegetarian">
+            <select
+              className="text-field"
+              value={foodPreference}
+              onChange={(e) => setFoodPreference(e.target.value)}
+            >
               <option>Vegetarian</option>
               <option>Mixed</option>
               <option>Vegan</option>
@@ -1292,7 +2147,11 @@ function Planner({
           </label>
           <label>
             <span className="field-label">Setting</span>
-            <select className="text-field" defaultValue="Indoor">
+            <select
+              className="text-field"
+              value={setting}
+              onChange={(e) => setSetting(e.target.value)}
+            >
               <option>Indoor</option>
               <option>Outdoor</option>
               <option>Open to both</option>
@@ -1347,6 +2206,8 @@ function Planner({
           <textarea
             className="text-field textarea"
             placeholder="Vegetarian food, loves Bollywood music…"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
           />
         </label>
       </div>
@@ -3175,12 +4036,19 @@ export default function App() {
   const [authScreen, setAuthScreen] = useState<AuthScreen | null>("welcome")
   const [screen, setScreen] = useState<Screen>("overview")
   const [toast, setToast] = useState("")
+  const [eventsList, setEventsList] = useState<EventPlan[]>(defaultEvents)
   const navScreens: Screen[] = [
     "overview",
     "planner",
     "nearby",
     "events",
     "budget",
+    "insights",
+    "settings",
+    "profile",
+    "event-detail",
+    "checklist",
+    "place-detail",
   ]
   const notify = (message: string) => setToast(message)
   const completeAuth = (message: string) => {
@@ -3191,14 +4059,14 @@ export default function App() {
   const screenTitles: Record<Screen, string> = {
     overview: "Overview",
     events: "My Plans",
-    planner: "PopPlan",
-    nearby: "PopSpots",
+    planner: "AI Planner",
+    nearby: "Explore Spots",
     profile: "Profile",
     "event-detail": "Event Details",
-    budget: "PopSmart",
+    budget: "My Budget",
     checklist: "Checklist & Timeline",
     "place-detail": "Place Details",
-    insights: "PopInsights",
+    insights: "Insights",
     settings: "Settings",
   }
 
@@ -3217,9 +4085,19 @@ export default function App() {
       case "overview":
         return <Overview go={setScreen} notify={notify} />
       case "events":
-        return <MyEvents go={setScreen} />
+        return <MyEvents go={setScreen} events={eventsList} />
       case "planner":
-        return <Planner go={setScreen} notify={notify} />
+        return (
+          <Planner
+            go={setScreen}
+            notify={notify}
+            onSaveEvent={(newEvent) => {
+              setEventsList((prev) => [newEvent, ...prev])
+              notify(`Plan "${newEvent.name}" saved to My Plans!`)
+              setScreen("events")
+            }}
+          />
+        )
       case "nearby":
         return <Nearby go={setScreen} />
       case "profile":

@@ -68,7 +68,9 @@ export function Planner({
   const handleSaveToEvents = async () => {
     setIsSaving(true)
     try {
-      const numBudget = suggestion ? suggestion.total_allocated_budget : parseBudgetNum()
+      const numBudget = suggestion
+        ? suggestion.total_allocated_budget
+        : parseBudgetNum()
       const newEvent = await createEvent({
         event_name: eventName || `${eventType} Party`,
         event_type: eventType,
@@ -81,14 +83,24 @@ export function Planner({
 
       // Add starter checklist tasks from suggestion items
       const tasksToCreate: string[] = []
-      if (suggestion?.decoration_suggestions && suggestion.decoration_suggestions[0]) {
-        tasksToCreate.push(`Decorations: ${suggestion.decoration_suggestions[0]}`)
+      if (
+        suggestion?.decoration_suggestions &&
+        suggestion.decoration_suggestions[0]
+      ) {
+        tasksToCreate.push(
+          `Decorations: ${suggestion.decoration_suggestions[0]}`,
+        )
       }
       if (suggestion?.food_suggestions && suggestion.food_suggestions[0]) {
         tasksToCreate.push(`Food & Snacks: ${suggestion.food_suggestions[0]}`)
       }
-      if (suggestion?.activity_suggestions && suggestion.activity_suggestions[0]) {
-        tasksToCreate.push(`Entertainment: ${suggestion.activity_suggestions[0]}`)
+      if (
+        suggestion?.activity_suggestions &&
+        suggestion.activity_suggestions[0]
+      ) {
+        tasksToCreate.push(
+          `Entertainment: ${suggestion.activity_suggestions[0]}`,
+        )
       }
       if (tasksToCreate.length === 0) {
         tasksToCreate.push("Confirm guest count", "Order celebration cake")
@@ -126,7 +138,10 @@ export function Planner({
           <i />
         </div>
         <div className="loading-title">Generating Smart Suggestions…</div>
-        <p>Evaluating rule-based suggestions for {guests} friends within {formatINR(parseBudgetNum())}…</p>
+        <p>
+          Evaluating rule-based suggestions for {guests} friends within{" "}
+          {formatINR(parseBudgetNum())}…
+        </p>
         <div className="loading-steps">
           <span className="done">
             <Icon name="check" size={16} /> Evaluating theme rules
@@ -143,9 +158,13 @@ export function Planner({
   }
 
   if (step === "results") {
-    const estCost = suggestion ? suggestion.total_allocated_budget : parseBudgetNum()
+    const estCost = suggestion
+      ? suggestion.total_allocated_budget
+      : parseBudgetNum()
     const perPerson = Math.round(estCost / (guests || 1))
-    const themeName = suggestion ? suggestion.suggested_theme : `${style} ${eventType}`
+    const themeName = suggestion
+      ? suggestion.suggested_theme
+      : `${style} ${eventType}`
     const allocations = suggestion?.budget_allocations || []
 
     return (
@@ -166,9 +185,7 @@ export function Planner({
           <div className="result-badge">
             <Icon name="sparkle" /> RULE-BASED PLAN
           </div>
-          <div className="result-title">
-            {themeName}
-          </div>
+          <div className="result-title">{themeName}</div>
           <p>An affordable celebration for {guests} friends.</p>
           <div className="result-stats">
             <span>
@@ -188,7 +205,9 @@ export function Planner({
           </span>
           <p>
             <strong>Rule Engine Logic:</strong>{" "}
-            {suggestion && suggestion.budget_saving_tips && suggestion.budget_saving_tips.length > 0
+            {suggestion &&
+            suggestion.budget_saving_tips &&
+            suggestion.budget_saving_tips.length > 0
               ? suggestion.budget_saving_tips.join(" · ")
               : "Optimized for budget efficiency, DIY decorations, and crowd-pleasing snacks."}
           </p>
@@ -200,7 +219,9 @@ export function Planner({
           </span>
           <div>
             <div className="result-kicker">THEME & DECOR</div>
-            <strong>{suggestion?.suggested_theme || "Festive Celebration"}</strong>
+            <strong>
+              {suggestion?.suggested_theme || "Festive Celebration"}
+            </strong>
             <p>
               {suggestion?.decoration_suggestions?.join(", ") ||
                 "Colorful streamers, balloons, fairy lights and a DIY photo corner."}
@@ -260,7 +281,9 @@ export function Planner({
           ) : (
             <div className="expense-plan-row">
               <span>Celebration essentials</span>
-              <div><i style={{ width: "100%" }} /></div>
+              <div>
+                <i style={{ width: "100%" }} />
+              </div>
               <strong>{formatINR(estCost)}</strong>
             </div>
           )}
@@ -273,11 +296,7 @@ export function Planner({
           <Button variant="secondary" onClick={() => generate()}>
             <Icon name="refresh" size={18} /> Regenerate
           </Button>
-          <Button
-            onClick={handleSaveToEvents}
-            disabled={isSaving}
-            icon="arrow"
-          >
+          <Button onClick={handleSaveToEvents} disabled={isSaving} icon="arrow">
             {isSaving ? "Saving..." : "Add to My Events"}
           </Button>
         </div>
@@ -287,7 +306,10 @@ export function Planner({
 
   return (
     <div className="screen planner-screen">
-      <Header title="Smart Event Suggestions" eyebrow="RULE-BASED RECOMMENDATION ENGINE" />
+      <Header
+        title="Smart Event Suggestions"
+        eyebrow="RULE-BASED RECOMMENDATION ENGINE"
+      />
       <div className="planner-intro">
         <span>
           <Icon name="sparkle" size={28} />
@@ -295,8 +317,8 @@ export function Planner({
         <div>
           <strong>Let’s make it happen!</strong>
           <p>
-            Answer a few quick questions and our Python rule engine will recommend
-            a tailored, balanced celebration plan within your budget.
+            Answer a few quick questions and our Python rule engine will
+            recommend a tailored, balanced celebration plan within your budget.
           </p>
         </div>
       </div>
@@ -425,7 +447,8 @@ export function Planner({
         Generate My Plan
       </Button>
       <div className="privacy-note">
-        <Icon name="sparkle" size={14} /> Smart suggestions, always editable by you.
+        <Icon name="sparkle" size={14} /> Smart suggestions, always editable by
+        you.
       </div>
     </div>
   )

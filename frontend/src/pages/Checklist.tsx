@@ -5,7 +5,13 @@
 
 import { useEffect, useState, type FormEvent } from "react"
 import type { EventItem, Screen, TaskItem, TaskSummary } from "../types"
-import { createTask, deleteTask, getTasks, getTaskSummary, updateTask } from "../services/api"
+import {
+  createTask,
+  deleteTask,
+  getTasks,
+  getTaskSummary,
+  updateTask,
+} from "../services/api"
 import { Header } from "../components/common/Header"
 import { Icon } from "../components/common/Icon"
 import { IconButton } from "../components/common/IconButton"
@@ -63,7 +69,9 @@ export function Checklist({
   const handleToggle = async (task: TaskItem) => {
     const updatedStatus = !task.is_completed
     setTasks((prev) =>
-      prev.map((t) => (t.id === task.id ? { ...t, is_completed: updatedStatus } : t))
+      prev.map((t) =>
+        t.id === task.id ? { ...t, is_completed: updatedStatus } : t,
+      ),
     )
     try {
       await updateTask(task.id, { is_completed: updatedStatus })
@@ -111,7 +119,8 @@ export function Checklist({
 
   const completedCount = tasks.filter((t) => t.is_completed).length
   const totalCount = tasks.length
-  const percent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0
+  const percent =
+    totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0
 
   return (
     <div className="screen checklist-screen">
@@ -143,7 +152,9 @@ export function Checklist({
         </div>
         <div>
           <div className="card-kicker">PREPARATION PROGRESS</div>
-          <div className="check-title">{totalCount - completedCount} tasks to go</div>
+          <div className="check-title">
+            {totalCount - completedCount} tasks to go
+          </div>
           <p>
             {percent === 100
               ? "All tasks completed! You're ready."
@@ -169,7 +180,9 @@ export function Checklist({
       </div>
       {!timeline ? (
         <div className="task-list">
-          <div className="task-group-title">TO DO · {totalCount - completedCount}</div>
+          <div className="task-group-title">
+            TO DO · {totalCount - completedCount}
+          </div>
           {tasks
             .filter((task) => !task.is_completed)
             .map((task) => (
@@ -182,7 +195,9 @@ export function Checklist({
                 />
                 <div>
                   <strong>{task.task_name}</strong>
-                  <span>{task.due_date ? `Due ${task.due_date}` : "No due date"}</span>
+                  <span>
+                    {task.due_date ? `Due ${task.due_date}` : "No due date"}
+                  </span>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <span className="priority medium">
@@ -199,11 +214,19 @@ export function Checklist({
               </div>
             ))}
           {totalCount - completedCount === 0 && (
-            <div style={{ padding: "12px", color: "var(--muted)", fontSize: "11px" }}>
+            <div
+              style={{
+                padding: "12px",
+                color: "var(--muted)",
+                fontSize: "11px",
+              }}
+            >
               No pending tasks!
             </div>
           )}
-          <div className="task-group-title completed">COMPLETED · {completedCount}</div>
+          <div className="task-group-title completed">
+            COMPLETED · {completedCount}
+          </div>
           {tasks
             .filter((task) => task.is_completed)
             .map((task) => (
@@ -233,11 +256,17 @@ export function Checklist({
         <div className="timeline-view">
           {tasks.map((task, index) => (
             <div
-              className={task.is_completed ? "complete" : index === 0 ? "current" : ""}
+              className={
+                task.is_completed ? "complete" : index === 0 ? "current" : ""
+              }
               key={task.id}
             >
               <span>
-                {task.is_completed ? <Icon name="check" size={14} /> : index + 1}
+                {task.is_completed ? (
+                  <Icon name="check" size={14} />
+                ) : (
+                  index + 1
+                )}
               </span>
               <div>
                 <small>{task.due_date || `Step ${index + 1}`}</small>
@@ -258,7 +287,11 @@ export function Checklist({
           )}
         </div>
       )}
-      <Button className="full-button" onClick={() => setShowAdd(true)} icon="plus">
+      <Button
+        className="full-button"
+        onClick={() => setShowAdd(true)}
+        icon="plus"
+      >
         Add a Task
       </Button>
 

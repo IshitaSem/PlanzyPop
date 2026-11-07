@@ -4,8 +4,20 @@
  */
 
 import { useEffect, useState, type FormEvent } from "react"
-import type { BudgetSummary, EventItem, Screen, TaskItem, TaskSummary } from "../types"
-import { deleteEvent, getBudgetSummary, getTasks, getTaskSummary, updateEvent } from "../services/api"
+import type {
+  BudgetSummary,
+  EventItem,
+  Screen,
+  TaskItem,
+  TaskSummary,
+} from "../types"
+import {
+  deleteEvent,
+  getBudgetSummary,
+  getTasks,
+  getTaskSummary,
+  updateEvent,
+} from "../services/api"
 import { formatINR, getEventImage } from "../utils/formatters"
 import { Icon } from "../components/common/Icon"
 import { IconButton } from "../components/common/IconButton"
@@ -118,22 +130,37 @@ export function EventDetail({
     }
   }
 
-  const progressVal = taskSummary ? Math.round(taskSummary.progress_percentage) : 0
+  const progressVal = taskSummary
+    ? Math.round(taskSummary.progress_percentage)
+    : 0
   const nextTask = tasks.find((t) => !t.is_completed)
 
   return (
     <div className="screen detail-screen">
       <div className="detail-hero">
-        <img src={getEventImage(activeEvent.event_type)} alt={activeEvent.event_name} />
+        <img
+          src={getEventImage(activeEvent.event_type)}
+          alt={activeEvent.event_name}
+        />
         <div className="floating-header">
           <IconButton icon="back" label="Back" onClick={() => go("events")} />
           <div style={{ display: "flex", gap: 8 }}>
-            <IconButton icon="edit" label="Edit event" onClick={handleStartEdit} />
-            <IconButton icon="logout" label="Delete event" onClick={handleDelete} />
+            <IconButton
+              icon="edit"
+              label="Edit event"
+              onClick={handleStartEdit}
+            />
+            <IconButton
+              icon="logout"
+              label="Delete event"
+              onClick={handleDelete}
+            />
           </div>
         </div>
         <div className="detail-gradient">
-          <span className="event-type">{(activeEvent.event_type || "EVENT").toUpperCase()}</span>
+          <span className="event-type">
+            {(activeEvent.event_type || "EVENT").toUpperCase()}
+          </span>
           <div className="detail-title">{activeEvent.event_name}</div>
           <div>
             {activeEvent.event_date} · {activeEvent.location || "Location TBD"}
@@ -161,7 +188,9 @@ export function EventDetail({
           <Progress value={progressVal} />
           <p>
             {taskSummary && taskSummary.pending_tasks > 0
-              ? `You're doing great! Complete ${taskSummary.pending_tasks} more task${taskSummary.pending_tasks === 1 ? "" : "s"}.`
+              ? `You're doing great! Complete ${taskSummary.pending_tasks} more task${
+                  taskSummary.pending_tasks === 1 ? "" : "s"
+                }.`
               : "All preparation tasks completed! You're ready to celebrate!"}
           </p>
         </div>
@@ -176,7 +205,9 @@ export function EventDetail({
             </span>
             <strong>Checklist</strong>
             <small>
-              {taskSummary ? `${taskSummary.completed_tasks} of ${taskSummary.total_tasks} done` : "0 tasks"}
+              {taskSummary
+                ? `${taskSummary.completed_tasks} of ${taskSummary.total_tasks} done`
+                : "0 tasks"}
             </small>
           </button>
           <button
@@ -189,7 +220,9 @@ export function EventDetail({
             </span>
             <strong>Budget</strong>
             <small>
-              {budgetSummary ? `${formatINR(budgetSummary.remaining_budget)} left` : `${formatINR(activeEvent.budget)} left`}
+              {budgetSummary
+                ? `${formatINR(budgetSummary.remaining_budget)} left`
+                : `${formatINR(activeEvent.budget)} left`}
             </small>
           </button>
           <button
@@ -217,16 +250,28 @@ export function EventDetail({
           onAction={() => go("checklist")}
         />
         {nextTask ? (
-          <div className="next-task" onClick={() => go("checklist")} style={{ cursor: "pointer" }}>
+          <div
+            className="next-task"
+            onClick={() => go("checklist")}
+            style={{ cursor: "pointer" }}
+          >
             <span className="priority high">TASK</span>
             <div>
               <strong>{nextTask.task_name}</strong>
-              <small>{nextTask.due_date ? `Due ${nextTask.due_date}` : "No due date set"}</small>
+              <small>
+                {nextTask.due_date
+                  ? `Due ${nextTask.due_date}`
+                  : "No due date set"}
+              </small>
             </div>
             <Icon name="chevron" size={18} />
           </div>
         ) : (
-          <div className="next-task" onClick={() => go("checklist")} style={{ cursor: "pointer" }}>
+          <div
+            className="next-task"
+            onClick={() => go("checklist")}
+            style={{ cursor: "pointer" }}
+          >
             <span className="priority low">READY</span>
             <div>
               <strong>All current tasks completed!</strong>
@@ -239,7 +284,11 @@ export function EventDetail({
         <div className="mini-timeline">
           {tasks.slice(0, 3).map((task, idx) => (
             <div key={task.id}>
-              <span className={task.is_completed ? "done" : idx === 0 ? "current" : ""}>
+              <span
+                className={
+                  task.is_completed ? "done" : idx === 0 ? "current" : ""
+                }
+              >
                 {task.is_completed && <Icon name="check" size={13} />}
               </span>
               <p>

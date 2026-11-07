@@ -7,7 +7,7 @@
  */
 
 export const API_BASE_URL =
-  (import.meta.env.VITE_API_BASE_URL as string) || "http://127.0.0.1:8000"
+  import.meta.env.VITE_API_BASE_URL as string || "http://127.0.0.1:8000"
 
 // Standard student-friendly expense categories supported by backend
 export const EXPENSE_CATEGORIES = [
@@ -21,7 +21,7 @@ export const EXPENSE_CATEGORIES = [
   "Other",
 ] as const
 
-export type ExpenseCategory = (typeof EXPENSE_CATEGORIES)[number]
+export type ExpenseCategory = typeof EXPENSE_CATEGORIES[number]
 
 // ============================================================================
 // TypeScript Data Interfaces
@@ -173,7 +173,7 @@ export interface SuggestionResponse {
 
 async function apiRequest<T>(
   path: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
 ): Promise<T> {
   const url = `${API_BASE_URL}${path}`
   const headers = {
@@ -220,8 +220,11 @@ async function apiRequest<T>(
 // ============================================================================
 
 // --- Health / Root ---
-export async function checkHealth(): Promise<{ status: string; service: string }> {
-  return apiRequest<{ status: string; service: string }>("/health")
+export async function checkHealth(): Promise<{
+  status: string
+  service: string
+}> {
+  return apiRequest<{ status: string service: string }>("/health")
 }
 
 // --- Events (Stage 3) ---
@@ -242,7 +245,7 @@ export async function createEvent(data: EventCreate): Promise<EventItem> {
 
 export async function updateEvent(
   id: number,
-  data: EventUpdate
+  data: EventUpdate,
 ): Promise<EventItem> {
   return apiRequest<EventItem>(`/events/${id}`, {
     method: "PUT",
@@ -250,8 +253,10 @@ export async function updateEvent(
   })
 }
 
-export async function deleteEvent(id: number): Promise<{ message: string; id: number }> {
-  return apiRequest<{ message: string; id: number }>(`/events/${id}`, {
+export async function deleteEvent(
+  id: number,
+): Promise<{ message: string id: number }> {
+  return apiRequest<{ message: string id: number }>(`/events/${id}`, {
     method: "DELETE",
   })
 }
@@ -263,7 +268,7 @@ export async function getExpenses(eventId: number): Promise<ExpenseItem[]> {
 
 export async function addExpense(
   eventId: number,
-  data: ExpenseCreate
+  data: ExpenseCreate,
 ): Promise<ExpenseItem> {
   return apiRequest<ExpenseItem>(`/events/${eventId}/expenses`, {
     method: "POST",
@@ -273,7 +278,7 @@ export async function addExpense(
 
 export async function updateExpense(
   expenseId: number,
-  data: ExpenseUpdate
+  data: ExpenseUpdate,
 ): Promise<ExpenseItem> {
   return apiRequest<ExpenseItem>(`/expenses/${expenseId}`, {
     method: "PUT",
@@ -282,22 +287,22 @@ export async function updateExpense(
 }
 
 export async function deleteExpense(
-  expenseId: number
-): Promise<{ message: string; id: number }> {
-  return apiRequest<{ message: string; id: number }>(`/expenses/${expenseId}`, {
+  expenseId: number,
+): Promise<{ message: string id: number }> {
+  return apiRequest<{ message: string id: number }>(`/expenses/${expenseId}`, {
     method: "DELETE",
   })
 }
 
 export async function getBudgetSummary(
-  eventId: number
+  eventId: number,
 ): Promise<BudgetSummary> {
   return apiRequest<BudgetSummary>(`/events/${eventId}/budget`)
 }
 
 export async function calculateSplit(
   totalAmount: number,
-  numPeople: number
+  numPeople: number,
 ): Promise<ExpenseSplit> {
   return apiRequest<ExpenseSplit>("/calculate-split", {
     method: "POST",
@@ -310,12 +315,11 @@ export async function calculateSplit(
 
 export async function getEventSplit(
   eventId: number,
-  people?: number
+  people?: number,
 ): Promise<ExpenseSplit> {
-  const query = people !== undefined ? `?people=${encodeURIComponent(people)}` : ""
-  return apiRequest<ExpenseSplit>(
-    `/events/${eventId}/split-expense${query}`
-  )
+  const query =
+    people !== undefined ? `?people=${encodeURIComponent(people)}` : ""
+  return apiRequest<ExpenseSplit>(`/events/${eventId}/split-expense${query}`)
 }
 
 // --- Tasks & Timeline (Stage 5) ---
@@ -325,7 +329,7 @@ export async function getTasks(eventId: number): Promise<TaskItem[]> {
 
 export async function createTask(
   eventId: number,
-  data: TaskCreate
+  data: TaskCreate,
 ): Promise<TaskItem> {
   return apiRequest<TaskItem>(`/events/${eventId}/tasks`, {
     method: "POST",
@@ -335,7 +339,7 @@ export async function createTask(
 
 export async function updateTask(
   taskId: number,
-  data: TaskUpdate
+  data: TaskUpdate,
 ): Promise<TaskItem> {
   return apiRequest<TaskItem>(`/tasks/${taskId}`, {
     method: "PUT",
@@ -344,22 +348,20 @@ export async function updateTask(
 }
 
 export async function deleteTask(
-  taskId: number
-): Promise<{ message: string; id: number }> {
-  return apiRequest<{ message: string; id: number }>(`/tasks/${taskId}`, {
+  taskId: number,
+): Promise<{ message: string id: number }> {
+  return apiRequest<{ message: string id: number }>(`/tasks/${taskId}`, {
     method: "DELETE",
   })
 }
 
-export async function getTaskSummary(
-  eventId: number
-): Promise<TaskSummary> {
+export async function getTaskSummary(eventId: number): Promise<TaskSummary> {
   return apiRequest<TaskSummary>(`/events/${eventId}/tasks/summary`)
 }
 
 // --- Rule-Based Suggestions (Stage 6) ---
 export async function generateSuggestions(
-  data: SuggestionRequest
+  data: SuggestionRequest,
 ): Promise<SuggestionResponse> {
   return apiRequest<SuggestionResponse>("/suggestions/generate", {
     method: "POST",

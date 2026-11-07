@@ -33,7 +33,9 @@ export function NotificationDrawer({
               <Icon name="bell" size={19} />
             </span>
             <div>
-              <strong style={{ fontSize: 17, display: "block" }}>Notifications</strong>
+              <strong style={{ fontSize: 17, display: "block" }}>
+                Notifications
+              </strong>
               <small style={{ color: "var(--muted)" }}>
                 {notifications.length} active celebration reminder
                 {notifications.length === 1 ? "" : "s"}
@@ -159,11 +161,7 @@ export function NotificationDrawer({
               Clear All
             </Button>
           )}
-          <Button
-            variant="primary"
-            className="full-button"
-            onClick={onClose}
-          >
+          <Button variant="primary" className="full-button" onClick={onClose}>
             Close
           </Button>
         </div>

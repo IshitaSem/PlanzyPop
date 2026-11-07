@@ -14,7 +14,11 @@ export function formatINR(amount: number): string {
 export function getEventImage(eventType?: string | null): string {
   const type = (eventType || "").toLowerCase()
   if (type.includes("birthday") || type.includes("cake")) return images.birthday
-  if (type.includes("college") || type.includes("fresher") || type.includes("farewell"))
+  if (
+    type.includes("college") ||
+    type.includes("fresher") ||
+    type.includes("farewell")
+  )
     return images.decor
   if (type.includes("picnic") || type.includes("outdoor")) return images.picnic
   if (type.includes("game") || type.includes("movie")) return images.games
@@ -22,7 +26,9 @@ export function getEventImage(eventType?: string | null): string {
 }
 
 /** Parses ISO date strings or natural dates into structured day, month, and full strings */
-export function parseDateParts(dateStr?: string | null): {
+export function parseDateParts(
+  dateStr?: string | null,
+): {
   day: string
   month: string
   full: string

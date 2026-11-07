@@ -12,18 +12,20 @@ export function DesktopSidebar({
 }) {
   const items: NavItem[] = [
     { screen: "overview", icon: "home", label: "Overview" },
-    { screen: "events", icon: "calendar", label: "My Events" },
-    { screen: "planner", icon: "sparkle", label: "Smart Suggestions" },
-    { screen: "nearby", icon: "pin", label: "Nearby Finds" },
-    { screen: "profile", icon: "user", label: "Preferences" },
+    { screen: "planner", icon: "sparkle", label: "AI Planner" },
+    { screen: "nearby", icon: "pin", label: "Explore Spots" },
+    { screen: "events", icon: "calendar", label: "My Plans" },
+    { screen: "budget", icon: "wallet", label: "My Budget" },
+    { screen: "insights", icon: "star", label: "Insights" },
+    { screen: "settings", icon: "settings", label: "Settings" },
   ]
   const activeScreen =
-    screen === "event-detail" || screen === "budget" || screen === "checklist"
+    screen === "event-detail" || screen === "checklist"
       ? "events"
-      : screen === "settings"
-        ? "profile"
-        : screen === "inspiration" || screen === "idea-detail"
-          ? "overview"
+      : screen === "place-detail"
+        ? "nearby"
+        : screen === "profile"
+          ? "settings"
           : screen
 
   return (

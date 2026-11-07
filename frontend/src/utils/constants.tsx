@@ -238,8 +238,10 @@ export const NEARBY_CATEGORIES: NearbyCategory[] = [
     tag: "CAKES & SWEETS",
     color: "yellow",
     priceRange: "₹350 – ₹1,200",
-    description: "Local cake studios, home bakeries, customized photo cakes, and eggless pastries.",
-    studentTip: "Order 24–48 hours in advance for custom lettering. Inquire if candles, knife, and paper plates are included.",
+    description:
+      "Local cake studios, home bakeries, customized photo cakes, and eggless pastries.",
+    studentTip:
+      "Order 24–48 hours in advance for custom lettering. Inquire if candles, knife, and paper plates are included.",
     mapsQuery: "bakery and cake shop near me",
   },
   {
@@ -250,8 +252,10 @@ export const NEARBY_CATEGORIES: NearbyCategory[] = [
     tag: "PARTY DECOR",
     color: "lavender",
     priceRange: "₹100 – ₹600",
-    description: "Foil balloons, birthday sashes, party poppers, fairy lights, banners, and photo backdrops.",
-    studentTip: "Wholesale stationery shops and market lanes sell balloon packs at 40% cheaper rates than retail gift stores.",
+    description:
+      "Foil balloons, birthday sashes, party poppers, fairy lights, banners, and photo backdrops.",
+    studentTip:
+      "Wholesale stationery shops and market lanes sell balloon packs at 40% cheaper rates than retail gift stores.",
     mapsQuery: "party supplies decorations store near me",
   },
   {
@@ -262,8 +266,10 @@ export const NEARBY_CATEGORIES: NearbyCategory[] = [
     tag: "CROWD FOOD",
     color: "peach",
     priceRange: "₹150 – ₹350 / head",
-    description: "Samosas, puff pastries, sandwich platters, rolls, cold drinks, and snack combos for groups.",
-    studentTip: "Ordering bulk samosas or pre-packed snack boxes saves 50% compared to ordering individual restaurant dishes.",
+    description:
+      "Samosas, puff pastries, sandwich platters, rolls, cold drinks, and snack combos for groups.",
+    studentTip:
+      "Ordering bulk samosas or pre-packed snack boxes saves 50% compared to ordering individual restaurant dishes.",
     mapsQuery: "budget snacks sweets chaat catering near me",
   },
   {
@@ -274,8 +280,10 @@ export const NEARBY_CATEGORIES: NearbyCategory[] = [
     tag: "GROUP VENUES",
     color: "yellow",
     priceRange: "₹250 – ₹500 / person",
-    description: "Casual student-friendly cafes, rooftop lounges, and gaming cafes with space for groups.",
-    studentTip: "Always confirm in advance if outside celebration cakes and basic balloons are allowed without cover charges.",
+    description:
+      "Casual student-friendly cafes, rooftop lounges, and gaming cafes with space for groups.",
+    studentTip:
+      "Always confirm in advance if outside celebration cakes and basic balloons are allowed without cover charges.",
     mapsQuery: "student friendly cafe group gathering near me",
   },
   {
@@ -286,8 +294,10 @@ export const NEARBY_CATEGORIES: NearbyCategory[] = [
     tag: "CUSTOM PRINTS",
     color: "lavender",
     priceRange: "₹100 – ₹400",
-    description: "Instant flex banner printing, polaroid-style card prints, photo posters, and personalized signs.",
-    studentTip: "Provide print files in PDF format (300 DPI) for instant same-day printing near colleges.",
+    description:
+      "Instant flex banner printing, polaroid-style card prints, photo posters, and personalized signs.",
+    studentTip:
+      "Provide print files in PDF format (300 DPI) for instant same-day printing near colleges.",
     mapsQuery: "digital printing banner photo printing shop near me",
   },
   {
@@ -298,8 +308,10 @@ export const NEARBY_CATEGORIES: NearbyCategory[] = [
     tag: "AUDIO & LIGHTS",
     color: "peach",
     priceRange: "₹500 – ₹1,500 / day",
-    description: "High-power Bluetooth trolley speakers, wireless party microphones, and party light rentals.",
-    studentTip: "Trolley speakers with Bluetooth and dual wireless mics are ideal for hostel common rooms and terrace parties.",
+    description:
+      "High-power Bluetooth trolley speakers, wireless party microphones, and party light rentals.",
+    studentTip:
+      "Trolley speakers with Bluetooth and dual wireless mics are ideal for hostel common rooms and terrace parties.",
     mapsQuery: "party speaker sound system rental near me",
   },
 ]

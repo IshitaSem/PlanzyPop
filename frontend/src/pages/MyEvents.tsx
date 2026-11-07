@@ -105,9 +105,14 @@ export function MyEvents({
     }
   }
 
-  const handleDelete = async (id: number, eventName: string, e: React.MouseEvent) => {
+  const handleDelete = async (
+    id: number,
+    eventName: string,
+    e: React.MouseEvent,
+  ) => {
     e.stopPropagation()
-    if (!window.confirm(`Are you sure you want to delete '${eventName}'?`)) return
+    if (!window.confirm(`Are you sure you want to delete '${eventName}'?`))
+      return
     try {
       await deleteEvent(id)
       await refreshEvents()
@@ -158,7 +163,10 @@ export function MyEvents({
                 go("event-detail")
               }}
             >
-              <img src={getEventImage(event.event_type)} alt={event.event_name} />
+              <img
+                src={getEventImage(event.event_type)}
+                alt={event.event_name}
+              />
               <div className="event-list-copy">
                 <div className="event-card-head">
                   <div className="event-type">{event.event_type}</div>
@@ -169,7 +177,8 @@ export function MyEvents({
                   <Icon name="calendar" size={15} /> {event.event_date}
                 </div>
                 <div className="list-line">
-                  <Icon name="location" size={15} /> {event.location || "Location TBD"}
+                  <Icon name="location" size={15} />{" "}
+                  {event.location || "Location TBD"}
                 </div>
                 <div className="mini-stats">
                   <span>
@@ -182,13 +191,23 @@ export function MyEvents({
                 <div className="event-card-actions">
                   <span
                     onClick={(e) => handleStartEdit(event, e)}
-                    style={{ color: "var(--purple)", display: "inline-flex", alignItems: "center", gap: 3 }}
+                    style={{
+                      color: "var(--purple)",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 3,
+                    }}
                   >
                     <Icon name="edit" size={13} /> Edit
                   </span>
                   <span
                     onClick={(e) => handleDelete(event.id, event.event_name, e)}
-                    style={{ color: "#c94e61", display: "inline-flex", alignItems: "center", gap: 3 }}
+                    style={{
+                      color: "#c94e61",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 3,
+                    }}
                   >
                     <Icon name="logout" size={13} /> Delete
                   </span>

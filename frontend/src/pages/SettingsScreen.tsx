@@ -73,7 +73,10 @@ export function SettingsScreen({
             <small>Light</small>
             <Icon name="chevron" size={17} />
           </button>
-          <button type="button" onClick={() => notify("Currency set to INR (₹)")}>
+          <button
+            type="button"
+            onClick={() => notify("Currency set to INR (₹)")}
+          >
             <span className="menu-icon">
               <Icon name="wallet" size={20} />
             </span>
@@ -86,14 +89,20 @@ export function SettingsScreen({
       <div className="settings-group">
         <div className="settings-label">SUPPORT</div>
         <div className="menu-card">
-          <button type="button" onClick={() => notify("Contact campus host support")}>
+          <button
+            type="button"
+            onClick={() => notify("Contact campus host support")}
+          >
             <span className="menu-icon">
               <Icon name="help" size={20} />
             </span>
             <strong>Help centre</strong>
             <Icon name="chevron" size={17} />
           </button>
-          <button type="button" onClick={() => notify("Thank you for using PlanzyPop!")}>
+          <button
+            type="button"
+            onClick={() => notify("Thank you for using PlanzyPop!")}
+          >
             <span className="menu-icon">
               <Icon name="edit" size={20} />
             </span>
@@ -103,8 +112,8 @@ export function SettingsScreen({
         </div>
       </div>
       <p className="settings-note">
-        PlanzyPop stores your event data locally in your SQLite database.
-        Zero third-party tracking.
+        PlanzyPop stores your event data locally in your SQLite database. Zero
+        third-party tracking.
       </p>
     </div>
   )

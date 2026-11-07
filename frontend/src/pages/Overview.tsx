@@ -88,7 +88,9 @@ export function Overview({
             <IconButton
               icon="bell"
               label="Notifications"
-              onClick={onOpenNotifications || (() => notify("You’re all caught up!"))}
+              onClick={
+                onOpenNotifications || (() => notify("You’re all caught up!"))
+              }
             />
             {hasNotifications && (
               <span
@@ -118,7 +120,9 @@ export function Overview({
 
       <div className="hello">
         <div className="eyebrow">
-          {backendConnected ? "LIVE FASTAPI BACKEND · SQLite" : "OFFLINE MODE · DEMO DATA"}
+          {backendConnected
+            ? "LIVE FASTAPI BACKEND · SQLite"
+            : "OFFLINE MODE · DEMO DATA"}
         </div>
         <div className="hero-title">
           Hey, {userName}!{" "}
@@ -135,7 +139,11 @@ export function Overview({
             <span>Planned events</span>
             <strong>{events.length}</strong>
           </div>
-          <small>{events.length > 0 ? `${events.length} active in workspace` : "Ready to plan"}</small>
+          <small>
+            {events.length > 0
+              ? `${events.length} active in workspace`
+              : "Ready to plan"}
+          </small>
         </div>
         <div className="metric-card">
           <span className="metric-icon peach">
@@ -145,7 +153,9 @@ export function Overview({
             <span>Total planned budget</span>
             <strong>{formatINR(totalPlannedBudget)}</strong>
           </div>
-          <small>Across {events.length} event{events.length === 1 ? "" : "s"}</small>
+          <small>
+            Across {events.length} event{events.length === 1 ? "" : "s"}
+          </small>
         </div>
         <div className="metric-card">
           <span className="metric-icon yellow">
@@ -154,11 +164,15 @@ export function Overview({
           <div>
             <span>Tasks completed</span>
             <strong>
-              {taskSummary ? `${taskSummary.completed_tasks} / ${taskSummary.total_tasks}` : "0 / 0"}
+              {taskSummary
+                ? `${taskSummary.completed_tasks} / ${taskSummary.total_tasks}`
+                : "0 / 0"}
             </strong>
           </div>
           <small>
-            {taskSummary ? `${Math.round(taskSummary.progress_percentage)}% on track` : "Track with checklist"}
+            {taskSummary
+              ? `${Math.round(taskSummary.progress_percentage)}% on track`
+              : "Track with checklist"}
           </small>
         </div>
       </div>
@@ -173,7 +187,9 @@ export function Overview({
             <br />
             Tiny stress.
           </div>
-          <p>Tell us your vibe and budget. Our rule engine will plan the rest.</p>
+          <p>
+            Tell us your vibe and budget. Our rule engine will plan the rest.
+          </p>
           <Button onClick={() => go("planner")} variant="dark" icon="arrow">
             Smart Suggestions
           </Button>
@@ -190,11 +206,7 @@ export function Overview({
         </div>
       </div>
 
-      <SectionTitle
-        title="Quick picks"
-        action="Inspiration"
-        onAction={() => go("inspiration")}
-      />
+      <SectionTitle title="Quick picks" />
       <div className="category-row">
         {categories.map((category) => (
           <button
@@ -240,7 +252,9 @@ export function Overview({
             </div>
             <div className="event-name">{activeEvent.event_name}</div>
             <div className="event-sub">
-              <Icon name="location" size={15} /> {activeEvent.location || "Location TBD"} · {activeEvent.guests} friends · {formatINR(activeEvent.budget)}
+              <Icon name="location" size={15} />{" "}
+              {activeEvent.location || "Location TBD"} · {activeEvent.guests}{" "}
+              friends · {formatINR(activeEvent.budget)}
             </div>
           </div>
         </button>
@@ -250,10 +264,7 @@ export function Overview({
           className="event-feature"
           onClick={() => go("planner")}
         >
-          <img
-            src={images.birthday}
-            alt="Plan your first celebration"
-          />
+          <img src={images.birthday} alt="Plan your first celebration" />
           <div className="event-date">
             <strong>+</strong>
             <span>PLAN</span>
@@ -265,7 +276,8 @@ export function Overview({
             </div>
             <div className="event-name">Plan your first event!</div>
             <div className="event-sub">
-              <Icon name="sparkle" size={15} /> Tap here to get smart suggestions
+              <Icon name="sparkle" size={15} /> Tap here to get smart
+              suggestions
             </div>
           </div>
         </button>
@@ -282,16 +294,25 @@ export function Overview({
           </div>
           <div className="card-kicker">Party budget</div>
           <div className="budget-big">
-            {budgetSummary ? formatINR(budgetSummary.remaining_budget) : activeEvent ? formatINR(activeEvent.budget) : "₹0"}{" "}
+            {budgetSummary
+              ? formatINR(budgetSummary.remaining_budget)
+              : activeEvent
+                ? formatINR(activeEvent.budget)
+                : "₹0"}{" "}
             <span>left</span>
           </div>
-          <Progress value={budgetSummary ? budgetSummary.utilisation_percentage : 0} />
+          <Progress
+            value={budgetSummary ? budgetSummary.utilisation_percentage : 0}
+          />
           <div className="spread">
             <span>
-              Spent {budgetSummary ? formatINR(budgetSummary.total_expenses) : "₹0"}
+              Spent{" "}
+              {budgetSummary ? formatINR(budgetSummary.total_expenses) : "₹0"}
             </span>
             <strong>
-              {budgetSummary ? `${Math.round(budgetSummary.utilisation_percentage)}%` : "0%"}
+              {budgetSummary
+                ? `${Math.round(budgetSummary.utilisation_percentage)}%`
+                : "0%"}
             </strong>
           </div>
         </button>
@@ -302,7 +323,9 @@ export function Overview({
         >
           <div className="task-ring">
             <span>
-              {taskSummary ? `${taskSummary.completed_tasks}/${taskSummary.total_tasks}` : "0/0"}
+              {taskSummary
+                ? `${taskSummary.completed_tasks}/${taskSummary.total_tasks}`
+                : "0/0"}
             </span>
           </div>
           <div className="card-kicker">
@@ -311,41 +334,15 @@ export function Overview({
               : "Prep checklist"}
           </div>
           <div className="task-title">
-            {taskSummary ? `${taskSummary.pending_tasks} tasks left` : "Ready for tasks"}
+            {taskSummary
+              ? `${taskSummary.pending_tasks} tasks left`
+              : "Ready for tasks"}
           </div>
           <div className="task-next">
             {taskSummary && taskSummary.pending_tasks > 0
               ? "Tap to review checklist & timeline"
               : "All tasks completed!"}
           </div>
-        </button>
-      </div>
-
-      <SectionTitle
-        title="Ideas for your next celebration"
-        action="Explore"
-        onAction={() => go("inspiration")}
-      />
-      <div className="ideas-row">
-        <button
-          type="button"
-          className="idea-mini"
-          onClick={() => go("idea-detail")}
-        >
-          <img src={images.decor} alt="Colorful DIY party decorations" />
-          <span className="idea-tag">UNDER ₹1,500</span>
-          <strong>DIY balcony bash</strong>
-          <span>Bright, easy & photo-ready</span>
-        </button>
-        <button
-          type="button"
-          className="idea-mini"
-          onClick={() => go("idea-detail")}
-        >
-          <img src={images.picnic} alt="Friends having a picnic outdoors" />
-          <span className="idea-tag">WEEKEND PICK</span>
-          <strong>Sunset picnic</strong>
-          <span>Snacks, games & good vibes</span>
         </button>
       </div>
     </div>
