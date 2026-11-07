@@ -3605,42 +3605,19 @@
   }
 
   .planner-results {
-    display: grid;
-    grid-template-columns: repeat(12, minmax(0, 1fr));
-    gap: 14px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    width: 100%;
+    padding-bottom: 120px;
   }
 
   .planner-results > .page-header,
-  .planner-results > .section-title,
+  .planner-results > .plan-tabs-bar,
+  .planner-results > .event-overview-card,
+  .planner-results > .plan-cards-grid,
   .planner-results > .sticky-actions {
-    grid-column: 1 / -1;
-  }
-
-  .planner-results > .result-banner {
-    grid-column: span 5;
-    grid-row: span 2;
-  }
-
-  .planner-results > .ai-note {
-    grid-column: span 7;
-    margin: 0;
-  }
-
-  .planner-results > .result-section {
-    grid-column: span 4;
-  }
-
-  .planner-results > .creative-plan-grid {
-    grid-column: 1 / -1;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  .planner-results .shopping-plan {
-    grid-column: auto;
-  }
-
-  .planner-results > .expense-plan {
-    grid-column: 1 / -1;
+    width: 100%;
   }
 
   .budget-screen,
@@ -3810,9 +3787,11 @@
 /* PlanzyPop PopPlan Sections (A-G) & Responsive Controls */
 .plan-tabs-bar {
   display: flex;
-  gap: 6px;
+  align-items: center;
+  gap: 8px;
   overflow-x: auto;
-  padding: 8px 2px 14px;
+  padding: 4px 0 14px;
+  width: 100%;
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
 }
@@ -3821,16 +3800,25 @@
 }
 .plan-tab-pill {
   flex-shrink: 0;
-  padding: 6px 13px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 36px;
+  padding: 0 18px;
   background: #fff;
   border: 1.5px solid var(--line);
   border-radius: 99px;
-  font-size: 8px;
-  font-weight: 800;
-  letter-spacing: 0.3px;
+  font-size: 11px;
+  font-weight: 700;
   color: var(--muted);
   cursor: pointer;
+  white-space: nowrap;
+  box-sizing: border-box;
   transition: all 0.15s ease;
+}
+.plan-tab-pill:hover {
+  border-color: var(--purple);
+  color: var(--ink);
 }
 .plan-tab-pill.active {
   background: var(--purple);
@@ -3841,12 +3829,12 @@
 .plan-section-badge {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 4px 10px;
+  gap: 6px;
+  padding: 5px 12px;
   background: var(--paper);
-  border: 1px solid var(--line);
+  border: 1px solid var(--ink);
   border-radius: 99px;
-  font-size: 7.5px;
+  font-size: 8.5px;
   font-weight: 900;
   letter-spacing: 0.8px;
   color: var(--purple);
@@ -3857,35 +3845,85 @@
   background: #fff;
   border: 1.5px solid var(--ink);
   border-radius: 20px;
-  padding: 20px;
-  margin-bottom: 16px;
+  padding: 22px;
   box-shadow: 3px 4px 0 var(--ink);
+  width: 100%;
+  box-sizing: border-box;
 }
 .overview-grid-stats {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: 10px;
   margin-top: 14px;
 }
 .overview-grid-stats > div {
-  padding: 10px 12px;
+  padding: 10px 14px;
   background: var(--paper);
   border-radius: 12px;
+  border: 1px solid var(--line);
   display: flex;
   flex-direction: column;
   gap: 3px;
 }
 .overview-grid-stats span {
-  font-size: 7.5px;
+  font-size: 8.5px;
   color: var(--muted);
-  font-weight: 700;
+  font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 .overview-grid-stats strong {
-  font-size: 13px;
+  font-size: 13.5px;
   color: var(--ink);
   font-weight: 800;
+}
+.plan-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px 20px;
+  width: 100%;
+  align-items: stretch;
+}
+@media (max-width: 900px) {
+  .plan-cards-grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+}
+.plan-cards-grid.single-view {
+  grid-template-columns: 1fr;
+}
+.plan-cards-grid > section {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  border: 1.5px solid var(--ink);
+  border-radius: 20px;
+  padding: 20px;
+  box-shadow: 3px 4px 0 var(--ink);
+  box-sizing: border-box;
+  background: #fff;
+}
+.plan-cards-grid > section.result-section.peach {
+  background: #fff5ed;
+  border-color: var(--ink);
+}
+.plan-cards-grid > section.result-section.yellow {
+  background: #fdfae5;
+  border-color: var(--ink);
+}
+.plan-cards-grid > section.palette-plan {
+  background: #faf8ff;
+}
+.plan-cards-grid > section.diy-plan {
+  background: #f5fbf7;
+}
+.plan-cards-grid > section.shopping-plan {
+  background: #fff;
+}
+.plan-cards-grid > section.expense-plan {
+  background: #fff;
 }
 .plan-shopping-list > span.completed {
   opacity: 0.55;
@@ -3922,15 +3960,15 @@
 }
 .shopping-add-input {
   flex: 1;
-  font-size: 8px;
-  padding: 6px 10px;
+  font-size: 10px;
+  padding: 7px 10px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--paper);
 }
 .shopping-add-btn {
-  padding: 6px 12px;
-  font-size: 8px;
+  padding: 7px 14px;
+  font-size: 10px;
   font-weight: 800;
   border: 1.5px solid var(--ink);
   border-radius: 8px;
@@ -3954,57 +3992,58 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
-  font-size: 8px;
+  font-size: 9px;
   font-weight: 700;
 }
 .section-edit-form input {
-  font-size: 9px;
-  padding: 6px 9px;
+  font-size: 11px;
+  padding: 7px 10px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: #fff;
 }
 .cake-card {
-  padding: 12px;
+  padding: 12px 14px;
   background: #fff8eb;
-  border: 1px solid #ffd8a8;
-  border-radius: 12px;
+  border: 1.5px solid #ffd8a8;
+  border-radius: 14px;
   margin-bottom: 12px;
 }
 .cake-card strong {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 11px;
+  font-size: 12px;
   color: #d97706;
 }
 .cake-card p {
   margin: 4px 0 0;
-  font-size: 8.5px;
+  font-size: 10px;
   color: #78350f;
+  line-height: 1.4;
 }
 .diy-card-item {
-  padding: 10px;
-  background: var(--paper);
-  border-radius: 10px;
+  padding: 10px 12px;
+  background: #fff;
+  border-radius: 12px;
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 4px;
   border: 1px solid var(--line);
 }
 .diy-card-item strong {
-  font-size: 8.5px;
+  font-size: 10px;
   color: var(--ink);
 }
 .diy-card-item p {
   margin: 0;
-  font-size: 7.5px;
+  font-size: 9px;
   color: var(--muted);
   line-height: 1.35;
 }
 .diy-card-item small {
   font-weight: 800;
   color: var(--purple);
-  font-size: 7.5px;
+  font-size: 8.5px;
   margin-top: 2px;
 }
