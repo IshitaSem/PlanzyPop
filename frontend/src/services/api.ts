@@ -7,7 +7,10 @@
  */
 
 export const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL as string || "http://127.0.0.1:8000"
+  (import.meta.env.VITE_API_BASE_URL as string) ||
+  (import.meta.env.PROD
+    ? "https://planzypop-ai.onrender.com"
+    : "http://127.0.0.1:8000")
 
 // Standard student-friendly expense categories supported by backend
 export const EXPENSE_CATEGORIES = [
@@ -219,12 +222,24 @@ async function apiRequest<T>(
 // API Methods
 // ============================================================================
 
-// --- Health / Root ---
-export async function checkHealth(): Promise<{
+export interface DeleteResult {
+  message: string
+  id: number
+}
+
+export interface RemoveFavoriteResult {
+  message: string
+  spot_id: string
+}
+
+export interface HealthResult {
   status: string
   service: string
-}> {
-  return apiRequest<{ status: string service: string }>("/health")
+}
+
+// --- Health / Root ---
+export async function checkHealth(): Promise<HealthResult> {
+  return apiRequest<HealthResult>("/health")
 }
 
 // --- Events (Stage 3) ---
@@ -253,10 +268,8 @@ export async function updateEvent(
   })
 }
 
-export async function deleteEvent(
-  id: number,
-): Promise<{ message: string id: number }> {
-  return apiRequest<{ message: string id: number }>(`/events/${id}`, {
+export async function deleteEvent(id: number): Promise<DeleteResult> {
+  return apiRequest<DeleteResult>(`/events/${id}`, {
     method: "DELETE",
   })
 }
@@ -286,10 +299,8 @@ export async function updateExpense(
   })
 }
 
-export async function deleteExpense(
-  expenseId: number,
-): Promise<{ message: string id: number }> {
-  return apiRequest<{ message: string id: number }>(`/expenses/${expenseId}`, {
+export async function deleteExpense(expenseId: number): Promise<DeleteResult> {
+  return apiRequest<DeleteResult>(`/expenses/${expenseId}`, {
     method: "DELETE",
   })
 }
@@ -347,10 +358,8 @@ export async function updateTask(
   })
 }
 
-export async function deleteTask(
-  taskId: number,
-): Promise<{ message: string id: number }> {
-  return apiRequest<{ message: string id: number }>(`/tasks/${taskId}`, {
+export async function deleteTask(taskId: number): Promise<DeleteResult> {
+  return apiRequest<DeleteResult>(`/tasks/${taskId}`, {
     method: "DELETE",
   })
 }
@@ -367,4 +376,229 @@ export async function generateSuggestions(
     method: "POST",
     body: JSON.stringify(data),
   })
+}
+
+// ============================================================================
+// PopSpots API (Stage 7: Real Local Hangout Discovery & Google Places API)
+// ============================================================================
+
+export interface SpotReview {
+  author_name: string
+  author_photo_url?: string | null
+  google_maps_profile_url?: string | null
+  rating?: number | null
+  relative_time?: string | null
+  text?: string | null
+  publish_time?: string | null
+}
+
+export interface SpotDishRecommendation {
+  dish: string
+  quote: string
+  author: string
+}
+
+export interface SpotItem {
+  id: string
+  place_id?: string | null
+  osm_id?: string | null
+  osm_type?: string | null
+  name: string
+  category: string
+  category_label: string
+  latitude: number
+  longitude: number
+  address?: string | null
+  distance_km?: number | null
+  opening_hours?: string | null
+  price_info?: string | null
+  rating?: string | null
+  review_count?: number | null
+  google_rating?: number | null
+  rating_source?: string | null
+  vibe?: string | null
+  occasion?: string | null
+  source?: string | null
+  photo_name?: string | null
+  photo_url?: string | null
+  sector?: string | null
+  description?: string | null
+  price_level?: string | null
+  data_origin?: "live_api" | "cached" | "curated" | string | null
+  is_cached?: boolean
+  website_uri?: string | null
+  google_maps_uri?: string | null
+  editorial_summary?: string | null
+  reviews?: SpotReview[] | null
+  reviews_analyzed_count?: number | null
+  reviews_disclaimer?: string | null
+  recommended_dishes?: string[] | null
+  dish_recommendation_quotes?: SpotDishRecommendation[] | null
+  positive_feedback_highlights?: string[] | null
+  common_complaints?: string[] | null
+  menu_status?: string | null
+  menu_disclaimer?: string | null
+  photo_names?: string[] | null
+  tags?: Record<string, any> | null
+  is_favorite?: boolean
+}
+
+export interface SpotSearchParams {
+  location?: string
+  latitude?: number
+  longitude?: number
+  radius?: number
+  category?: string
+  sector?: string
+  budget?: string
+  min_rating?: number
+  occasion?: string
+  page?: number
+  page_size?: number
+  user_id?: string
+}
+
+export interface SpotSearchResponse {
+  status?: string | null
+  message?: string | null
+  query_location: string
+  latitude: number
+  longitude: number
+  radius_km: number
+  total_found: number
+  page?: number
+  page_size?: number
+  total_pages?: number
+  has_more?: boolean
+  spots: SpotItem[]
+}
+
+export interface SpotCategory {
+  id: string
+  label: string
+  icon: string
+  description: string
+}
+
+export interface SpotFavorite {
+  id: number
+  user_id?: string | null
+  spot_id: string
+  name: string
+  category: string
+  latitude: number
+  longitude: number
+  address?: string | null
+  opening_hours?: string | null
+  price_info?: string | null
+  vibe?: string | null
+  saved_at: string
+}
+
+export function getGuestSessionId(): string {
+  if (typeof window === "undefined" || !window.localStorage) {
+    return "guest_default"
+  }
+  const STORAGE_KEY = "planzypop_guest_session_id"
+  try {
+    let sessionId = localStorage.getItem(STORAGE_KEY)
+    if (!sessionId) {
+      const rand = Math.random().toString(36).substring(2, 10)
+      sessionId = `guest_${Date.now().toString(36)}_${rand}`
+      localStorage.setItem(STORAGE_KEY, sessionId)
+    }
+    return sessionId
+  } catch {
+    return "guest_default"
+  }
+}
+
+export async function searchSpots(
+  params: SpotSearchParams = {},
+): Promise<SpotSearchResponse> {
+  const query = new URLSearchParams()
+  if (params.location) query.set("location", params.location)
+  if (params.latitude !== undefined)
+    query.set("latitude", String(params.latitude))
+  if (params.longitude !== undefined)
+    query.set("longitude", String(params.longitude))
+  if (params.radius !== undefined) query.set("radius", String(params.radius))
+  if (params.category && params.category !== "all" && params.category !== "All")
+    query.set("category", params.category)
+  if (params.sector && params.sector !== "all" && params.sector !== "All" && params.sector !== "All Sectors")
+    query.set("sector", params.sector)
+  if (params.budget && params.budget !== "Any budget")
+    query.set("budget", params.budget)
+  if (params.min_rating !== undefined && params.min_rating > 0)
+    query.set("min_rating", String(params.min_rating))
+  if (params.occasion) query.set("occasion", params.occasion)
+  if (params.page !== undefined) query.set("page", String(params.page))
+  if (params.page_size !== undefined) query.set("page_size", String(params.page_size))
+  query.set("user_id", params.user_id || getGuestSessionId())
+
+  const queryString = query.toString() ? `?${query.toString()}` : ""
+  return apiRequest<SpotSearchResponse>(`/api/spots/search${queryString}`)
+}
+
+export async function getChandigarhSectors(): Promise<string[]> {
+  return apiRequest<string[]>("/api/spots/sectors")
+}
+
+export async function getSpotCategories(): Promise<SpotCategory[]> {
+  return apiRequest<SpotCategory[]>("/api/spots/categories")
+}
+
+export async function getSpotFavorites(
+  userId = getGuestSessionId(),
+): Promise<SpotFavorite[]> {
+  return apiRequest<SpotFavorite[]>(
+    `/api/spots/favorites?user_id=${encodeURIComponent(userId)}`,
+  )
+}
+
+export async function saveSpotFavorite(
+  spot: {
+    spot_id: string
+    name: string
+    category: string
+    latitude: number
+    longitude: number
+    address?: string | null
+    opening_hours?: string | null
+    price_info?: string | null
+    vibe?: string | null
+    tags_json?: string | null
+    user_id?: string
+  },
+  userId = getGuestSessionId(),
+): Promise<SpotFavorite> {
+  const payload = {
+    ...spot,
+    user_id: spot.user_id || userId,
+  }
+  return apiRequest<SpotFavorite>("/api/spots/favorites", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function removeSpotFavorite(
+  spotId: string,
+  userId = getGuestSessionId(),
+): Promise<RemoveFavoriteResult> {
+  return apiRequest<RemoveFavoriteResult>(
+    `/api/spots/favorites/${encodeURIComponent(spotId)}?user_id=${encodeURIComponent(userId)}`,
+    {
+      method: "DELETE",
+    },
+  )
+}
+
+export async function getSpotDetails(
+  spotId: string,
+  userId = getGuestSessionId(),
+): Promise<SpotItem> {
+  return apiRequest<SpotItem>(
+    `/api/spots/${encodeURIComponent(spotId)}?user_id=${encodeURIComponent(userId)}`,
+  )
 }

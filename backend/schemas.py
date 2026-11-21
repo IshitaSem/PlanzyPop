@@ -349,3 +349,125 @@ class SuggestionResponse(BaseModel):
     total_allocated_budget: float
     budget_saving_tips: List[str]
     disclaimer: str
+
+
+# ============================================================================
+# PopSpots Schemas (Real Local Hangout Discovery System & Google Places)
+# ============================================================================
+
+class SpotCategoryItem(BaseModel):
+    id: str
+    label: str
+    icon: str
+    description: str
+
+
+class SpotReview(BaseModel):
+    author_name: str
+    author_photo_url: Optional[str] = None
+    google_maps_profile_url: Optional[str] = None
+    rating: Optional[float] = None
+    relative_time: Optional[str] = None
+    text: Optional[str] = None
+    publish_time: Optional[str] = None
+
+
+class SpotDishRecommendation(BaseModel):
+    dish: str
+    quote: str
+    author: str
+
+
+class SpotBase(BaseModel):
+    id: str
+    place_id: Optional[str] = None
+    osm_id: Optional[str] = None
+    osm_type: Optional[str] = None
+    name: str
+    category: str
+    category_label: str
+    latitude: float
+    longitude: float
+    address: Optional[str] = None
+    distance_km: Optional[float] = None
+    opening_hours: Optional[str] = None
+    price_info: Optional[str] = "Price not available"
+    rating: Optional[str] = "Not available"
+    review_count: Optional[int] = None
+    google_rating: Optional[float] = None
+    rating_source: Optional[str] = "OpenStreetMap Community"
+    vibe: Optional[str] = None
+    occasion: Optional[str] = None
+    source: Optional[str] = "openstreetmap"
+    photo_name: Optional[str] = None
+    photo_url: Optional[str] = None
+    sector: Optional[str] = None
+    description: Optional[str] = None
+    price_level: Optional[str] = None
+    data_origin: Optional[str] = "curated"
+    is_cached: Optional[bool] = False
+    website_uri: Optional[str] = None
+    google_maps_uri: Optional[str] = None
+    editorial_summary: Optional[str] = None
+    reviews: Optional[List[SpotReview]] = None
+    reviews_analyzed_count: Optional[int] = 0
+    reviews_disclaimer: Optional[str] = None
+    recommended_dishes: Optional[List[str]] = None
+    dish_recommendation_quotes: Optional[List[SpotDishRecommendation]] = None
+    positive_feedback_highlights: Optional[List[str]] = None
+    common_complaints: Optional[List[str]] = None
+    menu_status: Optional[str] = "unavailable"
+    menu_disclaimer: Optional[str] = None
+    photo_names: Optional[List[str]] = None
+    tags: Optional[Dict[str, Any]] = None
+    is_favorite: Optional[bool] = False
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class SpotSearchResponse(BaseModel):
+    status: Optional[str] = "ok"
+    message: Optional[str] = None
+    query_location: str
+    latitude: float
+    longitude: float
+    radius_km: float
+    total_found: int
+    page: Optional[int] = 1
+    page_size: Optional[int] = 20
+    total_pages: Optional[int] = 1
+    has_more: Optional[bool] = False
+    spots: List[SpotBase]
+
+
+class FavoriteCreate(BaseModel):
+    spot_id: str
+    name: str
+    category: str
+    latitude: float
+    longitude: float
+    osm_id: Optional[str] = None
+    osm_type: Optional[str] = None
+    address: Optional[str] = None
+    opening_hours: Optional[str] = None
+    price_info: Optional[str] = None
+    vibe: Optional[str] = None
+    tags_json: Optional[str] = None
+    user_id: Optional[str] = "guest"
+
+
+class FavoriteResponse(BaseModel):
+    id: int
+    user_id: Optional[str] = "guest"
+    spot_id: str
+    name: str
+    category: str
+    latitude: float
+    longitude: float
+    address: Optional[str] = None
+    opening_hours: Optional[str] = None
+    price_info: Optional[str] = None
+    vibe: Optional[str] = None
+    saved_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)

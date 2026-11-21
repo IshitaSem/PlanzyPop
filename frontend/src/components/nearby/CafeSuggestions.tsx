@@ -106,7 +106,7 @@ type LocationState = { status: "idle" } | { status: "loading" } | {
   status: "granted"
   latitude: number
   longitude: number
-} | { status: "denied" message: string } | { status: "error" message: string }
+} | { status: "denied"; message: string } | { status: "error"; message: string }
 
 export function CafeSuggestions() {
   const [locationState, setLocationState] = useState<LocationState>({

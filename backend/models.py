@@ -125,3 +125,30 @@ class Task(Base):
 
     def __repr__(self):
         return f"<Task(id={self.id}, event_id={self.event_id}, name='{self.task_name}', completed={self.is_completed})>"
+
+
+class SavedSpot(Base):
+    """
+    SQLAlchemy ORM Model representing a user's Saved / Bookmarked Spot in PopSpots.
+    Supports persistent favourites and guest mode without forcing authentication.
+    """
+    __tablename__ = "saved_spots"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    user_id = Column(String(50), nullable=True, default="guest", index=True)
+    spot_id = Column(String(100), nullable=False, index=True)
+    osm_type = Column(String(20), nullable=True)
+    osm_id = Column(String(50), nullable=True)
+    name = Column(String(150), nullable=False)
+    category = Column(String(50), nullable=False)
+    latitude = Column(Float, nullable=False)
+    longitude = Column(Float, nullable=False)
+    address = Column(String(250), nullable=True)
+    opening_hours = Column(String(100), nullable=True)
+    price_info = Column(String(50), nullable=True)
+    vibe = Column(String(50), nullable=True)
+    tags_json = Column(String, nullable=True)
+    saved_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    def __repr__(self):
+        return f"<SavedSpot(id={self.id}, spot_id='{self.spot_id}', name='{self.name}', user_id='{self.user_id}')>"

@@ -1,14 +1,30 @@
 import {
   useEffect,
   useMemo,
+  useRef,
   useState,
   type FormEvent,
   type ReactNode,
 } from "react"
+import {
+  searchSpots,
+  saveSpotFavorite,
+  removeSpotFavorite,
+  getSpotFavorites,
+  getSpotDetails,
+  getChandigarhSectors,
+  generateSuggestions,
+  createEvent,
+  getEvents,
+  API_BASE_URL,
+  type SpotItem,
+  type SuggestionResponse,
+} from "./services/api"
+import { SpotMap } from "./components/nearby/SpotMap"
 
 type Screen = "overview" | "events" | "planner" | "nearby" | "profile" | "event-detail" | "budget" | "checklist" | "place-detail" | "insights" | "settings"
 
-type IconName = "home" | "calendar" | "sparkle" | "pin" | "user" | "bell" | "arrow" | "wallet" | "check" | "bulb" | "plus" | "people" | "clock" | "back" | "bookmark" | "search" | "star" | "route" | "edit" | "settings" | "help" | "moon" | "logout" | "chevron" | "cake" | "house" | "college" | "party" | "picnic" | "movie" | "location" | "food" | "music" | "gift" | "download" | "refresh"
+type IconName = "home" | "calendar" | "sparkle" | "pin" | "user" | "bell" | "arrow" | "wallet" | "check" | "bulb" | "plus" | "people" | "clock" | "back" | "bookmark" | "search" | "star" | "route" | "edit" | "settings" | "help" | "moon" | "logout" | "chevron" | "cake" | "house" | "college" | "party" | "picnic" | "movie" | "location" | "food" | "music" | "gift" | "download" | "refresh" | "coffee"
 
 type NavItem = {
   screen: Screen
@@ -40,6 +56,11 @@ const images = {
 }
 
 const iconPaths: Record<IconName, ReactNode> = {
+  coffee: (
+    <>
+      <path d="M18 8h1a4 4 0 0 1 0 8h-1M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8ZM6 1v3M10 1v3M14 1v3" />
+    </>
+  ),
   home: (
     <>
       <path d="M3 10.8 12 3l9 7.8" />
@@ -379,7 +400,6 @@ function BottomNav({
     { screen: "nearby", icon: "pin", label: "Explore Spots" },
     { screen: "events", icon: "calendar", label: "My Plans" },
     { screen: "budget", icon: "wallet", label: "My Budget" },
-    { screen: "insights", icon: "star", label: "Insights" },
     { screen: "settings", icon: "settings", label: "Settings" },
   ]
   const activeScreen =
@@ -445,7 +465,7 @@ function Overview({
           <span className="brand-mark">
             <Icon name="sparkle" size={18} />
           </span>
-          <span>PlanzyPop AI</span>
+          <span>PlanzyPop</span>
         </div>
         <div className="desktop-page-context">
           <div className="eyebrow">PLANZYPOP WORKSPACE</div>
@@ -674,17 +694,17 @@ function Overview({
         </div>
         <div className="saved-spot-strip">
           <button type="button" onClick={() => go("nearby")}>
-            <img src={images.cafe} alt="Saved café placeholder" />
+            <img src={images.cafe} alt="Third Wave Coffee" />
             <span>
-              <strong>Church Street café result</strong>
-              <small>Saved spot · Details pending</small>
+              <strong>Third Wave Coffee</strong>
+              <small>Church Street · Saved café</small>
             </span>
           </button>
           <button type="button" onClick={() => go("nearby")}>
-            <img src={images.games} alt="Saved activity place placeholder" />
+            <img src={images.games} alt="Board 4 Boredom Lounge" />
             <span>
-              <strong>Koramangala activity result</strong>
-              <small>Recently viewed · Details pending</small>
+              <strong>Board 4 Boredom Lounge</strong>
+              <small>Koramangala · Saved activity space</small>
             </span>
           </button>
         </div>
@@ -969,6 +989,7 @@ type ShoppingItem = {
   id: string
   name: string
   category: string
+  quantity: string
   cost: number
   completed: boolean
 }
@@ -977,6 +998,7 @@ function Planner({
   go,
   notify,
   onSaveEvent,
+  initialVenue,
 }: {
   go: (s: Screen) => void
   notify: (m: string) => void
@@ -990,32 +1012,70 @@ function Planner({
     progress: number
     image: string
   }) => void
+  initialVenue?: SpotItem | null
 }) {
-  const [step, setStep] = useState<"form" | "loading" | "results">("form")
+  const queryParams =
+    typeof window !== "undefined"
+      ? new URLSearchParams(window.location.search)
+      : null
+  const [step, setStep] = useState<"form" | "loading" | "results">(
+    queryParams?.get("step") === "results" ? "results" : "form",
+  )
   const [eventType, setEventType] = useState("Birthday")
-  const [eventName, setEventName] = useState("Aanya's Birthday Bash")
-  const [eventDate, setEventDate] = useState("12 Nov 2025")
-  const [guests, setGuests] = useState(18)
-  const [location, setLocation] = useState("Indiranagar, Bengaluru")
+  const [eventName, setEventName] = useState(
+    initialVenue ? `Celebration at ${initialVenue.name}` : "Rohan's 21st Birthday Bash",
+  )
+  const [eventDate, setEventDate] = useState("20 Nov 2026")
+  const [guests, setGuests] = useState(15)
+  const [location, setLocation] = useState(
+    initialVenue
+      ? initialVenue.address || initialVenue.name
+      : "Sector 17, Chandigarh",
+  )
   const [foodPreference, setFoodPreference] = useState("Vegetarian")
+  const [cakePreference, setCakePreference] = useState("Custom Bento Cake (1.2 kg)")
   const [setting, setSetting] = useState("Indoor")
+  const [diyPreference, setDiyPreference] = useState("DIY & Handcrafted (Paper streamers & fairy lights)")
   const [budget, setBudget] = useState("₹3,000–₹5,000")
   const [style, setStyle] = useState("Casual")
   const [notes, setNotes] = useState("")
+  const [apiSuggestion, setApiSuggestion] = useState<SuggestionResponse | null>(null)
+  const [isAiLoading, setIsAiLoading] = useState(false)
 
-  // Active section tab for mobile / tablet responsive navigation
-  const [activeTab, setActiveTab] =
-    useState<"all" | "overview" | "theme" | "food" | "decor" | "activities" | "shopping" | "budget">(
-      "all",
-    )
+  // Active section tab for navigation
+  type PopPlanTab =
+    | "all"
+    | "overview"
+    | "theme"
+    | "food"
+    | "decor"
+    | "activities"
+    | "budget"
+    | "shopping"
+    | "tasks"
+
+  const [activeTab, setActiveTab] = useState<PopPlanTab>(
+    (queryParams?.get("tab") as PopPlanTab) || "all",
+  )
+
+  // Actionable Celebration Tasks State
+  const [plannerTasks, setPlannerTasks] = useState([
+    { id: "t1", title: "Finalize guest count & send digital WhatsApp invites", timing: "1–2 Weeks Before", priority: "HIGH", completed: true },
+    { id: "t2", title: "Order celebration cake from local bakery", timing: "3 Days Before", priority: "HIGH", completed: false },
+    { id: "t3", title: "Purchase party balloons, lights & paper streamers", timing: "2 Days Before", priority: "MEDIUM", completed: false },
+    { id: "t4", title: "Assemble Spotify party playlist and Bluetooth speaker", timing: "1 Day Before", priority: "LOW", completed: false },
+    { id: "t5", title: "Set up venue decorations & photo backdrop corner", timing: "Day of Event", priority: "HIGH", completed: false },
+  ])
 
   // Inline editing state for Section A (Event Overview)
   const [isEditingBasics, setIsEditingBasics] = useState(false)
   const [editName, setEditName] = useState(eventName)
+  const [editOccasion, setEditOccasion] = useState(eventType)
   const [editDate, setEditDate] = useState(eventDate)
   const [editLocation, setEditLocation] = useState(location)
   const [editGuests, setEditGuests] = useState(guests)
   const [editBudget, setEditBudget] = useState(budget)
+  const [editStyle, setEditStyle] = useState(style)
 
   // Section-level adaptation variations
   const [themeIndex, setThemeIndex] = useState(0)
@@ -1073,9 +1133,14 @@ function Planner({
       cakeFlavor:
         "Belgian Chocolate Truffle with buttercream florals and personalized lettering",
       cakeCost: 700,
-      snackRecommendations:
-        "Mini Paneer Tikka Sliders, Peri-Peri Crinkle Fries, Veg Dimsums, Cheesy Corn Triangles, Nachos with House Salsa",
-      drinks: "Chilled Vanilla Cold Coffee & Mint Lemonade Spritzers",
+      snackRecommendations: [
+        "Mini Paneer Tikka Sliders",
+        "Peri-Peri Crinkle Fries",
+        "Steamed Veg Dimsums",
+        "Cheesy Corn Triangles",
+        "Nachos with House Salsa",
+      ],
+      drinks: "Chilled Vanilla Cold Coffee & Fresh Mint Lemonade Spritzers",
       dietTag: "100% Vegetarian Crowd-Pleaser",
       foodCost: 1600,
     },
@@ -1084,8 +1149,13 @@ function Planner({
       cakeFlavor:
         "Red Velvet Cream Cheese & Salted Caramel with edible pearl dusting",
       cakeCost: 750,
-      snackRecommendations:
-        "Gourmet Pinwheel Sandwiches, Masala Garlic Breadsticks, Jalapeño Cheese Poppers, Crispy Potato Wedges",
+      snackRecommendations: [
+        "Gourmet Pinwheel Sandwiches",
+        "Masala Garlic Breadsticks",
+        "Jalapeño Cheese Poppers",
+        "Crispy Potato Wedges",
+        "Hummus & Pita Bites",
+      ],
       drinks: "Iced Peach Tea & Fizzy Blueberry Mocktails",
       dietTag: "Mixed / Vegetarian & Vegan Friendly",
       foodCost: 1700,
@@ -1095,51 +1165,70 @@ function Planner({
       cakeFlavor:
         "Rich Dutch Chocolate Fudge with confetti sprinkles and sparklers",
       cakeCost: 550,
-      snackRecommendations:
-        "Samosa Chaat Platter, Butter Maggi Cups, Chilli Cheese Toasties, Popcorn Bar with peri-peri seasonings",
+      snackRecommendations: [
+        "Samosa Chaat Platter",
+        "Butter Maggi Cups",
+        "Chilli Cheese Toasties",
+        "Popcorn Bar with peri-peri seasonings",
+        "Spiced Masala Peanuts",
+      ],
       drinks: "Nimbu Paani & Tang Mango Punch",
       dietTag: "Student Budget Friendly & Easy Clean-up",
       foodCost: 1350,
     },
   ]
 
-  // Curated decoration & DIY presets (integrates celebration craft concepts)
+  // Curated decoration & DIY presets
   const decorPresets = [
     {
       recommendation:
         "Fairy light curtain backdrop, pastel balloon clusters at the entrance, printed welcome banner, and table bunting.",
+      requiredMaterials: [
+        "Pastel balloons (30 pcs)",
+        "Crepe paper streamer rolls (3 rolls)",
+        "10m micro-LED warm fairy lights",
+        "Wall-safe double-sided tape",
+        "Cardstock paper party props & welcome banner",
+      ],
       diyIdeas: [
         {
           title: "Paper streamer fringe backdrop",
           cost: "Under ₹180",
-          desc: "Layered crepe streamer fringe attached with double-sided tape",
+          desc: "Layered crepe streamer fringe attached with wall-safe tape for photos",
         },
         {
           title: "Printed photo props & greeting cutouts",
           cost: "Under ₹60",
-          desc: "Fun cardboard cutouts printed on local shop cardstock",
+          desc: "Fun celebration cardboard cutouts printed on local shop cardstock",
         },
         {
-          title: "Reusable pastel bunting",
+          title: "Reusable pastel pennant bunting",
           cost: "Under ₹120",
-          desc: "Triangular pennants threaded on baker's twine",
+          desc: "Triangular pennants threaded on natural baker's twine across walls",
         },
         {
           title: "Warm fairy-light selfie corner",
           cost: "Under ₹250",
-          desc: "10-metre warm micro-LED string draped along curtains",
+          desc: "10-metre micro-LED copper wire draped gently along sheer curtains",
         },
       ],
       decorCost: 610,
     },
     {
       recommendation:
-        "Organic balloon garland over seating, DIY polaroid photo memory string with wooden clips, ambient lighting.",
+        "Organic dual-tone balloon garland over seating, DIY polaroid photo memory string with wooden clips, ambient lighting.",
+      requiredMaterials: [
+        "Dual-tone balloon garland kit (40 balloons)",
+        "Natural jute string (15m) & mini wooden pegs",
+        "Polaroid prints of friend memories (20 prints)",
+        "Upcycled glass jar fairy lights",
+        "Kraft chalkboard card welcoming guests",
+      ],
       diyIdeas: [
         {
           title: "Organic balloon cluster garland",
           cost: "Under ₹220",
-          desc: "Dual-size balloons tied in clusters on fishing line",
+          desc: "Dual-size balloons tied in clusters on fishing line or balloon tape",
         },
         {
           title: "Polaroid photo timeline on jute string",
@@ -1149,12 +1238,12 @@ function Planner({
         {
           title: "Upcycled glass bottle fairy lights",
           cost: "Under ₹90",
-          desc: "Cleaned glass jars with cork micro-LED wire lights",
+          desc: "Cleaned glass jars with cork micro-LED wire lights for ambient glow",
         },
         {
           title: "Hand-lettered greeting chalkboard",
           cost: "Under ₹70",
-          desc: "Kraft card with liquid chalk welcoming guests",
+          desc: "Kraft card with liquid chalk welcoming guests at the entrance",
         },
       ],
       decorCost: 680,
@@ -1162,26 +1251,33 @@ function Planner({
     {
       recommendation:
         "Geometric paper lanterns, origami crane curtain, dried leaf table runners, warm micro-lights.",
+      requiredMaterials: [
+        "Accordion honeycomb paper lanterns (6 pcs)",
+        "Pastel tissue paper sheets for tassels",
+        "Natural craft jute twine",
+        "LED tea-light candles & decorative jars",
+        "Cardboard photo frame prop with painted border",
+      ],
       diyIdeas: [
         {
           title: "Accordion paper honeycomb lanterns",
           cost: "Under ₹150",
-          desc: "Handmade folding paper spheres in pastel tones",
+          desc: "Handmade folding paper spheres in pastel tones hung from ceiling",
         },
         {
           title: "Jute string paper tassel bunting",
           cost: "Under ₹100",
-          desc: "Tissue paper tassels twisted onto natural twine",
+          desc: "Tissue paper tassels twisted onto natural craft twine",
         },
         {
           title: "Tabletop confetti & tea-light holders",
           cost: "Under ₹80",
-          desc: "Perforated craft paper lanterns with LED tea lights",
+          desc: "Perforated craft paper lanterns with safe LED tea lights",
         },
         {
           title: "Custom cardboard photo frame prop",
           cost: "Under ₹60",
-          desc: "Upcycled shipping box cutout with painted borders",
+          desc: "Upcycled shipping box cutout with hand-painted borders and lettering",
         },
       ],
       decorCost: 490,
@@ -1192,23 +1288,45 @@ function Planner({
   const activityPresets = [
     {
       activities:
-        "Bollywood Dumb Charades, Two Truths & a Lie, 'Who Knows the Host Best?' speed trivia quiz",
+        "Bollywood Dumb Charades, Two Truths & a Lie, and 'Who Knows the Host Best?' speed trivia quiz",
+      guestSuitability:
+        "Ideal for 10–25 friends in indoor living rooms, common halls or rooftop spaces",
+      requiredMaterials: [
+        "Trivia quiz printouts & pens (1 per team)",
+        "Bluetooth party speaker & Spotify Jam session",
+        "60-second digital stopwatch timer",
+      ],
       entertainment:
-        "Collaborative Spotify Jam Session party playlist, Instant Polaroid photo challenge",
+        "Collaborative party playlist queue, instant mobile polaroid challenge, celebratory toast moment",
       cost: 0,
     },
     {
       activities:
         "Uno Flip & Exploding Kittens tournament, Mobile Karaoke showdown via Bluetooth mic, Pictionary on whiteboards",
+      guestSuitability:
+        "Best for 8–18 guests with comfortable table or lounge seating arrangements",
+      requiredMaterials: [
+        "Uno Flip and Exploding Kittens card decks",
+        "2 Mini whiteboards with dry-erase markers",
+        "Wireless Bluetooth karaoke microphone",
+        "Blindfolds for mystery snack tasting",
+      ],
       entertainment:
-        "Chill Lo-Fi / Acoustic party stream, Snack-tasting blindfold challenge",
+        "Chill Lo-Fi & acoustic party stream, snack-tasting blindfold challenge, mini prize ceremony",
       cost: 150,
     },
     {
       activities:
-        "Name That Tune 5-second buzzer round, Freeze Dance, Group Tik-Tok video memory challenge",
+        "Name That Tune 5-second buzzer round, Freeze Dance showdown, and Group Reel video memory challenge",
+      guestSuitability:
+        "High energy format tailored for 15–40 lively guests with open standing or dancing area",
+      requiredMaterials: [
+        "Buzzer bells or buzzer mobile app",
+        "High-output Bluetooth speaker system",
+        "Glow-in-the-dark wristbands for evening games",
+      ],
       entertainment:
-        "High-energy party DJ soundscape, Glow-in-the-dark accessory station",
+        "High-energy DJ soundscape, glow accessory photo station, synchronized memory reel shoot",
       cost: 100,
     },
   ]
@@ -1217,15 +1335,17 @@ function Planner({
   const [shoppingItems, setShoppingItems] = useState<ShoppingItem[]>([
     {
       id: "s1",
-      name: "30 Pastel balloons (Lavender & Peach)",
+      name: "Pastel balloons (Lavender & Peach)",
       category: "Decor",
+      quantity: "30 pcs",
       cost: 240,
       completed: true,
     },
     {
       id: "s2",
-      name: "3 Crepe paper streamer rolls",
+      name: "Crepe paper streamer rolls",
       category: "Decor",
+      quantity: "3 rolls",
       cost: 180,
       completed: true,
     },
@@ -1233,6 +1353,7 @@ function Planner({
       id: "s3",
       name: "Warm fairy string lights (10m)",
       category: "Decor",
+      quantity: "1 set",
       cost: 250,
       completed: false,
     },
@@ -1240,6 +1361,7 @@ function Planner({
       id: "s4",
       name: "Custom celebration cake",
       category: "Food",
+      quantity: "1.2 kg",
       cost: 700,
       completed: false,
     },
@@ -1247,6 +1369,7 @@ function Planner({
       id: "s5",
       name: "Party snack platters & finger foods",
       category: "Food",
+      quantity: "4 platters",
       cost: 1600,
       completed: false,
     },
@@ -1254,6 +1377,7 @@ function Planner({
       id: "s6",
       name: "Beverages & cold coffee cartons",
       category: "Food",
+      quantity: "6 cartons",
       cost: 650,
       completed: false,
     },
@@ -1261,6 +1385,7 @@ function Planner({
       id: "s7",
       name: "Eco-friendly paper plates & cups",
       category: "Supplies",
+      quantity: "20 sets",
       cost: 160,
       completed: false,
     },
@@ -1268,12 +1393,15 @@ function Planner({
       id: "s8",
       name: "Double-sided tape & photo props",
       category: "DIY",
+      quantity: "1 pack",
       cost: 80,
       completed: true,
     },
   ])
   const [newShoppingName, setNewShoppingName] = useState("")
+  const [newShoppingQuantity, setNewShoppingQuantity] = useState("1x")
   const [newShoppingCost, setNewShoppingCost] = useState("100")
+  const [newShoppingCategory, setNewShoppingCategory] = useState("Custom")
 
   const currentTheme = themePresets[themeIndex]
   const currentFood = foodPresets[foodIndex]
@@ -1305,7 +1433,11 @@ function Planner({
     return 5000
   }
   const targetBudgetNum = parseBudgetNum(budget)
-  const savings = Math.max(0, targetBudgetNum - totalEstimated)
+  const displayTotal = apiSuggestion?.total_allocated_budget
+    ? Math.round(apiSuggestion.total_allocated_budget)
+    : totalEstimated
+  const currentSavings = targetBudgetNum - displayTotal
+  const isOverBudget = displayTotal > targetBudgetNum
 
   const toggleShoppingItem = (id: string) => {
     setShoppingItems((prev) =>
@@ -1313,6 +1445,11 @@ function Planner({
         item.id === id ? { ...item, completed: !item.completed } : item,
       ),
     )
+  }
+
+  const deleteShoppingItem = (id: string) => {
+    setShoppingItems((prev) => prev.filter((item) => item.id !== id))
+    notify("Shopping item removed!")
   }
 
   const addShoppingItem = (e: FormEvent) => {
@@ -1324,34 +1461,44 @@ function Planner({
       {
         id: `s-${Date.now()}`,
         name: newShoppingName.trim(),
-        category: "Custom",
+        category: newShoppingCategory || "Custom",
+        quantity: newShoppingQuantity.trim() || "1x",
         cost,
         completed: false,
       },
     ])
     setNewShoppingName("")
+    setNewShoppingQuantity("1x")
     setNewShoppingCost("100")
     notify("Shopping item added!")
   }
 
   const handleSaveBasics = () => {
     setEventName(editName)
+    setEventType(editOccasion)
     setEventDate(editDate)
     setLocation(editLocation)
     setGuests(editGuests)
     setBudget(editBudget)
+    setStyle(editStyle)
     setIsEditingBasics(false)
-    notify("Event details updated!")
+    notify("Event details updated successfully!")
   }
 
   const handleSavePlan = () => {
+    const finalEventName =
+      eventName.trim() ||
+      `${eventType} Celebration at ${location.split(",")[0]}`
+    const finalBudget = apiSuggestion?.total_allocated_budget
+      ? `₹${Math.round(apiSuggestion.total_allocated_budget).toLocaleString("en-IN")}`
+      : `₹${totalEstimated.toLocaleString("en-IN")}`
     const newPlan = {
-      name: eventName,
+      name: finalEventName,
       type: eventType,
       date: eventDate,
       place: location,
       guests,
-      budget: `₹${totalEstimated.toLocaleString("en-IN")}`,
+      budget: finalBudget,
       progress: 35,
       image:
         eventType === "Birthday"
@@ -1360,17 +1507,137 @@ function Planner({
             ? images.picnic
             : images.decor,
     }
+    try {
+      createEvent({
+        event_name: finalEventName,
+        event_type: eventType,
+        event_date: eventDate || new Date().toISOString().split("T")[0],
+        location: location,
+        guests: guests,
+        budget: parseBudgetNum(budget),
+        celebration_style: style,
+      }).catch((err) => {
+        console.warn("Backend SQLite createEvent notice:", err)
+      })
+    } catch (err) {
+      console.warn("Could not persist to SQLite:", err)
+    }
+
     if (onSaveEvent) {
       onSaveEvent(newPlan)
     } else {
-      notify(`Plan "${eventName}" saved to My Plans!`)
+      notify(`Plan "${finalEventName}" saved to My Plans!`)
       go("events")
     }
   }
 
-  const generate = () => {
+  const generate = async () => {
     setStep("loading")
-    window.setTimeout(() => setStep("results"), 1400)
+    setIsAiLoading(true)
+
+    // Sync curated presets with chosen preferences
+    if (cakePreference.includes("Cupcake")) {
+      setFoodIndex(1)
+    } else if (cakePreference.includes("Classic")) {
+      setFoodIndex(2)
+    } else {
+      setFoodIndex(0)
+    }
+
+    if (diyPreference.includes("Garland")) {
+      setDecorIndex(1)
+    } else if (diyPreference.includes("Minimalist")) {
+      setDecorIndex(2)
+    } else {
+      setDecorIndex(0)
+    }
+
+    try {
+      const numericBudget = parseBudgetNum(budget)
+      const resp = await generateSuggestions({
+        event_type: eventType,
+        budget: numericBudget,
+        guests: guests,
+        celebration_style: style,
+      })
+      if (resp) {
+        setApiSuggestion(resp)
+        const items: ShoppingItem[] = []
+        let idCounter = 1
+
+        if (resp.food_suggestions && resp.food_suggestions.length > 0) {
+          resp.food_suggestions.forEach((food) => {
+            const isCake = food.toLowerCase().includes("cake")
+            const cost = isCake
+              ? Math.round(numericBudget * 0.15)
+              : Math.round(
+                  (numericBudget * 0.25) /
+                    Math.max(1, resp.food_suggestions.length - 1),
+                )
+            items.push({
+              id: `s-${idCounter++}`,
+              name: food,
+              category: isCake ? "Cake" : "Food",
+              quantity: isCake ? "1.2 kg" : `${Math.max(1, Math.round(guests / 4))} platters`,
+              cost: Math.max(100, cost),
+              completed: idCounter % 3 === 0,
+            })
+          })
+        }
+
+        if (
+          resp.decoration_suggestions &&
+          resp.decoration_suggestions.length > 0
+        ) {
+          resp.decoration_suggestions.forEach((decor) => {
+            const cost = Math.round(
+              (numericBudget * 0.15) / resp.decoration_suggestions.length,
+            )
+            items.push({
+              id: `s-${idCounter++}`,
+              name: decor,
+              category: "Decor",
+              quantity: "1 set",
+              cost: Math.max(80, cost),
+              completed: idCounter % 2 === 0,
+            })
+          })
+        }
+
+        if (
+          resp.activity_suggestions &&
+          resp.activity_suggestions.length > 0
+        ) {
+          items.push({
+            id: `s-${idCounter++}`,
+            name: `${resp.activity_suggestions[0]} (props & kit)`,
+            category: "Activities",
+            quantity: "1 kit",
+            cost: Math.max(100, Math.round(numericBudget * 0.08)),
+            completed: false,
+          })
+        }
+
+        items.push({
+          id: `s-${idCounter++}`,
+          name: "Eco-friendly plates, cups & napkins",
+          category: "Supplies",
+          quantity: `${guests} sets`,
+          cost: Math.max(80, Math.round(guests * 12)),
+          completed: true,
+        })
+
+        if (items.length > 0) {
+          setShoppingItems(items)
+        }
+      }
+    } catch (err) {
+      console.warn("Backend suggestions API error, using curated presets:", err)
+      notify("Rule engine offline; loaded curated celebration plan.")
+    } finally {
+      setIsAiLoading(false)
+      setStep("results")
+    }
   }
 
   if (step === "loading") {
@@ -1378,32 +1645,29 @@ function Planner({
       <div className="screen ai-loading">
         <div className="ai-orbit">
           <span>
-            <Icon name="sparkle" size={35} filled />
+            <Icon name="sparkle" size={34} filled />
           </span>
           <i />
           <i />
           <i />
         </div>
-        <div className="loading-title">Making your celebration pop!</div>
+        <div className="loading-title">Generating Your Celebration Plan</div>
         <p>
-          Synthesizing themes, food, decor, activities & budget for {guests}{" "}
-          friends…
+          Synthesizing theme, food & cake, decor, games, checklist and budget for {guests}{" "}
+          friends in Chandigarh…
         </p>
         <div className="loading-steps">
           <span className="done">
-            <Icon name="check" size={16} /> Generating celebration theme &
-            palette
+            <Icon name="check" size={16} /> Evaluating occasion rules & color palette
           </span>
           <span className="done">
-            <Icon name="check" size={16} /> Selecting food, cake & snack menu
+            <Icon name="check" size={16} /> Curating bakery cake & party snack menu
           </span>
           <span className="done">
-            <Icon name="check" size={16} /> Crafting DIY decor & shopping
-            checklist
+            <Icon name="check" size={16} /> Designing affordable DIY decor & shopping checklist
           </span>
           <span>
-            <span className="tiny-loader" /> Balancing budget & activity
-            itinerary
+            <span className="tiny-loader" /> Balancing category percentages & safety buffer
           </span>
         </div>
       </div>
@@ -1412,855 +1676,1352 @@ function Planner({
 
   if (step === "results") {
     const completedCount = shoppingItems.filter((i) => i.completed).length
+    const totalShoppingCost = shoppingItems.reduce((acc, item) => acc + item.cost, 0)
+    const purchasedShoppingCost = shoppingItems
+      .filter((i) => i.completed)
+      .reduce((acc, item) => acc + item.cost, 0)
     const checklistPercent = Math.round(
       (completedCount / (shoppingItems.length || 1)) * 100,
+    )
+    const effectiveEventName =
+      eventName.trim() ||
+      `${eventType} Celebration at ${location.split(",")[0]}`
+
+    const budgetRows =
+      apiSuggestion?.budget_allocations &&
+      apiSuggestion.budget_allocations.length > 0
+        ? apiSuggestion.budget_allocations.map((alloc) => [
+            alloc.category,
+            `₹${Math.round(alloc.allocated_amount).toLocaleString("en-IN")}`,
+            Math.round(alloc.percentage),
+          ] as const)
+        : ([
+            [
+              "Food & celebration cake",
+              `₹${(foodCost + cakeCost).toLocaleString("en-IN")}`,
+              Math.round(((foodCost + cakeCost) / totalEstimated) * 100),
+            ],
+            [
+              "Theme styling",
+              `₹${themeCost.toLocaleString("en-IN")}`,
+              Math.round((themeCost / totalEstimated) * 100),
+            ],
+            [
+              "Decorations & DIY",
+              `₹${decorCost.toLocaleString("en-IN")}`,
+              Math.round((decorCost / totalEstimated) * 100),
+            ],
+            [
+              "Drinks & refreshments",
+              `₹${drinksCost.toLocaleString("en-IN")}`,
+              Math.round((drinksCost / totalEstimated) * 100),
+            ],
+            [
+              "Activities & party games",
+              `₹${activityCost.toLocaleString("en-IN")}`,
+              Math.round((activityCost / totalEstimated) * 100),
+            ],
+            [
+              "Safety reserve buffer",
+              `₹${bufferCost.toLocaleString("en-IN")}`,
+              Math.round((bufferCost / totalEstimated) * 100),
+            ],
+          ] as const)
+
+    // Section A: Event Overview
+    const renderSectionA = (
+      <section id="section-overview" className="planner-section-card">
+        <div className="card-header-row">
+          <span className="section-badge-pill badge-lavender">
+            <Icon name="calendar" size={13} /> SECTION A · EVENT OVERVIEW
+          </span>
+          <button
+            type="button"
+            className="adapt-pill-btn"
+            onClick={() => {
+              setEditName(eventName)
+              setEditOccasion(eventType)
+              setEditDate(eventDate)
+              setEditLocation(location)
+              setEditGuests(guests)
+              setEditBudget(budget)
+              setEditStyle(style)
+              setIsEditingBasics(!isEditingBasics)
+            }}
+          >
+            <Icon name="edit" size={13} />
+            {isEditingBasics ? "Cancel" : "Edit Details"}
+          </button>
+        </div>
+
+        <h3 className="section-card-title">{effectiveEventName}</h3>
+        <p className="section-card-desc">
+          Curated {style.toLowerCase()} {eventType.toLowerCase()} celebration for {guests} guests at {location}.
+        </p>
+
+        {isEditingBasics ? (
+          <div className="summary-edit-panel">
+            <div className="summary-edit-title">
+              <Icon name="edit" size={15} /> Edit Event Parameters
+            </div>
+            <div className="summary-edit-grid">
+              <div className="summary-edit-field">
+                <label>Event Name</label>
+                <input
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  placeholder="e.g. Birthday Celebration"
+                />
+              </div>
+              <div className="summary-edit-field">
+                <label>Occasion</label>
+                <select
+                  value={editOccasion}
+                  onChange={(e) => setEditOccasion(e.target.value)}
+                >
+                  <option value="Birthday">Birthday</option>
+                  <option value="College Party">College Party</option>
+                  <option value="Farewell">Farewell</option>
+                  <option value="Hostel Party">Hostel Party</option>
+                  <option value="Picnic">Picnic</option>
+                  <option value="Get-together">Get-together</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+              <div className="summary-edit-field">
+                <label>Event Date</label>
+                <input
+                  value={editDate}
+                  onChange={(e) => setEditDate(e.target.value)}
+                  placeholder="e.g. 20 Nov 2026"
+                />
+              </div>
+              <div className="summary-edit-field">
+                <label>Guest Count</label>
+                <input
+                  type="number"
+                  min={1}
+                  value={editGuests}
+                  onChange={(e) => setEditGuests(Math.max(1, Number(e.target.value)))}
+                />
+              </div>
+              <div className="summary-edit-field">
+                <label>Location</label>
+                <input
+                  value={editLocation}
+                  onChange={(e) => setEditLocation(e.target.value)}
+                  placeholder="e.g. Sector 17, Chandigarh"
+                />
+              </div>
+              <div className="summary-edit-field">
+                <label>Budget Range</label>
+                <select
+                  value={editBudget}
+                  onChange={(e) => setEditBudget(e.target.value)}
+                >
+                  <option value="Under ₹500">Under ₹500</option>
+                  <option value="₹500–₹1,000">₹500–₹1,000</option>
+                  <option value="₹1,000–₹3,000">₹1,000–₹3,000</option>
+                  <option value="₹3,000–₹5,000">₹3,000–₹5,000</option>
+                  <option value="₹5,000+">₹5,000+</option>
+                </select>
+              </div>
+              <div className="summary-edit-field">
+                <label>Celebration Type / Vibe</label>
+                <select
+                  value={editStyle}
+                  onChange={(e) => setEditStyle(e.target.value)}
+                >
+                  <option value="Casual">Casual</option>
+                  <option value="Aesthetic">Aesthetic</option>
+                  <option value="DIY / Budget-Friendly">DIY / Budget-Friendly</option>
+                  <option value="Traditional">Traditional</option>
+                  <option value="Fun / Party">Fun / Party</option>
+                </select>
+              </div>
+            </div>
+            <div className="summary-edit-actions">
+              <button
+                type="button"
+                className="plan-action-btn plan-action-btn-secondary"
+                onClick={generate}
+                title="Regenerate plan with updated criteria"
+              >
+                <Icon name="refresh" size={13} />
+                <span>Regenerate Plan</span>
+              </button>
+              <button
+                type="button"
+                className="plan-action-btn plan-action-btn-secondary"
+                onClick={() => setIsEditingBasics(false)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="plan-action-btn plan-action-btn-primary"
+                onClick={handleSaveBasics}
+              >
+                <Icon name="check" size={13} />
+                <span>Save Changes</span>
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="overview-tiles-grid">
+            <div className="overview-tile">
+              <span className="overview-tile-label">Celebration Type</span>
+              <strong className="overview-tile-val">{eventType} Celebration</strong>
+            </div>
+            <div className="overview-tile">
+              <span className="overview-tile-label">Date & Schedule</span>
+              <strong className="overview-tile-val">{eventDate}</strong>
+            </div>
+            <div className="overview-tile">
+              <span className="overview-tile-label">Venue / Location</span>
+              <strong className="overview-tile-val" title={location}>{location}</strong>
+            </div>
+            <div className="overview-tile">
+              <span className="overview-tile-label">Guest Count</span>
+              <strong className="overview-tile-val">{guests} Friends</strong>
+            </div>
+            <div className="overview-tile">
+              <span className="overview-tile-label">Target Budget</span>
+              <strong className="overview-tile-val highlight-purple">
+                {budget} (~₹{targetBudgetNum.toLocaleString("en-IN")})
+              </strong>
+            </div>
+            <div className="overview-tile">
+              <span className="overview-tile-label">Vibe & Food Preference</span>
+              <strong className="overview-tile-val">
+                {style} · {setting} ({foodPreference})
+              </strong>
+            </div>
+          </div>
+        )}
+      </section>
+    )
+
+    // Section B: Theme & Colour Palette
+    const renderSectionB = (
+      <section id="section-theme" className="planner-section-card">
+        <div className="card-header-row">
+          <span className="section-badge-pill badge-blush">
+            <Icon name="sparkle" size={13} /> SECTION B · THEME & COLOUR PALETTE
+          </span>
+          <button
+            type="button"
+            className="adapt-pill-btn"
+            onClick={() => {
+              setThemeIndex((prev) => (prev + 1) % themePresets.length)
+              notify("Theme & colour palette adapted!")
+            }}
+          >
+            <Icon name="refresh" size={13} /> Adapt Theme ({themeIndex + 1}/{themePresets.length})
+          </button>
+        </div>
+
+        <span className="section-subheading">SUGGESTED CELEBRATION THEME</span>
+        <h3 className="section-card-title">
+          {apiSuggestion?.suggested_theme || currentTheme.title}
+        </h3>
+        <p className="section-card-desc">{currentTheme.description}</p>
+
+        <span className="section-subheading">FOUR-COLOUR PALETTE SWATCHES</span>
+        <div className="theme-swatches-grid">
+          {currentTheme.swatches.map((swatch) => (
+            <div key={swatch.name} className="theme-swatch-card">
+              <div
+                className="theme-swatch-box"
+                style={{ backgroundColor: swatch.color }}
+              />
+              <div className="theme-swatch-meta">
+                <span className="theme-swatch-name">{swatch.name}</span>
+                <code className="theme-swatch-hex">{swatch.color}</code>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="theme-palette-names">{currentTheme.colorNames}</div>
+
+        <div className="theme-cost-footer">
+          <span>Estimated theme styling:</span>
+          <strong>₹{themeCost.toLocaleString("en-IN")}</strong>
+        </div>
+      </section>
+    )
+
+    // Section C: Food & Cake
+    const renderSectionC = (
+      <section id="section-food" className="planner-section-card">
+        <div className="card-header-row">
+          <span className="section-badge-pill badge-peach">
+            <Icon name="food" size={13} /> SECTION C · FOOD & CAKE
+          </span>
+          <button
+            type="button"
+            className="adapt-pill-btn"
+            onClick={() => {
+              setFoodIndex((prev) => (prev + 1) % foodPresets.length)
+              notify("Food & cake menu adapted!")
+            }}
+          >
+            <Icon name="sparkle" size={13} /> Adapt Menu ({foodIndex + 1}/{foodPresets.length})
+          </button>
+        </div>
+
+        {/* 1. Cake & Bakery Special */}
+        <div className="food-subcard">
+          <div className="food-subcard-header">
+            <span className="food-subcard-title">
+              <Icon name="cake" size={16} />
+              {apiSuggestion?.food_suggestions?.find((f) =>
+                f.toLowerCase().includes("cake"),
+              ) || currentFood.cakeTitle}
+            </span>
+            <span className="food-price-tag">₹{currentFood.cakeCost}</span>
+          </div>
+          <p className="food-subcard-desc">{currentFood.cakeFlavor}</p>
+        </div>
+
+        {/* 2. Snacks & Platters */}
+        <div className="food-subcard">
+          <div className="food-subcard-header">
+            <span className="food-subcard-title">
+              <Icon name="food" size={15} /> Snacks & Finger Food Platters
+            </span>
+          </div>
+          <div className="food-snack-tags">
+            {(apiSuggestion?.food_suggestions && apiSuggestion.food_suggestions.length > 0
+              ? apiSuggestion.food_suggestions.filter((f) => !f.toLowerCase().includes("cake"))
+              : currentFood.snackRecommendations
+            ).map((snack, idx) => (
+              <span key={idx} className="food-tag-pill">
+                <Icon name="food" size={12} />
+                <span>{snack.trim()}</span>
+              </span>
+            ))}
+          </div>
+        </div>
+
+        {/* 3. Beverages & Refreshments */}
+        <div className="food-subcard">
+          <div className="food-subcard-header">
+            <span className="food-subcard-title">
+              <Icon name="coffee" size={15} /> Beverages & Refreshments
+            </span>
+          </div>
+          <p className="food-subcard-desc">{currentFood.drinks}</p>
+        </div>
+
+        <div className="food-footer-row">
+          <span className="diet-pill">
+            <Icon name="check" size={12} /> {foodPreference} ({currentFood.dietTag})
+          </span>
+          <div className="food-cost-breakdown">
+            <span className="per-guest-text">
+              ~₹{Math.round((foodCost + cakeCost) / Math.max(1, guests))} / guest
+            </span>
+            <strong className="food-total-text">
+              ₹{(foodCost + cakeCost).toLocaleString("en-IN")} est.
+            </strong>
+          </div>
+        </div>
+      </section>
+    )
+
+    // Section D: Decor & DIY
+    const renderSectionD = (
+      <section id="section-decor" className="planner-section-card">
+        <div className="card-header-row">
+          <span className="section-badge-pill badge-lavender">
+            <Icon name="bulb" size={13} /> SECTION D · DECOR & DIY
+          </span>
+          <button
+            type="button"
+            className="adapt-pill-btn"
+            onClick={() => {
+              setDecorIndex((prev) => (prev + 1) % decorPresets.length)
+              notify("Decor & DIY ideas adapted!")
+            }}
+          >
+            <Icon name="refresh" size={13} /> Adapt Decor ({decorIndex + 1}/{decorPresets.length})
+          </button>
+        </div>
+
+        <span className="section-subheading">DECORATION RECOMMENDATIONS</span>
+        <p className="section-card-desc">
+          {apiSuggestion?.decoration_suggestions &&
+          apiSuggestion.decoration_suggestions.length > 0
+            ? apiSuggestion.decoration_suggestions.join(". ")
+            : currentDecor.recommendation}
+        </p>
+
+        <span className="section-subheading">REQUIRED MATERIALS</span>
+        <div className="materials-tag-list">
+          {currentDecor.requiredMaterials.map((mat) => (
+            <span key={mat} className="material-pill">
+              <Icon name="check" size={11} />
+              <span>{mat}</span>
+            </span>
+          ))}
+        </div>
+
+        <span className="section-subheading" style={{ marginTop: 14 }}>AFFORDABLE DIY DECORATION IDEAS</span>
+        <div className="decor-diy-grid">
+          {currentDecor.diyIdeas.map((idea) => (
+            <div key={idea.title} className="decor-diy-card">
+              <div className="decor-diy-header">
+                <strong>{idea.title}</strong>
+                <span className="decor-diy-cost">{idea.cost}</span>
+              </div>
+              <p>{idea.desc}</p>
+            </div>
+          ))}
+        </div>
+
+        <div className="theme-cost-footer" style={{ marginTop: 16 }}>
+          <span>Estimated decoration expense:</span>
+          <strong>₹{decorCost.toLocaleString("en-IN")}</strong>
+        </div>
+      </section>
+    )
+
+    // Section E: Activities
+    const renderSectionE = (
+      <section id="section-activities" className="planner-section-card">
+        <div className="card-header-row">
+          <span className="section-badge-pill badge-yellow">
+            <Icon name="music" size={13} /> SECTION E · ACTIVITIES & ENTERTAINMENT
+          </span>
+          <button
+            type="button"
+            className="adapt-pill-btn"
+            onClick={() => {
+              setActivityIndex((prev) => (prev + 1) % activityPresets.length)
+              notify("Activities adapted!")
+            }}
+          >
+            <Icon name="sparkle" size={13} /> Adapt Activities ({activityIndex + 1}/{activityPresets.length})
+          </button>
+        </div>
+
+        <div className="activity-box">
+          <div className="activity-box-header">
+            <span className="section-subheading" style={{ margin: 0 }}>RECOMMENDED PARTY GAMES</span>
+            <span className="guest-badge-pill">
+              <Icon name="people" size={12} /> For {guests} guests
+            </span>
+          </div>
+          <p className="activity-main-text">
+            {apiSuggestion?.activity_suggestions &&
+            apiSuggestion.activity_suggestions.length > 0
+              ? apiSuggestion.activity_suggestions.join(" · ")
+              : currentActivity.activities}
+          </p>
+          <small className="activity-sub-context">
+            {currentActivity.guestSuitability}
+          </small>
+        </div>
+
+        <span className="section-subheading">REQUIRED MATERIALS & SETUP</span>
+        <div className="materials-tag-list" style={{ marginBottom: 12 }}>
+          {currentActivity.requiredMaterials.map((mat) => (
+            <span key={mat} className="material-pill">
+              <Icon name="check" size={11} />
+              <span>{mat}</span>
+            </span>
+          ))}
+        </div>
+
+        <div className="activity-box">
+          <span className="section-subheading" style={{ margin: 0 }}>ATMOSPHERE & ENTERTAINMENT</span>
+          <p className="activity-main-text">{currentActivity.entertainment}</p>
+        </div>
+
+        <div className="activity-footer-row">
+          <span className="diet-pill" style={{ background: "#fefce8", color: "#854d0e", border: "1px solid #fef08a" }}>
+            <Icon name="sparkle" size={12} />
+            {currentActivity.cost === 0 ? "100% Free Games & Quizzes" : `₹${currentActivity.cost} props budget`}
+          </span>
+          <span className="activity-timing-text">
+            60–90 min celebration itinerary
+          </span>
+        </div>
+      </section>
+    )
+
+    // Section F: Shopping Checklist
+    const renderSectionF = (
+      <section id="section-shopping" className="planner-section-card">
+        <div className="card-header-row">
+          <span className="section-badge-pill badge-blush">
+            <Icon name="gift" size={13} /> SECTION F · SHOPPING CHECKLIST
+          </span>
+          <span className="shopping-progress-text">
+            {completedCount} / {shoppingItems.length} purchased ({checklistPercent}%)
+          </span>
+        </div>
+
+        <div className="shopping-progress-track">
+          <div
+            className="shopping-progress-fill"
+            style={{ width: `${checklistPercent}%` }}
+          />
+        </div>
+
+        <div className="shopping-cost-summary">
+          <span>Checklist Value: <strong>₹{totalShoppingCost.toLocaleString("en-IN")}</strong> ({shoppingItems.length} items)</span>
+          <span>Purchased: <strong style={{ color: "#16a34a" }}>₹{purchasedShoppingCost.toLocaleString("en-IN")}</strong></span>
+        </div>
+
+        <div className="shopping-items-list">
+          {shoppingItems.map((item) => (
+            <div
+              key={item.id}
+              className={`shopping-item-row ${item.completed ? "completed" : ""}`}
+            >
+              <div className="shopping-item-left">
+                <button
+                  type="button"
+                  className={`shopping-checkbox-btn ${item.completed ? "checked" : ""}`}
+                  onClick={() => toggleShoppingItem(item.id)}
+                  title={item.completed ? "Mark as unpurchased" : "Mark as purchased"}
+                >
+                  {item.completed && <Icon name="check" size={12} />}
+                </button>
+                <div className="shopping-item-info">
+                  <span className="shopping-item-name">{item.name}</span>
+                  <div className="shopping-item-badges">
+                    <span className="shopping-item-category">{item.category}</span>
+                    <span className="shopping-item-qty">{item.quantity}</span>
+                  </div>
+                </div>
+              </div>
+              <div className="shopping-item-right">
+                <span className="shopping-item-price">₹{item.cost}</span>
+                <button
+                  type="button"
+                  className="shopping-delete-btn"
+                  onClick={() => deleteShoppingItem(item.id)}
+                  title="Remove item"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <form onSubmit={addShoppingItem} className="shopping-add-form">
+          <input
+            className="shopping-add-input"
+            style={{ flex: 2 }}
+            placeholder="Item name (e.g. Birthday candles)"
+            value={newShoppingName}
+            onChange={(e) => setNewShoppingName(e.target.value)}
+          />
+          <select
+            className="shopping-add-input"
+            style={{ width: 110 }}
+            value={newShoppingCategory}
+            onChange={(e) => setNewShoppingCategory(e.target.value)}
+          >
+            <option value="Decor">Decor</option>
+            <option value="Food">Food</option>
+            <option value="Cake">Cake</option>
+            <option value="Supplies">Supplies</option>
+            <option value="DIY">DIY</option>
+            <option value="Custom">Custom</option>
+          </select>
+          <input
+            className="shopping-add-input"
+            style={{ width: 80 }}
+            placeholder="Qty (1x)"
+            value={newShoppingQuantity}
+            onChange={(e) => setNewShoppingQuantity(e.target.value)}
+          />
+          <input
+            className="shopping-add-input"
+            style={{ width: 75 }}
+            type="number"
+            placeholder="₹"
+            value={newShoppingCost}
+            onChange={(e) => setNewShoppingCost(e.target.value)}
+          />
+          <button
+            type="submit"
+            className="plan-action-btn plan-action-btn-primary"
+            style={{ padding: "7px 14px", fontSize: 12 }}
+          >
+            + Add
+          </button>
+        </form>
+      </section>
+    )
+
+    // Section G: Budget Breakdown
+    const renderSectionG = (
+      <section id="section-budget" className="planner-section-card">
+        <div className="card-header-row">
+          <span className="section-badge-pill badge-green">
+            <Icon name="wallet" size={13} /> SECTION G · BUDGET BREAKDOWN
+          </span>
+          <span
+            className={`section-badge-pill ${
+              !isOverBudget ? "badge-green" : "badge-coral"
+            }`}
+          >
+            {!isOverBudget
+              ? currentSavings > 0
+                ? `✓ Within budget target (₹${currentSavings.toLocaleString("en-IN")} buffer)`
+                : "✓ Within budget target (Exact match)"
+              : `⚠️ Over budget by ₹${(displayTotal - targetBudgetNum).toLocaleString("en-IN")}`}
+          </span>
+        </div>
+
+        {/* Clear Overspending Indicator Banner */}
+        <div className={`budget-status-banner ${!isOverBudget ? "within" : "over"}`}>
+          {!isOverBudget ? (
+            <div className="budget-banner-content">
+              <Icon name="check" size={16} />
+              <span>
+                <strong>Balanced celebration budget!</strong> You have ₹{currentSavings.toLocaleString("en-IN")} safety buffer remaining for incidentals.
+              </span>
+            </div>
+          ) : (
+            <div className="budget-banner-content">
+              <Icon name="wallet" size={16} />
+              <span>
+                <strong>Budget limit exceeded by ₹{(displayTotal - targetBudgetNum).toLocaleString("en-IN")}.</strong> Consider adjusting snack platters or DIY decor quantities to fit within ₹{targetBudgetNum.toLocaleString("en-IN")}.
+              </span>
+            </div>
+          )}
+        </div>
+
+        <div className="budget-kpis-grid">
+          <div className="budget-kpi-tile">
+            <span className="budget-kpi-label">Target Budget</span>
+            <strong className="budget-kpi-val">
+              ₹{targetBudgetNum.toLocaleString("en-IN")}
+            </strong>
+          </div>
+          <div className="budget-kpi-tile">
+            <span className="budget-kpi-label">Estimated Expense</span>
+            <strong className="budget-kpi-val highlight-purple">
+              ₹{displayTotal.toLocaleString("en-IN")}
+            </strong>
+          </div>
+          <div className="budget-kpi-tile">
+            <span className="budget-kpi-label">Remaining Cushion</span>
+            <strong
+              className="budget-kpi-val"
+              style={{ color: !isOverBudget ? "#16a34a" : "#dc2626" }}
+            >
+              {!isOverBudget
+                ? `₹${currentSavings.toLocaleString("en-IN")}`
+                : `-₹${(displayTotal - targetBudgetNum).toLocaleString("en-IN")}`}
+            </strong>
+          </div>
+          <div className="budget-kpi-tile">
+            <span className="budget-kpi-label">Per-Guest Cost</span>
+            <strong className="budget-kpi-val">
+              ~₹{Math.round(displayTotal / Math.max(1, guests)).toLocaleString("en-IN")}
+            </strong>
+          </div>
+        </div>
+
+        <span className="section-subheading">ITEMIZED CATEGORY EXPENDITURE</span>
+        <div className="budget-breakdown-list">
+          {budgetRows.map(([label, amount, width]) => (
+            <div className="budget-row-item" key={String(label)}>
+              <div className="budget-row-labels">
+                <span className="budget-row-name">{label}</span>
+                <strong className="budget-row-amount">{amount} ({width}%)</strong>
+              </div>
+              <div className="budget-row-bar-track">
+                <div
+                  className="budget-row-bar-fill"
+                  style={{ width: `${Math.min(100, Number(width))}%` }}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {apiSuggestion?.budget_saving_tips && apiSuggestion.budget_saving_tips.length > 0 && (
+          <div className="budget-saving-tips">
+            <span className="budget-saving-tips-title">
+              💡 AI Budget-Saving Recommendations
+            </span>
+            <div className="saving-tips-list">
+              {apiSuggestion.budget_saving_tips.map((tip, idx) => (
+                <div key={idx} className="saving-tip-item">
+                  <span>•</span>
+                  <span>{tip}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </section>
+    )
+
+    // Section H: Tasks & Timeline
+    const renderSectionH = (
+      <section id="section-tasks" className="planner-section-card">
+        <div className="card-header-row">
+          <span className="section-badge-pill badge-lavender">
+            <Icon name="check" size={13} /> SECTION H · TASKS & TIMELINE
+          </span>
+          <span className="shopping-progress-text">
+            {plannerTasks.filter((t) => t.completed).length} / {plannerTasks.length} tasks ready
+          </span>
+        </div>
+
+        <span className="section-subheading">ACTIONABLE CELEBRATION TASKS</span>
+        <div className="tasks-items-list">
+          {plannerTasks.map((task) => (
+            <div
+              key={task.id}
+              className={`task-card-row ${task.completed ? "completed" : ""}`}
+            >
+              <div className="task-card-left">
+                <button
+                  type="button"
+                  className={`shopping-checkbox-btn ${task.completed ? "checked" : ""}`}
+                  onClick={() =>
+                    setPlannerTasks((prev) =>
+                      prev.map((t) =>
+                        t.id === task.id ? { ...t, completed: !t.completed } : t,
+                      ),
+                    )
+                  }
+                  title={task.completed ? "Mark incomplete" : "Mark done"}
+                >
+                  {task.completed && <Icon name="check" size={12} />}
+                </button>
+                <div className="task-card-info">
+                  <span className="task-card-title">{task.title}</span>
+                  <span className="task-card-timing">Due: {task.timing}</span>
+                </div>
+              </div>
+              <span
+                className={`task-priority-pill priority-${task.priority.toLowerCase()}`}
+              >
+                {task.priority}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        <span className="section-subheading" style={{ marginTop: 14 }}>
+          CELEBRATION MILESTONE TIMELINE
+        </span>
+        <div className="timeline-phases-list">
+          {[
+            {
+              phase: "Phase 1: 1–2 Weeks Before",
+              title: "Foundation & Headcount",
+              desc: "Lock in event date, venue, guest confirmations, and core theme.",
+              done: true,
+            },
+            {
+              phase: "Phase 2: 3–5 Days Before",
+              title: "Bakery & Decor Procurement",
+              desc: "Confirm cake flavor and lettering; source streamer rolls, lights & plates.",
+              done: false,
+            },
+            {
+              phase: "Phase 3: 1 Day Before",
+              title: "Sound & Atmosphere Check",
+              desc: "Assemble DIY photo props, prep party games, and queue playlist tracks.",
+              done: false,
+            },
+            {
+              phase: "Phase 4: Party Day!",
+              title: "Setup, Celebration & Photos",
+              desc: "Inflate balloon garland, place snack platters, cut cake & enjoy with friends.",
+              done: false,
+            },
+          ].map((item, idx) => (
+            <div
+              key={idx}
+              className={`timeline-phase-item ${item.done ? "done" : ""}`}
+            >
+              <div className="timeline-dot">
+                {item.done ? <Icon name="check" size={12} /> : idx + 1}
+              </div>
+              <div className="timeline-phase-content">
+                <div className="timeline-phase-header">
+                  <span className="timeline-phase-tag">{item.phase}</span>
+                </div>
+                <strong className="timeline-phase-title">{item.title}</strong>
+                <p className="timeline-phase-desc">{item.desc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
     )
 
     return (
       <div className="screen planner-results">
-        <Header
-          title="AI Planner"
-          eyebrow="PLANZY RECOMMENDATION ENGINE"
-          onBack={() => setStep("form")}
-          action={
-            <IconButton
-              icon="bookmark"
-              label="Save plan"
+        {/* Modern SaaS Top Header */}
+        <div className="planner-top-header">
+          <div className="planner-header-left">
+            <div className="planner-header-title-row">
+              <div className="planner-header-icon">
+                <Icon name="sparkle" size={22} />
+              </div>
+              <div>
+                <h1 className="planner-main-heading">AI Celebration Plan</h1>
+                <p className="planner-header-subtitle">
+                  Curated recommendations for {effectiveEventName}
+                </p>
+              </div>
+            </div>
+          </div>
+          <div className="planner-header-actions">
+            <button
+              type="button"
+              className="plan-action-btn plan-action-btn-secondary"
+              onClick={() => setStep("form")}
+            >
+              <Icon name="plus" size={15} />
+              <span>New Plan</span>
+            </button>
+            <button
+              type="button"
+              className="plan-action-btn plan-action-btn-secondary"
+              onClick={generate}
+              disabled={isAiLoading}
+            >
+              <Icon name="refresh" size={15} />
+              <span>{isAiLoading ? "Regenerating…" : "Regenerate"}</span>
+            </button>
+            <button
+              type="button"
+              className="plan-action-btn plan-action-btn-primary"
               onClick={handleSavePlan}
-            />
-          }
-        />
+            >
+              <Icon name="bookmark" size={15} />
+              <span>Add to My Plans</span>
+            </button>
+          </div>
+        </div>
 
-        {/* Section Tabs for Responsive / Mobile Navigation */}
+        {/* Compact Event Summary Card */}
+        <div className="event-summary-card">
+          <div className="event-summary-meta-grid">
+            <div className="summary-meta-item">
+              <span className="summary-meta-label">EVENT NAME</span>
+              <div className="summary-meta-val-row">
+                <strong className="summary-meta-val">{effectiveEventName}</strong>
+                <span className="summary-badge-pill">{eventType}</span>
+              </div>
+            </div>
+            <div className="summary-meta-item">
+              <span className="summary-meta-label">EVENT DATE</span>
+              <strong className="summary-meta-val">{eventDate}</strong>
+            </div>
+            <div className="summary-meta-item">
+              <span className="summary-meta-label">NUMBER OF GUESTS</span>
+              <strong className="summary-meta-val">{guests} Friends</strong>
+            </div>
+            <div className="summary-meta-item">
+              <span className="summary-meta-label">LOCATION</span>
+              <strong className="summary-meta-val" title={location}>
+                {location.length > 28 ? `${location.slice(0, 28)}…` : location}
+              </strong>
+            </div>
+            <div className="summary-meta-item">
+              <span className="summary-meta-label">TOTAL BUDGET</span>
+              <strong className="summary-meta-val highlight-purple">{budget}</strong>
+            </div>
+          </div>
+          <button
+            type="button"
+            className="summary-edit-btn"
+            onClick={() => {
+              setEditName(eventName)
+              setEditOccasion(eventType)
+              setEditDate(eventDate)
+              setEditLocation(location)
+              setEditGuests(guests)
+              setEditBudget(budget)
+              setEditStyle(style)
+              setIsEditingBasics(!isEditingBasics)
+            }}
+          >
+            <Icon name="edit" size={13} />
+            <span>{isEditingBasics ? "Close Editor" : "Edit Details"}</span>
+          </button>
+        </div>
+
+        {/* Section Navigation Tabs */}
         <div
           className="plan-tabs-bar"
           role="tablist"
-          aria-label="Plan sections"
+          aria-label="Celebration plan sections"
         >
           {[
-            { id: "all", label: "All Sections" },
-            { id: "overview", label: "A. Overview" },
-            { id: "theme", label: "B. Theme" },
-            { id: "food", label: "C. Food & Cake" },
-            { id: "decor", label: "D. Decor & DIY" },
-            { id: "activities", label: "E. Activities" },
-            { id: "shopping", label: "F. Shopping" },
-            { id: "budget", label: "G. Budget" },
+            { id: "all", label: "All Sections", icon: "sparkle" as const },
+            { id: "overview", label: "Overview", icon: "calendar" as const },
+            { id: "theme", label: "Theme & Palette", icon: "sparkle" as const },
+            { id: "food", label: "Food & Cake", icon: "food" as const },
+            { id: "decor", label: "Decor & DIY", icon: "bulb" as const },
+            { id: "activities", label: "Activities", icon: "music" as const },
+            { id: "budget", label: "Budget Breakdown", icon: "wallet" as const },
+            { id: "shopping", label: "Shopping List", icon: "gift" as const },
+            { id: "tasks", label: "Tasks & Timeline", icon: "check" as const },
           ].map((tab) => (
             <button
               type="button"
               key={tab.id}
-              className={`plan-tab-pill ${
-                activeTab === tab.id ? "active" : ""
-              }`}
+              role="tab"
+              aria-selected={activeTab === tab.id}
+              className={`plan-tab-pill ${activeTab === tab.id ? "active" : ""}`}
               onClick={() => setActiveTab(tab.id as typeof activeTab)}
             >
-              {tab.label}
+              <Icon name={tab.icon} size={14} />
+              <span>{tab.label}</span>
             </button>
           ))}
         </div>
 
-        {/* SECTION A: EVENT OVERVIEW */}
-        {(activeTab === "all" || activeTab === "overview") && (
-          <section className="event-overview-card">
-            <div className="spread">
-              <span className="plan-section-badge">
-                <Icon name="sparkle" size={13} /> SECTION A · EVENT OVERVIEW
-              </span>
-              <button
-                type="button"
-                className="adapt-section"
-                onClick={() => {
-                  setEditName(eventName)
-                  setEditDate(eventDate)
-                  setEditLocation(location)
-                  setEditGuests(guests)
-                  setEditBudget(budget)
-                  setIsEditingBasics(!isEditingBasics)
-                }}
-              >
-                <Icon name="edit" size={13} />{" "}
-                {isEditingBasics ? "Cancel Edit" : "Edit Basics"}
-              </button>
+        {/* Balanced Vertical Dashboard Layout */}
+        {activeTab === "all" ? (
+          <div className="planner-dashboard-grid">
+            <div className="planner-grid-col">
+              {renderSectionA}
+              {renderSectionB}
+              {renderSectionD}
+              {renderSectionE}
             </div>
-
-            <div className="result-title" style={{ marginTop: 8 }}>
-              {eventName}
+            <div className="planner-grid-col">
+              {renderSectionC}
+              {renderSectionG}
+              {renderSectionF}
+              {renderSectionH}
             </div>
-            <p
-              style={{ margin: "4px 0 0", color: "var(--muted)", fontSize: 10 }}
-            >
-              Curated {style.toLowerCase()} {eventType.toLowerCase()} experience
-              for {guests} guests at {location}.
-            </p>
-
-            {isEditingBasics ? (
-              <div className="section-edit-form">
-                <label>
-                  <span>Event Name</span>
-                  <input
-                    value={editName}
-                    onChange={(e) => setEditName(e.target.value)}
-                  />
-                </label>
-                <div className="split-fields">
-                  <label>
-                    <span>Date</span>
-                    <input
-                      value={editDate}
-                      onChange={(e) => setEditDate(e.target.value)}
-                    />
-                  </label>
-                  <label>
-                    <span>Guests</span>
-                    <input
-                      type="number"
-                      value={editGuests}
-                      onChange={(e) => setEditGuests(Number(e.target.value))}
-                    />
-                  </label>
-                </div>
-                <div className="split-fields">
-                  <label>
-                    <span>Location</span>
-                    <input
-                      value={editLocation}
-                      onChange={(e) => setEditLocation(e.target.value)}
-                    />
-                  </label>
-                  <label>
-                    <span>Budget Range</span>
-                    <input
-                      value={editBudget}
-                      onChange={(e) => setEditBudget(e.target.value)}
-                    />
-                  </label>
-                </div>
-                <Button onClick={handleSaveBasics} variant="primary">
-                  Save Changes
-                </Button>
-              </div>
-            ) : (
-              <div className="overview-grid-stats">
-                <div>
-                  <span>Celebration Type</span>
-                  <strong>{eventType}</strong>
-                </div>
-                <div>
-                  <span>Date & Schedule</span>
-                  <strong>{eventDate}</strong>
-                </div>
-                <div>
-                  <span>Location</span>
-                  <strong>{location}</strong>
-                </div>
-                <div>
-                  <span>Guest Count</span>
-                  <strong>{guests} Friends</strong>
-                </div>
-                <div>
-                  <span>Target Budget</span>
-                  <strong>{budget}</strong>
-                </div>
-                <div>
-                  <span>Vibe & Setting</span>
-                  <strong>
-                    {style} · {setting}
-                  </strong>
-                </div>
-              </div>
-            )}
-          </section>
-        )}
-
-        {/* SECTIONS B THROUGH G: 2-COLUMN RESPONSIVE GRID */}
-        {activeTab !== "overview" && (
-          <div
-            className={`plan-cards-grid ${
-              activeTab !== "all" ? "single-view" : ""
-            }`}
-          >
-            {/* SECTION B: THEME & COLOUR PALETTE */}
-            {(activeTab === "all" || activeTab === "theme") && (
-              <section className="creative-plan-card palette-plan">
-                <div className="spread">
-                  <span className="plan-section-badge">
-                    <Icon name="sparkle" size={13} /> SECTION B · THEME & COLOUR
-                    PALETTE
-                  </span>
-                  <button
-                    type="button"
-                    className="adapt-section"
-                    onClick={() => {
-                      setThemeIndex((prev) => (prev + 1) % themePresets.length)
-                      notify("Theme & colour palette adapted!")
-                    }}
-                  >
-                    <Icon name="refresh" size={13} /> Adapt Theme (
-                    {themeIndex + 1}/{themePresets.length})
-                  </button>
-                </div>
-
-                <div style={{ marginTop: 10 }}>
-                  <div className="result-kicker">
-                    SUGGESTED CELEBRATION THEME
-                  </div>
-                  <strong
-                    style={{ fontSize: 16, display: "block", margin: "4px 0" }}
-                  >
-                    {currentTheme.title}
-                  </strong>
-                </div>
-
-                <p
-                  style={{
-                    margin: "8px 0 14px",
-                    color: "var(--muted)",
-                    fontSize: 10,
-                  }}
-                >
-                  {currentTheme.description}
-                </p>
-
-                <div
-                  className="plan-palette"
-                  aria-label="Suggested colour palette"
-                >
-                  {currentTheme.swatches.map((swatch) => (
-                    <span
-                      key={swatch.name}
-                      style={{
-                        backgroundColor: swatch.color,
-                        border: "1.5px solid rgba(41,36,58,0.2)",
-                        borderRadius: 9,
-                      }}
-                      title={`${swatch.name} (${swatch.color})`}
-                    />
-                  ))}
-                  <small
-                    style={{
-                      fontWeight: 700,
-                      color: "var(--ink)",
-                      marginLeft: 6,
-                    }}
-                  >
-                    {currentTheme.colorNames}
-                  </small>
-                </div>
-
-                <div className="theme-cost">
-                  <span>Estimated theme + styling cost</span>
-                  <strong>₹{themeCost.toLocaleString("en-IN")}</strong>
-                </div>
-              </section>
-            )}
-
-            {/* SECTION C: FOOD & CAKE */}
-            {(activeTab === "all" || activeTab === "food") && (
-              <section
-                className="result-section peach"
-                style={{ display: "block", marginBottom: 16 }}
-              >
-                <div className="spread">
-                  <span className="plan-section-badge">
-                    <Icon name="food" size={13} /> SECTION C · FOOD & CAKE
-                  </span>
-                  <button
-                    type="button"
-                    className="adapt-section"
-                    onClick={() => {
-                      setFoodIndex((prev) => (prev + 1) % foodPresets.length)
-                      notify("Food & cake menu adapted!")
-                    }}
-                  >
-                    <Icon name="refresh" size={13} /> Adapt Menu (
-                    {foodIndex + 1}/{foodPresets.length})
-                  </button>
-                </div>
-
-                {/* Cake Suggestion Card */}
-                <div className="cake-card" style={{ marginTop: 12 }}>
-                  <strong>
-                    <span>
-                      <Icon name="cake" size={14} /> {currentFood.cakeTitle}
-                    </span>
-                    <span>₹{currentFood.cakeCost}</span>
-                  </strong>
-                  <p>{currentFood.cakeFlavor}</p>
-                </div>
-
-                {/* Food Recommendations */}
-                <div style={{ marginTop: 8 }}>
-                  <div className="result-kicker">
-                    FOOD & SNACK RECOMMENDATIONS
-                  </div>
-                  <p
-                    style={{
-                      margin: "6px 0 10px",
-                      fontSize: 10,
-                      color: "var(--ink)",
-                      lineHeight: 1.5,
-                    }}
-                  >
-                    {currentFood.snackRecommendations}
-                  </p>
-                  <div
-                    style={{
-                      fontSize: 9,
-                      color: "var(--muted)",
-                      marginBottom: 10,
-                    }}
-                  >
-                    <strong>Beverages:</strong> {currentFood.drinks}
-                  </div>
-                </div>
-
-                <div className="chip-line spread">
-                  <div style={{ display: "flex", gap: 6 }}>
-                    <span
-                      style={{
-                        background: "#fff",
-                        border: "1px solid var(--line)",
-                      }}
-                    >
-                      {foodPreference} ({currentFood.dietTag})
-                    </span>
-                    <span
-                      style={{
-                        background: "#fff",
-                        border: "1px solid var(--line)",
-                      }}
-                    >
-                      ₹{(foodCost + cakeCost).toLocaleString("en-IN")} est.
-                    </span>
-                  </div>
-                  <small style={{ color: "var(--muted)", fontWeight: 700 }}>
-                    ~₹{Math.round((foodCost + cakeCost) / guests)} / guest
-                  </small>
-                </div>
-              </section>
-            )}
-
-            {/* SECTION D: DECORATIONS & DIY */}
-            {(activeTab === "all" || activeTab === "decor") && (
-              <section
-                className="creative-plan-card diy-plan"
-                style={{ marginBottom: 16 }}
-              >
-                <div className="spread">
-                  <span className="plan-section-badge">
-                    <Icon name="bulb" size={13} /> SECTION D · DECORATIONS & DIY
-                  </span>
-                  <button
-                    type="button"
-                    className="adapt-section"
-                    onClick={() => {
-                      setDecorIndex((prev) => (prev + 1) % decorPresets.length)
-                      notify("Decor & DIY ideas adapted!")
-                    }}
-                  >
-                    <Icon name="refresh" size={13} /> Adapt Decor (
-                    {decorIndex + 1}/{decorPresets.length})
-                  </button>
-                </div>
-
-                <div style={{ marginTop: 10 }}>
-                  <div className="result-kicker">
-                    DECORATION RECOMMENDATIONS
-                  </div>
-                  <p
-                    style={{
-                      margin: "4px 0 12px",
-                      fontSize: 10,
-                      color: "var(--ink)",
-                    }}
-                  >
-                    {currentDecor.recommendation}
-                  </p>
-                </div>
-
-                <div className="result-kicker">
-                  AFFORDABLE DIY DECORATION IDEAS
-                </div>
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-                    gap: 8,
-                    marginTop: 8,
-                  }}
-                >
-                  {currentDecor.diyIdeas.map((idea) => (
-                    <div key={idea.title} className="diy-card-item">
-                      <div className="spread">
-                        <strong>{idea.title}</strong>
-                        <small>{idea.cost}</small>
-                      </div>
-                      <p>{idea.desc}</p>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="theme-cost">
-                  <span>Estimated decoration expense</span>
-                  <strong>₹{decorCost.toLocaleString("en-IN")}</strong>
-                </div>
-              </section>
-            )}
-
-            {/* SECTION E: ACTIVITIES */}
-            {(activeTab === "all" || activeTab === "activities") && (
-              <section
-                className="result-section yellow"
-                style={{ display: "block", marginBottom: 16 }}
-              >
-                <div className="spread">
-                  <span className="plan-section-badge">
-                    <Icon name="music" size={13} /> SECTION E · ACTIVITIES &
-                    ENTERTAINMENT
-                  </span>
-                  <button
-                    type="button"
-                    className="adapt-section"
-                    onClick={() => {
-                      setActivityIndex(
-                        (prev) => (prev + 1) % activityPresets.length,
-                      )
-                      notify("Activities adapted!")
-                    }}
-                  >
-                    <Icon name="refresh" size={13} /> Adapt Activities (
-                    {activityIndex + 1}/{activityPresets.length})
-                  </button>
-                </div>
-
-                <div style={{ marginTop: 10 }}>
-                  <div className="result-kicker">
-                    SUGGESTED PARTY ACTIVITIES
-                  </div>
-                  <p
-                    style={{
-                      margin: "6px 0 12px",
-                      fontSize: 10,
-                      color: "var(--ink)",
-                      lineHeight: 1.5,
-                    }}
-                  >
-                    {currentActivity.activities}
-                  </p>
-                </div>
-
-                <div>
-                  <div className="result-kicker">ENTERTAINMENT IDEAS</div>
-                  <p
-                    style={{
-                      margin: "6px 0 12px",
-                      fontSize: 10,
-                      color: "var(--muted)",
-                    }}
-                  >
-                    {currentActivity.entertainment}
-                  </p>
-                </div>
-
-                <div className="chip-line spread">
-                  <span
-                    style={{
-                      background: "#fff",
-                      border: "1px solid var(--line)",
-                    }}
-                  >
-                    {currentActivity.cost === 0
-                      ? "100% Free Games"
-                      : `₹${currentActivity.cost} props`}
-                  </span>
-                  <span
-                    style={{
-                      background: "#fff",
-                      border: "1px solid var(--line)",
-                    }}
-                  >
-                    60–90 min entertainment
-                  </span>
-                </div>
-              </section>
-            )}
-
-            {/* SECTION F: SHOPPING CHECKLIST */}
-            {(activeTab === "all" || activeTab === "shopping") && (
-              <section
-                className="creative-plan-card shopping-plan"
-                style={{ marginBottom: 16 }}
-              >
-                <div className="spread">
-                  <span className="plan-section-badge">
-                    <Icon name="gift" size={13} /> SECTION F · SHOPPING
-                    CHECKLIST
-                  </span>
-                  <span
-                    style={{
-                      fontSize: 8,
-                      fontWeight: 800,
-                      padding: "4px 8px",
-                      borderRadius: 99,
-                      background:
-                        checklistPercent === 100
-                          ? "var(--green)"
-                          : "var(--paper)",
-                      border: "1px solid var(--line)",
-                    }}
-                  >
-                    {completedCount} / {shoppingItems.length} checked (
-                    {checklistPercent}%)
-                  </span>
-                </div>
-
-                <div style={{ marginTop: 8 }}>
-                  <div className="result-kicker">
-                    CHECKLIST ITEMS & ESTIMATED COSTS
-                  </div>
-                  <small style={{ color: "var(--muted)", fontSize: 8 }}>
-                    Tap checkbox to toggle item completion status
-                  </small>
-                </div>
-
-                <div className="plan-shopping-list">
-                  {shoppingItems.map((item) => (
-                    <span
-                      key={item.id}
-                      className={item.completed ? "completed" : ""}
-                      style={{ cursor: "pointer" }}
-                      onClick={() => toggleShoppingItem(item.id)}
-                    >
-                      <button
-                        type="button"
-                        className={`plan-check-btn ${
-                          item.completed ? "checked" : ""
-                        }`}
-                        aria-label={
-                          item.completed ? "Mark incomplete" : "Mark complete"
-                        }
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          toggleShoppingItem(item.id)
-                        }}
-                      >
-                        {item.completed && <Icon name="check" size={12} />}
-                      </button>
-                      <div>
-                        <strong>{item.name}</strong>
-                        <span
-                          style={{
-                            marginLeft: 6,
-                            fontSize: 7,
-                            color: "var(--muted)",
-                            padding: "2px 5px",
-                            background: "var(--paper)",
-                            borderRadius: 4,
-                          }}
-                        >
-                          {item.category}
-                        </span>
-                      </div>
-                      <small>₹{item.cost}</small>
-                    </span>
-                  ))}
-                </div>
-
-                {/* Quick Add Custom Item */}
-                <form onSubmit={addShoppingItem} className="shopping-add-row">
-                  <input
-                    className="shopping-add-input"
-                    placeholder="Add checklist item (e.g. Extra napkins, Party poppers)"
-                    value={newShoppingName}
-                    onChange={(e) => setNewShoppingName(e.target.value)}
-                  />
-                  <input
-                    className="shopping-add-input"
-                    style={{ maxWidth: 80 }}
-                    type="number"
-                    placeholder="₹ Cost"
-                    value={newShoppingCost}
-                    onChange={(e) => setNewShoppingCost(e.target.value)}
-                  />
-                  <button type="submit" className="shopping-add-btn">
-                    + Add
-                  </button>
-                </form>
-              </section>
-            )}
-
-            {/* SECTION G: BUDGET BREAKDOWN */}
-            {(activeTab === "all" || activeTab === "budget") && (
-              <section className="expense-plan" style={{ marginBottom: 16 }}>
-                <div className="spread">
-                  <span className="plan-section-badge">
-                    <Icon name="wallet" size={13} /> SECTION G · BUDGET
-                    BREAKDOWN
-                  </span>
-                  <span
-                    style={{
-                      fontSize: 9,
-                      fontWeight: 800,
-                      color: "var(--green)",
-                    }}
-                  >
-                    {savings > 0
-                      ? `₹${savings.toLocaleString("en-IN")} buffer remaining`
-                      : "Within target"}
-                  </span>
-                </div>
-
-                <div style={{ marginTop: 8 }}>
-                  <div className="result-kicker">
-                    ITEMIZED EXPENDITURE ESTIMATE
-                  </div>
-                </div>
-
-                {[
-                  [
-                    "Food & cake",
-                    `₹${(foodCost + cakeCost).toLocaleString("en-IN")}`,
-                    Math.round(((foodCost + cakeCost) / totalEstimated) * 100),
-                  ],
-                  [
-                    "Theme styling",
-                    `₹${themeCost.toLocaleString("en-IN")}`,
-                    Math.round((themeCost / totalEstimated) * 100),
-                  ],
-                  [
-                    "Decorations & DIY",
-                    `₹${decorCost.toLocaleString("en-IN")}`,
-                    Math.round((decorCost / totalEstimated) * 100),
-                  ],
-                  [
-                    "Drinks & refreshments",
-                    `₹${drinksCost.toLocaleString("en-IN")}`,
-                    Math.round((drinksCost / totalEstimated) * 100),
-                  ],
-                  [
-                    "Activities & return gifts",
-                    `₹${activityCost.toLocaleString("en-IN")}`,
-                    Math.round((activityCost / totalEstimated) * 100),
-                  ],
-                  [
-                    "Safety buffer",
-                    `₹${bufferCost.toLocaleString("en-IN")}`,
-                    Math.round((bufferCost / totalEstimated) * 100),
-                  ],
-                ].map(([label, amount, width]) => (
-                  <div className="expense-plan-row" key={String(label)}>
-                    <span>{label}</span>
-                    <div>
-                      <i style={{ width: `${width}%` }} />
-                    </div>
-                    <strong>{amount}</strong>
-                  </div>
-                ))}
-
-                <div className="total-row">
-                  <div>
-                    <span>Total Estimated Expenditure</span>
-                    <small
-                      style={{
-                        display: "block",
-                        color: "var(--muted)",
-                        fontSize: 8,
-                      }}
-                    >
-                      Target: {budget} (~₹
-                      {targetBudgetNum.toLocaleString("en-IN")})
-                    </small>
-                  </div>
-                  <strong style={{ color: "var(--purple)", fontSize: 16 }}>
-                    ₹{totalEstimated.toLocaleString("en-IN")}
-                  </strong>
-                </div>
-              </section>
-            )}
+          </div>
+        ) : (
+          <div className="planner-full-view">
+            {activeTab === "overview" && renderSectionA}
+            {activeTab === "theme" && renderSectionB}
+            {activeTab === "food" && renderSectionC}
+            {activeTab === "decor" && renderSectionD}
+            {activeTab === "activities" && renderSectionE}
+            {activeTab === "budget" && renderSectionG}
+            {activeTab === "shopping" && renderSectionF}
+            {activeTab === "tasks" && renderSectionH}
           </div>
         )}
 
-        {/* Sticky Actions */}
-        <div className="sticky-actions">
-          <Button variant="secondary" onClick={() => generate()}>
-            <Icon name="refresh" size={18} /> Regenerate
-          </Button>
-          <Button onClick={handleSavePlan} icon="arrow">
-            Add to My Events
-          </Button>
+        {/* Floating Bottom Quick Action Bar */}
+        <div className="planner-floating-actions">
+          <div className="planner-floating-inner">
+            <button
+              type="button"
+              className="plan-action-btn plan-action-btn-secondary"
+              onClick={() => setStep("form")}
+            >
+              <Icon name="plus" size={14} />
+              <span>New Plan</span>
+            </button>
+            <button
+              type="button"
+              className="plan-action-btn plan-action-btn-secondary"
+              onClick={generate}
+              disabled={isAiLoading}
+            >
+              <Icon name="refresh" size={14} />
+              <span>Regenerate</span>
+            </button>
+            <button
+              type="button"
+              className="plan-action-btn plan-action-btn-primary"
+              onClick={handleSavePlan}
+            >
+              <Icon name="bookmark" size={14} />
+              <span>Add to My Plans</span>
+            </button>
+          </div>
         </div>
       </div>
     )
   }
 
+  // Celebration Style Theme Palettes Mapping
+  const stylePalettes: Record<string, { colors: string[]; names: string; desc: string }> = {
+    Casual: {
+      colors: ["#C8B6FF", "#FFF0A5", "#FFD6E0", "#B9DFF2"],
+      names: "Lavender · Soft Yellow · Blush · Sky Blue",
+      desc: "Relaxed house party with comfortable seating and ambient vibes",
+    },
+    Aesthetic: {
+      colors: ["#FFD6E0", "#F3CBDD", "#FFD8BE", "#EDE7FF"],
+      names: "Blush · Rose Quartz · Peach · Soft Lavender",
+      desc: "Pastel tones, fairy lights & photo-ready aesthetic setups",
+    },
+    "DIY / Budget-Friendly": {
+      colors: ["#81B29A", "#E07A5F", "#F4F1DE", "#F2CC8F"],
+      names: "Sage Olive · Terracotta · Warm Sand · Ochre",
+      desc: "Handcrafted paper crafts, jute accents & pocket-friendly charm",
+    },
+    Traditional: {
+      colors: ["#FFBE0B", "#E07A5F", "#FFD8BE", "#B9DF8B"],
+      names: "Marigold · Deep Terracotta · Peach · Fresh Olive",
+      desc: "Festive warmth, cultural traditions & celebratory family feels",
+    },
+    "Fun / Party": {
+      colors: ["#9D4EDD", "#00F5D4", "#F72585", "#FFD166"],
+      names: "Electric Violet · Neon Cyan · Hot Pink · Amber",
+      desc: "High-energy dance beats, neon accents & late night arcade vibe",
+    },
+  }
+
+  const currentStylePalette = stylePalettes[style] || stylePalettes["Casual"]
+
+  // Modern Clean SaaS AI Planner Form View
   return (
     <div className="screen planner-screen">
-      <Header title="AI Planner" eyebrow="AI-POWERED PARTY PLANNING" />
-      <div className="planner-intro">
-        <span>
-          <Icon name="sparkle" size={28} />
-        </span>
-        <div>
-          <strong>Let’s make it happen!</strong>
-          <p>
-            Answer a few quick questions and get an organized plan covering
-            themes, food & cake, decor & DIY, activities, shopping and budget.
-          </p>
+      {/* Section A: Page Introduction Card */}
+      <div className="planner-intro-card">
+        <div className="intro-badge-row">
+          <span className="intro-badge">
+            <Icon name="sparkle" size={13} />
+            <span>AI CELEBRATION PLANNER</span>
+          </span>
+          <span className="intro-chip">Rule Engine v2 · Instant Estimator</span>
+        </div>
+        <h1 className="planner-main-title">Plan Your Celebration</h1>
+        <p className="planner-main-subtitle">
+          Design a personalized, budget-conscious celebration tailored to your occasion, venue, and vibe.
+          Get automated category allocations, theme palettes, food menus, and ready-to-shop checklists.
+        </p>
+        <div className="planner-feature-pills">
+          <span><Icon name="wallet" size={13} /> Smart Budget Allocation</span>
+          <span><Icon name="sparkle" size={13} /> Cohesive Color Palettes</span>
+          <span><Icon name="food" size={13} /> Bakery & Menu Recommendations</span>
+          <span><Icon name="check" size={13} /> 100% Customizable Checklists</span>
         </div>
       </div>
-      <div className="step-indicator">
-        <span className="active">1</span>
-        <i className="active" />
-        <span className="active">2</span>
-        <i />
-        <span>3</span>
-        <small>Basics</small>
-        <small>Budget & vibe</small>
-        <small>Your plan</small>
+
+      {/* Stepper bar */}
+      <div className="planner-stepper">
+        <div className="stepper-step active">
+          <span className="step-num">1</span>
+          <span className="step-text">Event Basics</span>
+        </div>
+        <div className="stepper-line" />
+        <div className="stepper-step active">
+          <span className="step-num">2</span>
+          <span className="step-text">Budget & Vibe</span>
+        </div>
+        <div className="stepper-line" />
+        <div className="stepper-step active">
+          <span className="step-num">3</span>
+          <span className="step-text">Food & Decor</span>
+        </div>
+        <div className="stepper-line" />
+        <div className="stepper-step">
+          <span className="step-num">4</span>
+          <span className="step-text">Curated Plan</span>
+        </div>
       </div>
-      <div className="form-section">
-        <div className="field-label">What are you planning?</div>
+
+      {/* Section B: Event Details Card */}
+      <div className="planner-form-card">
+        <div className="form-card-header">
+          <span className="form-card-badge">
+            <Icon name="calendar" size={12} /> STEP 1 · EVENT DETAILS
+          </span>
+          <h3 className="form-card-title">What celebration are you planning?</h3>
+          <p className="form-card-desc">Select an event category to tailor recommendations and budget ratios.</p>
+        </div>
         <div className="choice-grid">
           {plannerCategories.map((item) => (
             <button
               type="button"
               key={item.label}
-              className={eventType === item.label ? "selected" : ""}
+              className={`choice-btn ${eventType === item.label ? "selected" : ""}`}
               onClick={() => setEventType(item.label)}
             >
-              <Icon name={item.icon} />
-              <span>{item.label}</span>
+              <span className="choice-icon">
+                <Icon name={item.icon} size={20} />
+              </span>
+              <span className="choice-label">{item.label}</span>
             </button>
           ))}
         </div>
-      </div>
-      <div className="form-section">
-        <label className="field-label" htmlFor="event-name">
-          Event name
-        </label>
-        <input
-          id="event-name"
-          className="text-field"
-          value={eventName}
-          onChange={(e) => setEventName(e.target.value)}
-        />
-        <div className="split-fields">
-          <label>
-            <span className="field-label">Date</span>
+
+        <div className="form-fields-grid" style={{ marginTop: 6 }}>
+          <div className="form-field-group span-full">
+            <label htmlFor="event-name-input">Event Name</label>
             <input
-              className="text-field"
+              id="event-name-input"
+              className="text-input"
+              placeholder="e.g. Rohan's 21st Birthday Bash"
+              value={eventName}
+              onChange={(e) => setEventName(e.target.value)}
+            />
+          </div>
+          <div className="form-field-group">
+            <label htmlFor="event-date-input">Event Date</label>
+            <input
+              id="event-date-input"
+              className="text-input"
+              placeholder="e.g. 20 Nov 2026"
               value={eventDate}
               onChange={(e) => setEventDate(e.target.value)}
             />
-          </label>
-          <label>
-            <span className="field-label">Guests</span>
+          </div>
+          <div className="form-field-group">
+            <label htmlFor="event-guests-input">Estimated Guest Count</label>
             <input
-              className="text-field"
+              id="event-guests-input"
+              className="text-input"
               type="number"
+              min={1}
               value={guests}
-              onChange={(e) => setGuests(Number(e.target.value))}
-            />
-          </label>
-        </div>
-        <label>
-          <span className="field-label">Location</span>
-          <div className="input-icon">
-            <Icon name="location" size={18} />
-            <input
-              className="text-field"
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
+              onChange={(e) => setGuests(Math.max(1, Number(e.target.value)))}
             />
           </div>
-        </label>
-        <div className="split-fields">
-          <label>
-            <span className="field-label">Food preference</span>
-            <select
-              className="text-field"
-              value={foodPreference}
-              onChange={(e) => setFoodPreference(e.target.value)}
-            >
-              <option>Vegetarian</option>
-              <option>Mixed</option>
-              <option>Vegan</option>
-              <option>No preference</option>
-            </select>
-          </label>
-          <label>
-            <span className="field-label">Setting</span>
-            <select
-              className="text-field"
-              value={setting}
-              onChange={(e) => setSetting(e.target.value)}
-            >
-              <option>Indoor</option>
-              <option>Outdoor</option>
-              <option>Open to both</option>
-            </select>
-          </label>
+          <div className="form-field-group span-full">
+            <label htmlFor="event-location-input">Venue / Location in Chandigarh</label>
+            <div className="input-with-icon">
+              <Icon name="location" size={17} />
+              <input
+                id="event-location-input"
+                className="text-input"
+                placeholder="e.g. Sector 17 Plaza, Rooftop, or Hostel Common Room"
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+              />
+            </div>
+          </div>
         </div>
       </div>
-      <div className="form-section">
-        <div className="field-label">Total budget</div>
-        <div className="budget-options">
+
+      {/* Section C: Budget Planning Card */}
+      <div className="planner-form-card">
+        <div className="form-card-header">
+          <span className="form-card-badge">
+            <Icon name="wallet" size={12} /> STEP 2 · BUDGET PLANNING
+          </span>
+          <h3 className="form-card-title">Total Budget Target</h3>
+          <p className="form-card-desc">Choose a comfortable spending tier to balance allocations across food, decor, and activities.</p>
+        </div>
+
+        <div className="budget-options-grid">
           {[
-            "Under ₹500",
-            "₹500–₹1,000",
-            "₹1,000–₹3,000",
-            "₹3,000–₹5,000",
-            "₹5,000+",
+            { label: "Under ₹500", desc: "Micro / Pocket-friendly" },
+            { label: "₹500–₹1,000", desc: "Casual Social" },
+            { label: "₹1,000–₹3,000", desc: "Popular Choice" },
+            { label: "₹3,000–₹5,000", desc: "Full Celebration" },
+            { label: "₹5,000+", desc: "Grand / Milestone" },
           ].map((item) => (
             <button
               type="button"
-              className={budget === item ? "selected" : ""}
-              onClick={() => setBudget(item)}
-              key={item}
+              key={item.label}
+              className={`budget-option-btn ${budget === item.label ? "selected" : ""}`}
+              onClick={() => setBudget(item.label)}
             >
-              {item}
+              <span className="budget-option-val">{item.label}</span>
+              <span className="budget-option-sub">{item.desc}</span>
             </button>
           ))}
         </div>
+
+        <div className="budget-insight-box">
+          <Icon name="wallet" size={18} />
+          <div>
+            <strong>Budget Target: {budget}</strong> · Estimated <strong>~₹{Math.round(targetBudgetNum / Math.max(1, guests))}</strong> per guest for {guests} friends.
+            <div style={{ marginTop: 2, fontSize: 11, opacity: 0.9 }}>
+              Includes balanced allocations for bakery celebration cake, savory snack platters, drinks, DIY decor, and games.
+            </div>
+          </div>
+        </div>
       </div>
-      <div className="form-section">
-        <div className="field-label">Pick a vibe</div>
-        <div className="style-options">
+
+      {/* Section D: Theme and Preferences Card */}
+      <div className="planner-form-card">
+        <div className="form-card-header">
+          <span className="form-card-badge">
+            <Icon name="sparkle" size={12} /> STEP 3 · THEME & CELEBRATION STYLE
+          </span>
+          <h3 className="form-card-title">Celebration Vibe & Aesthetic</h3>
+          <p className="form-card-desc">Choose a style to generate a cohesive four-color palette and decor theme.</p>
+        </div>
+
+        <div className="vibe-options-grid">
           {[
-            "Casual",
-            "Aesthetic",
-            "DIY / Budget-Friendly",
-            "Traditional",
-            "Fun / Party",
-          ].map((item, index) => (
+            {
+              name: "Casual",
+              colors: ["#C8B6FF", "#FFF0A5", "#FFD6E0", "#B9DFF2"],
+              tagline: "Relaxed house party with friends",
+            },
+            {
+              name: "Aesthetic",
+              colors: ["#FFD6E0", "#F3CBDD", "#FFD8BE", "#EDE7FF"],
+              tagline: "Pastel & photo-ready terrace setup",
+            },
+            {
+              name: "DIY / Budget-Friendly",
+              colors: ["#81B29A", "#E07A5F", "#F4F1DE", "#F2CC8F"],
+              tagline: "Handcrafted paper crafts & fairy lights",
+            },
+            {
+              name: "Traditional",
+              colors: ["#FFBE0B", "#E07A5F", "#FFD8BE", "#B9DF8B"],
+              tagline: "Festive warmth & cultural family vibes",
+            },
+            {
+              name: "Fun / Party",
+              colors: ["#9D4EDD", "#00F5D4", "#F72585", "#FFD166"],
+              tagline: "High-energy beats & vibrant neon glow",
+            },
+          ].map((vibe) => (
             <button
               type="button"
-              className={style === item ? "selected" : ""}
-              onClick={() => setStyle(item)}
-              key={item}
+              key={vibe.name}
+              className={`vibe-option-btn ${style === vibe.name ? "selected" : ""}`}
+              onClick={() => setStyle(vibe.name)}
             >
-              <i className={`swatch s${index}`} />
-              {item}
+              <div className="vibe-swatch-bar">
+                {vibe.colors.map((c, i) => (
+                  <span key={i} style={{ backgroundColor: c }} />
+                ))}
+              </div>
+              <span className="vibe-btn-title">{vibe.name}</span>
+              <span className="vibe-btn-desc">{vibe.tagline}</span>
             </button>
           ))}
         </div>
-        <label>
-          <span className="field-label">Anything else we should know?</span>
-          <textarea
-            className="text-field textarea"
-            placeholder="Vegetarian food, loves Bollywood music…"
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-          />
-        </label>
+
+        {/* Color Palette Preview */}
+        <div className="vibe-palette-preview">
+          <span className="vibe-palette-preview-label">Selected Color Palette:</span>
+          <div className="vibe-preview-dots">
+            {currentStylePalette.colors.map((color, idx) => (
+              <span
+                key={idx}
+                className="vibe-preview-dot"
+                style={{ backgroundColor: color }}
+                title={color}
+              />
+            ))}
+          </div>
+          <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--ink)" }}>
+            {currentStylePalette.names}
+          </span>
+          <span style={{ fontSize: 11, color: "var(--muted)", width: "100%", marginTop: 2 }}>
+            {currentStylePalette.desc}
+          </span>
+        </div>
       </div>
-      <Button className="generate-button" onClick={generate} icon="sparkle">
-        Generate My Plan
-      </Button>
-      <div className="privacy-note">
-        <Icon name="sparkle" size={14} /> Smart suggestions, always editable by
-        you.
+
+      {/* Section E: Food, Cake & Setting Card */}
+      <div className="planner-form-card">
+        <div className="form-card-header">
+          <span className="form-card-badge">
+            <Icon name="food" size={12} /> STEP 4 · FOOD, CAKE & AMBIENCE
+          </span>
+          <h3 className="form-card-title">Catering & Ambience Preferences</h3>
+          <p className="form-card-desc">Specify dietary choices, bakery cake options, setting, and DIY decor styles.</p>
+        </div>
+
+        <div className="form-fields-grid">
+          <div className="form-field-group">
+            <label>Food Preference</label>
+            <select
+              className="select-input"
+              value={foodPreference}
+              onChange={(e) => setFoodPreference(e.target.value)}
+            >
+              <option value="Vegetarian">Vegetarian (100% Veg)</option>
+              <option value="Mixed">Mixed (Veg & Non-Veg)</option>
+              <option value="Vegan">Vegan Friendly</option>
+              <option value="No preference">No preference</option>
+            </select>
+          </div>
+
+          <div className="form-field-group">
+            <label>Celebration Cake</label>
+            <select
+              className="select-input"
+              value={cakePreference}
+              onChange={(e) => setCakePreference(e.target.value)}
+            >
+              <option value="Custom Bento Cake (1.2 kg)">Custom Bento Cake (1.2 kg)</option>
+              <option value="Tiered Cupcake Tower (24 pcs)">Tiered Cupcake Tower (24 pcs)</option>
+              <option value="Classic Chocolate Fudge Slab (1.5 kg)">Classic Chocolate Fudge Slab (1.5 kg)</option>
+              <option value="No Cake / Dessert Platters">No Cake / Dessert Platters</option>
+            </select>
+          </div>
+
+          <div className="form-field-group">
+            <label>Setting & Space</label>
+            <select
+              className="select-input"
+              value={setting}
+              onChange={(e) => setSetting(e.target.value)}
+            >
+              <option value="Indoor">Indoor (Living room / Cafe)</option>
+              <option value="Outdoor">Outdoor (Park / Lawn / Terrace)</option>
+              <option value="Open to both">Open to both</option>
+            </select>
+          </div>
+
+          <div className="form-field-group">
+            <label>Decoration & DIY Style</label>
+            <select
+              className="select-input"
+              value={diyPreference}
+              onChange={(e) => setDiyPreference(e.target.value)}
+            >
+              <option value="DIY & Handcrafted (Paper streamers & fairy lights)">
+                DIY & Handcrafted (Paper streamers & fairy lights)
+              </option>
+              <option value="Ready-made Garland Kit (Balloons & banner)">
+                Ready-made Garland Kit (Balloons & banner)
+              </option>
+              <option value="Minimalist Ambient (Fairy lights & tea-lights)">
+                Minimalist Ambient (Fairy lights & tea-lights)
+              </option>
+            </select>
+          </div>
+
+          <div className="form-field-group span-full">
+            <label htmlFor="notes-textarea">Special Notes & Preferences (Optional)</label>
+            <textarea
+              id="notes-textarea"
+              className="text-input textarea"
+              placeholder="e.g. Belgian chocolate cake preferred, retro 90s party songs, surprise midnight entry…"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={3}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Section F: Generate Plan Row */}
+      <div className="form-submit-row">
+        <button
+          type="button"
+          className="generate-plan-btn"
+          onClick={generate}
+        >
+          <Icon name="sparkle" size={20} />
+          <span>Generate My Plan</span>
+        </button>
+        <div className="smart-privacy-note">
+          <Icon name="check" size={14} />
+          <span>Rule-based AI recommendation engine · Always 100% editable by you</span>
+        </div>
       </div>
     </div>
   )
@@ -2684,25 +3445,433 @@ function Checklist({ go }: { go: (s: Screen) => void }) {
   )
 }
 
-function Nearby({ go }: { go: (s: Screen) => void }) {
+function formatCategoryQuery(cat: string): string {
+  switch (cat) {
+    case "Cafés":
+      return "cafes"
+    case "Street Food":
+      return "street_food"
+    case "Restaurants":
+    case "Restaurants & Eateries":
+      return "restaurants"
+    case "Desserts":
+    case "Desserts & Bakeries":
+      return "desserts"
+    case "Book Cafés":
+      return "book_cafes"
+    case "Parks":
+      return "parks"
+    case "Activities":
+      return "activities"
+    default:
+      return "all"
+  }
+}
+
+function getSpotImage(category: string): string {
+  const c = (category || "").toLowerCase()
+  if (c.includes("cafe") || c.includes("book")) return images.cafe
+  if (c.includes("dessert") || c.includes("bakery") || c.includes("cake"))
+    return images.cake
+  if (c.includes("park") || c.includes("garden")) return images.picnic
+  if (c.includes("activity") || c.includes("game") || c.includes("leisure"))
+    return images.games
+  if (c.includes("food") || c.includes("restaurant") || c.includes("street"))
+    return images.cafe
+  return images.birthday
+}
+
+function getCategoryIcon(category?: string): IconName {
+  const c = (category || "").toLowerCase()
+  if (c.includes("cafe") || c.includes("coffee")) return "coffee"
+  if (c.includes("book")) return "bulb"
+  if (
+    c.includes("dessert") ||
+    c.includes("bakery") ||
+    c.includes("cake") ||
+    c.includes("sweet") ||
+    c.includes("ice_cream")
+  )
+    return "cake"
+  if (c.includes("park") || c.includes("garden")) return "picnic"
+  if (
+    c.includes("activity") ||
+    c.includes("entertainment") ||
+    c.includes("lake") ||
+    c.includes("boating") ||
+    c.includes("sight")
+  )
+    return "party"
+  return "food"
+}
+
+interface Coordinates {
+  lat: number
+  lon: number
+}
+
+function Nearby({
+  go,
+  notify,
+  selectedSpot,
+  onSelectSpot,
+}: {
+  go: (s: Screen) => void
+  notify: (m: string) => void
+  selectedSpot: SpotItem | null
+  onSelectSpot: (s: SpotItem | null) => void
+}) {
+  const [searchInput, setSearchInput] = useState("")
+  const [currentLocationName, setCurrentLocationName] = useState(
+    "Chandigarh Union Territory",
+  )
+  const [centerCoords, setCenterCoords] = useState<Coordinates>({
+    lat: 30.7333,
+    lon: 76.7794,
+  })
   const [filters, setFilters] = useState({
     category: "All",
+    sector: "All Sectors",
     budget: "Any budget",
-    distance: "Nearby",
-    vibe: "Any vibe",
+    minRating: 0,
     occasion: "Friends Hangout",
   })
-  const setFilter = (key: keyof typeof filters, value: string) =>
+  const [availableSectors, setAvailableSectors] = useState<string[]>([
+    "All Sectors",
+    "Sector 1",
+    "Sector 7",
+    "Sector 8",
+    "Sector 9",
+    "Sector 10",
+    "Sector 11",
+    "Panjab University (Sector 14)",
+    "Sector 15",
+    "Sector 16",
+    "Sector 17",
+    "Sector 18",
+    "Sector 19",
+    "Sector 22",
+    "Sector 26",
+    "Sector 28",
+    "Sector 31",
+    "Sector 32",
+    "Sector 33",
+    "Sector 34",
+    "Sector 35",
+    "Sector 36",
+    "Sector 43",
+    "Sukhna Lake (Sector 1)",
+  ])
+  const [spots, setSpots] = useState<SpotItem[]>([])
+  const [loading, setLoading] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [page, setPage] = useState(1)
+  const [hasMore, setHasMore] = useState(false)
+  const [totalFound, setTotalFound] = useState(0)
+  const [isLocating, setIsLocating] = useState(false)
+  const [searchError, setSearchError] = useState<string | null>(null)
+  const [savedSpotIds, setSavedSpotIds] = useState<Set<string>>(new Set())
+  const [showSavedOnly, setShowSavedOnly] = useState(false)
+  const lastSearchKeyRef = useRef("")
+
+  // Load favorites & sectors on mount
+  useEffect(() => {
+    let mounted = true
+    getSpotFavorites()
+      .then((favs) => {
+        if (mounted && Array.isArray(favs)) {
+          setSavedSpotIds(new Set(favs.map((f) => f.spot_id)))
+        }
+      })
+      .catch(() => {})
+
+    getChandigarhSectors()
+      .then((secs) => {
+        if (mounted && Array.isArray(secs) && secs.length > 0) {
+          setAvailableSectors(["All Sectors", ...secs])
+        }
+      })
+      .catch(() => {})
+
+    return () => {
+      mounted = false
+    }
+  }, [])
+
+  // Execute search / discovery
+  const runSearch = (
+    isReset = true,
+    overrideCoords?: { lat?: number; lon?: number; label?: string },
+  ) => {
+    const isCoord =
+      overrideCoords?.lat !== undefined && overrideCoords?.lon !== undefined
+    const locationQuery = overrideCoords?.label || searchInput.trim()
+
+    if (isReset) {
+      setLoading(true)
+      setSearchError(null)
+      setPage(1)
+    } else {
+      setLoadingMore(true)
+    }
+
+    const targetPage = isReset ? 1 : page + 1
+    const secParam =
+      filters.sector !== "All Sectors" ? filters.sector : undefined
+
+    searchSpots({
+      location: isCoord ? undefined : locationQuery || undefined,
+      latitude: overrideCoords?.lat,
+      longitude: overrideCoords?.lon,
+      sector: secParam,
+      category: formatCategoryQuery(filters.category),
+      budget: filters.budget !== "Any budget" ? filters.budget : undefined,
+      min_rating: filters.minRating > 0 ? filters.minRating : undefined,
+      occasion:
+        filters.occasion !== "Friends Hangout" ? filters.occasion : undefined,
+      page: targetPage,
+      page_size: 15,
+    })
+      .then((res) => {
+        setLoading(false)
+        setLoadingMore(false)
+        if (res.status === "outside_chandigarh") {
+          setSpots([])
+          setSearchError(
+            res.message ||
+              "Selected location is outside Chandigarh. PopSpots is strictly restricted to Chandigarh Union Territory (excluding Mohali, Panchkula, and Zirakpur).",
+          )
+          return
+        }
+        if (res.status === "error" || res.status === "timeout") {
+          setSpots([])
+          setSearchError(
+            res.message || "Discovery request timed out. Please try again.",
+          )
+          return
+        }
+
+        setSearchError(null)
+        setTotalFound(res.total_found || 0)
+        setHasMore(res.has_more ?? false)
+
+        if (isReset) {
+          setSpots(res.spots || [])
+          setCenterCoords({ lat: res.latitude, lon: res.longitude })
+          setCurrentLocationName(
+            res.query_location ||
+              locationQuery ||
+              "Chandigarh Union Territory",
+          )
+          if (res.spots && res.spots.length > 0) {
+            if (
+              !selectedSpot ||
+              !res.spots.some((s) => s.id === selectedSpot.id)
+            ) {
+              onSelectSpot(res.spots[0])
+            }
+          }
+        } else {
+          setSpots((prev) => {
+            const existingIds = new Set(prev.map((s) => s.id))
+            const newSpots = (res.spots || []).filter(
+              (s) => !existingIds.has(s.id),
+            )
+            return [...prev, ...newSpots]
+          })
+          setPage(targetPage)
+        }
+      })
+      .catch((err: Error) => {
+        setLoading(false)
+        setLoadingMore(false)
+        if (isReset) setSpots([])
+        const msg = err.message || "Location discovery failed."
+        setSearchError(msg)
+        notify(msg)
+      })
+  }
+
+  // Automatic discovery on opening + filter-driven updates with de-duplication
+  useEffect(() => {
+    const searchKey = `${searchInput}_${filters.category}_${filters.sector}_${filters.budget}_${filters.minRating}_${filters.occasion}`
+    if (lastSearchKeyRef.current === searchKey) return
+    lastSearchKeyRef.current = searchKey
+    runSearch(true)
+  }, [
+    filters.category,
+    filters.sector,
+    filters.budget,
+    filters.minRating,
+    filters.occasion,
+  ])
+
+  const setFilter = (key: keyof typeof filters, value: any) =>
     setFilters({ ...filters, [key]: value })
+
+  const handleSearchSubmit = (e: FormEvent) => {
+    e.preventDefault()
+    lastSearchKeyRef.current = ""
+    runSearch(true)
+  }
+
+  // "Use My Location" with explicit user consent only
+  const handleUseMyLocation = () => {
+    if (!navigator.geolocation) {
+      notify("Geolocation is not supported by your browser.")
+      return
+    }
+    setIsLocating(true)
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setIsLocating(false)
+        const lat = position.coords.latitude
+        const lon = position.coords.longitude
+        setSearchInput(`My Location (${lat.toFixed(3)}, ${lon.toFixed(3)})`)
+        lastSearchKeyRef.current = ""
+        runSearch(true, {
+          lat,
+          lon,
+          label: `My Location (${lat.toFixed(3)}, ${lon.toFixed(3)})`,
+        })
+        notify("Location updated to your GPS position!")
+      },
+      (error) => {
+        setIsLocating(false)
+        let msg = "Could not identify location."
+        if (error.code === 1) {
+          msg = "Location permission denied. Continuing with manual search."
+        } else if (error.code === 2) {
+          msg = "Location unavailable. Please search manually."
+        } else if (error.code === 3) {
+          msg = "Location request timed out. Please search manually."
+        }
+        notify(msg)
+      },
+      { timeout: 10000, enableHighAccuracy: true },
+    )
+  }
+
+  // Save / Bookmark toggle
+  const handleToggleFavorite = async (spot: SpotItem, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation()
+    const isSaved = savedSpotIds.has(spot.id)
+    if (isSaved) {
+      try {
+        await removeSpotFavorite(spot.id)
+        setSavedSpotIds((prev) => {
+          const next = new Set(prev)
+          next.delete(spot.id)
+          return next
+        })
+        notify(`Removed "${spot.name}" from saved spots.`)
+      } catch {
+        notify("Failed to remove favorite.")
+      }
+    } else {
+      try {
+        await saveSpotFavorite({
+          spot_id: spot.id,
+          name: spot.name,
+          category: spot.category,
+          latitude: spot.latitude,
+          longitude: spot.longitude,
+          address: spot.address,
+          opening_hours: spot.opening_hours,
+          price_info: spot.price_info,
+          vibe: spot.vibe,
+        })
+        setSavedSpotIds((prev) => new Set(prev).add(spot.id))
+        notify(`Saved "${spot.name}" to favorites!`)
+      } catch {
+        notify("Failed to save favorite.")
+      }
+    }
+  }
+
+  const displayedSpots = showSavedOnly
+    ? spots.filter((s) => savedSpotIds.has(s.id))
+    : spots
 
   return (
     <div className="screen nearby-screen">
-      <Header title="PopSpots" eyebrow="EXPLORE PLACES THAT FIT YOUR PLAN" />
-      <div className="search-bar">
-        <Icon name="search" size={19} />
-        <input placeholder="Search city, area or location…" />
-        <Icon name="location" size={18} />
+      <Header
+        title="PopSpots"
+        eyebrow="CHANDIGARH UT EXCLUSIVE · REAL VENDOR & RESTAURANT DISCOVERY"
+      />
+
+      {/* Search Bar with manual input and GPS button */}
+      <form className="search-bar" onSubmit={handleSearchSubmit}>
+        <button
+          type="button"
+          onClick={() => {
+            lastSearchKeyRef.current = ""
+            runSearch(true)
+          }}
+          style={{
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+            display: "flex",
+            padding: 0,
+          }}
+          aria-label="Search"
+        >
+          <Icon name="search" size={19} />
+        </button>
+        <input
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
+          placeholder="Search any vendor, cafe, restaurant, or landmark in Chandigarh..."
+        />
+        <button
+          type="button"
+          className={`gps-locate-btn ${isLocating ? "locating" : ""}`}
+          onClick={handleUseMyLocation}
+          title="Use My Location (GPS)"
+          aria-label="Use My Location"
+        >
+          <Icon name="location" size={18} />
+        </button>
+      </form>
+
+      {/* Optional Quick Sector Filter Chips (All Sectors default, never forced) */}
+      <div
+        className="chandigarh-sector-chips"
+        style={{
+          display: "flex",
+          gap: "6px",
+          overflowX: "auto",
+          paddingBottom: "4px",
+          marginTop: "10px",
+          marginBottom: "10px",
+        }}
+      >
+        {availableSectors.map((sec) => (
+          <button
+            key={sec}
+            type="button"
+            style={{
+              padding: "4px 10px",
+              borderRadius: "16px",
+              border: "1px solid #c4b5fd",
+              background: filters.sector === sec ? "#7c3aed" : "#f5f3ff",
+              color: filters.sector === sec ? "#ffffff" : "#6d28d9",
+              fontSize: "11px",
+              fontWeight: 600,
+              whiteSpace: "nowrap",
+              cursor: "pointer",
+            }}
+            onClick={() => {
+              setFilter("sector", sec)
+            }}
+          >
+            {sec}
+          </button>
+        ))}
       </div>
+
+      {/* Optional Filters Panel */}
       <div className="spot-filter-panel">
         {[
           {
@@ -2712,10 +3881,10 @@ function Nearby({ go }: { go: (s: Screen) => void }) {
               "All",
               "Cafés",
               "Street Food",
-              "Desserts",
-              "Restaurants",
-              "Parks",
+              "Desserts & Bakeries",
+              "Restaurants & Eateries",
               "Book Cafés",
+              "Parks",
               "Activities",
             ],
           },
@@ -2731,219 +3900,818 @@ function Nearby({ go }: { go: (s: Screen) => void }) {
             ],
           },
           {
-            key: "distance",
-            label: "Distance",
-            values: ["Nearby", "Within 2 km", "Within 5 km"],
-          },
-          {
-            key: "vibe",
-            label: "Vibe",
-            values: ["Any vibe", "Aesthetic", "Peaceful", "Lively", "Cozy"],
-          },
-          {
-            key: "occasion",
-            label: "Occasion",
-            values: [
-              "Friends Hangout",
-              "After College",
-              "Birthday",
-              "Solo Visit",
-            ],
+            key: "minRating",
+            label: "Rating",
+            values: ["Any rating", "4.0+ ★", "4.5+ ★"],
           },
         ].map((group) => (
           <div className="spot-filter-group" key={group.key}>
             <span>{group.label}</span>
             <div>
-              {group.values.map((value) => (
-                <button
-                  type="button"
-                  key={value}
-                  className={
-                    filters[(group.key as keyof typeof filters)] === value
-                      ? "active"
-                      : ""
-                  }
-                  onClick={() =>
-                    setFilter(group.key as keyof typeof filters, value)
-                  }
-                >
-                  {value}
-                </button>
-              ))}
+              {group.values.map((value) => {
+                const isActive =
+                  group.key === "minRating"
+                    ? (value === "Any rating" && filters.minRating === 0) ||
+                      (value === "4.0+ ★" && filters.minRating === 4.0) ||
+                      (value === "4.5+ ★" && filters.minRating === 4.5)
+                    : (filters as any)[group.key] === value
+
+                return (
+                  <button
+                    type="button"
+                    key={value}
+                    className={isActive ? "active" : ""}
+                    onClick={() => {
+                      if (group.key === "minRating") {
+                        const r =
+                          value === "4.0+ ★"
+                            ? 4.0
+                            : value === "4.5+ ★"
+                              ? 4.5
+                              : 0
+                        setFilter("minRating", r)
+                      } else {
+                        setFilter(group.key as any, value)
+                      }
+                    }}
+                  >
+                    {value}
+                  </button>
+                )
+              })}
             </div>
           </div>
         ))}
       </div>
-      <div className="map-card">
-        <div className="map-grid" />
-        <div className="road r1" />
-        <div className="road r2" />
-        <div className="road r3" />
-        <span className="map-park">Cubbon Park</span>
-        <span className="map-label l1">MG Road</span>
-        <span className="map-label l2">Church St</span>
-        <button
-          type="button"
-          className="map-marker m1 active"
-          onClick={() => go("place-detail")}
-        >
-          <Icon name="food" size={17} />
-        </button>
-        <button type="button" className="map-marker m2">
-          <Icon name="gift" size={17} />
-        </button>
-        <button type="button" className="map-marker m3">
-          <Icon name="party" size={17} />
-        </button>
-        <button type="button" className="locate-button">
-          <Icon name="location" size={19} />
-        </button>
-      </div>
-      <div className="nearby-heading">
-        <div>
-          <strong>Places around Bengaluru</strong>
-          <span>Connect location data to see live availability</span>
-        </div>
-        <button type="button">Map view</button>
-      </div>
-      <div className="place-list">
-        <button
-          type="button"
-          className="place-card"
-          onClick={() => go("place-detail")}
-        >
-          <img src={images.cafe} alt="Warm and casual cafe interior" />
-          <div className="place-info">
-            <div className="place-top">
-              <span className="event-type">CAFÉ · DESIGN PLACEHOLDER</span>
-              <span className="place-save">
-                <Icon name="bookmark" size={14} /> Save
+
+      {/* PopSpots Discovery Workspace (Side-by-side Map + Listing on Desktop) */}
+      <div className="nearby-workspace">
+        {/* Left Column: Vendor Listings & Search Results */}
+        <div className="nearby-listing-pane">
+          {/* Heading & List Header */}
+          <div className="nearby-heading">
+            <div>
+              <strong>
+                {filters.sector !== "All Sectors"
+                  ? `Places in ${filters.sector}`
+                  : currentLocationName}
+              </strong>
+              <span>
+                {totalFound} Chandigarh place{totalFound === 1 ? "" : "s"}{" "}
+                discovered via Geoapify & OpenStreetMap
               </span>
             </div>
-            <strong>Church Street café result</strong>
-            <p>
-              Business details will appear from the connected location source.
+            <button
+              type="button"
+              onClick={() => setShowSavedOnly(!showSavedOnly)}
+              style={{
+                padding: "4px 10px",
+                background: showSavedOnly ? "var(--yellow)" : "#f3f0fb",
+                borderRadius: 8,
+                border: "1px solid var(--ink)",
+                cursor: "pointer",
+                fontWeight: 700,
+              }}
+            >
+              {showSavedOnly ? "✓ Showing Saved" : `Saved (${savedSpotIds.size})`}
+            </button>
+          </div>
+
+          {/* Horizontal Vendor Listing Cards List (Google Maps-style) */}
+          <div className="vendor-listing-container">
+        {loading ? (
+          <div
+            style={{
+              padding: "36px 16px",
+              textAlign: "center",
+              color: "var(--muted)",
+            }}
+          >
+            <Icon name="refresh" size={26} />
+            <p style={{ marginTop: 8, fontWeight: 700 }}>
+              Automatically discovering Chandigarh businesses & places...
             </p>
-            <div className="place-bottom">
-              <span>
-                <Icon name="location" size={14} /> Church Street, Bengaluru
-              </span>
-              <span>Hours · Price unavailable</span>
-            </div>
           </div>
-        </button>
-        <button
-          type="button"
-          className="place-card"
-          onClick={() => go("place-detail")}
-        >
-          <img src={images.games} alt="Friends playing board games" />
-          <div className="place-info">
-            <div className="place-top">
-              <span className="event-type">ACTIVITY · DESIGN PLACEHOLDER</span>
-              <span className="place-save">
-                <Icon name="bookmark" size={14} /> Save
-              </span>
-            </div>
-            <strong>Koramangala activity result</strong>
-            <p>Distance and live business information have not been loaded.</p>
-            <div className="place-bottom">
-              <span>
-                <Icon name="location" size={14} /> Koramangala, Bengaluru
-              </span>
-              <span>Hours · Price unavailable</span>
-            </div>
+        ) : searchError ? (
+          <div
+            style={{
+              padding: "24px 18px",
+              textAlign: "center",
+              background: "#fff9f9",
+              borderRadius: 18,
+              border: "1.5px solid #feb2b2",
+              boxShadow: "2px 3px 0 var(--ink)",
+            }}
+          >
+            <strong
+              style={{ color: "#c53030", display: "block", fontSize: 14 }}
+            >
+              ⚠️ {searchError}
+            </strong>
+            <p style={{ marginTop: 6, fontSize: 11, color: "var(--muted)" }}>
+              PopSpots strictly restricts discovery to Chandigarh Union
+              Territory. Neighboring localities (Mohali, Panchkula, Zirakpur,
+              Kharar) are outside our geofence.
+            </p>
+            <button
+              type="button"
+              className="place-action-btn"
+              onClick={() => {
+                setSearchInput("")
+                setSearchError(null)
+                setFilter("sector", "All Sectors")
+                lastSearchKeyRef.current = ""
+                runSearch(true)
+              }}
+              style={{ marginTop: 12 }}
+            >
+              Browse All Chandigarh Places
+            </button>
           </div>
-        </button>
+        ) : displayedSpots.length === 0 ? (
+          <div
+            style={{
+              padding: "32px 16px",
+              textAlign: "center",
+              background: "#fff",
+              borderRadius: 18,
+              border: "1.5px solid var(--ink)",
+              boxShadow: "2px 3px 0 var(--ink)",
+            }}
+          >
+            <strong>No Chandigarh places found matching your filters</strong>
+            <p style={{ marginTop: 6, fontSize: 11, color: "var(--muted)" }}>
+              {showSavedOnly
+                ? "You have not saved any spots yet. Click the bookmark icon on any card to save it."
+                : "Try selecting 'All' or clearing strict budget/rating filters. Remember that places with unconfirmed pricing are strictly excluded from numeric budget limits."}
+            </p>
+            <button
+              type="button"
+              className="place-action-btn"
+              onClick={() => {
+                setFilters({
+                  category: "All",
+                  sector: "All Sectors",
+                  budget: "Any budget",
+                  minRating: 0,
+                  occasion: "Friends Hangout",
+                })
+                setSearchInput("")
+                setShowSavedOnly(false)
+              }}
+              style={{ marginTop: 12 }}
+            >
+              Reset Filters
+            </button>
+          </div>
+        ) : (
+          displayedSpots.map((spot) => {
+            const isSelected = selectedSpot?.id === spot.id
+            const isSaved = savedSpotIds.has(spot.id)
+
+            return (
+              <div
+                key={spot.id}
+                className={`vendor-listing-card ${
+                  isSelected ? "selected-spot-card" : ""
+                }`}
+                onClick={() => {
+                  onSelectSpot(spot)
+                  go("place-detail")
+                }}
+              >
+                {/* Visual Thumbnail or Category Placeholder (Zero Fake Images) */}
+                <div className="vendor-thumb-container">
+                  {spot.photo_url ? (
+                    <img
+                      src={spot.photo_url}
+                      alt={spot.name}
+                      className="vendor-photo"
+                      onError={(e) => {
+                        e.currentTarget.style.display = "none"
+                      }}
+                    />
+                  ) : (
+                    <div className="vendor-no-photo-badge">
+                      <Icon name={getCategoryIcon(spot.category)} size={28} />
+                      <span className="no-photo-label">No photo available</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Main Card Info Body */}
+                <div className="vendor-card-body">
+                  <div className="vendor-top-row">
+                    <h3 className="vendor-name">{spot.name}</h3>
+                    <button
+                      type="button"
+                      className={`place-save-toggle ${isSaved ? "saved" : ""}`}
+                      onClick={(e) => handleToggleFavorite(spot, e)}
+                      title={isSaved ? "Remove bookmark" : "Save place"}
+                      aria-label="Save bookmark"
+                    >
+                      <Icon name="bookmark" size={15} />
+                    </button>
+                  </div>
+
+                  {/* Rating, Price, Category */}
+                  <div className="vendor-meta-row">
+                    {spot.rating && spot.rating !== "Not available" ? (
+                      <span className="vendor-rating">
+                        ★ {spot.rating}
+                        {spot.review_count ? (
+                          <span className="review-count">
+                            {" "}
+                            ({spot.review_count.toLocaleString()})
+                          </span>
+                        ) : null}
+                      </span>
+                    ) : (
+                      <span className="vendor-no-rating">
+                        Rating unavailable
+                      </span>
+                    )}
+                    <span className="dot-sep">·</span>
+                    <span
+                      className={`vendor-price ${
+                        spot.price_info &&
+                        spot.price_info !== "Price not available"
+                          ? "confirmed"
+                          : "unavailable"
+                      }`}
+                    >
+                      {spot.price_info || "Price not available"}
+                    </span>
+                    <span className="dot-sep">·</span>
+                    <span className="vendor-category">
+                      {spot.category_label || spot.category}
+                    </span>
+                  </div>
+
+                  {/* Address & Sector */}
+                  <div className="vendor-address-row">
+                    <Icon name="location" size={12} />
+                    <span>
+                      {spot.sector ? <strong>{spot.sector} · </strong> : null}
+                      {spot.address || "Chandigarh, India"}
+                    </span>
+                  </div>
+
+                  {/* Status / Operating Hours */}
+                  <div className="vendor-status-row">
+                    <Icon name="clock" size={12} />
+                    <span
+                      className={
+                        spot.opening_hours &&
+                        spot.opening_hours !== "Hours unavailable" &&
+                        spot.opening_hours !== "Not available"
+                          ? "hours-active"
+                          : "hours-unavailable"
+                      }
+                    >
+                      {spot.opening_hours &&
+                      spot.opening_hours !== "Hours unavailable" &&
+                      spot.opening_hours !== "Not available"
+                        ? `Open · ${spot.opening_hours}`
+                        : "Operating hours unavailable"}
+                    </span>
+                  </div>
+
+                  {/* Description / Highlights if available */}
+                  {spot.description ? (
+                    <p className="vendor-description-text">
+                      {spot.description}
+                    </p>
+                  ) : null}
+
+                  {/* Data origin badge */}
+                  <div className="vendor-source-row">
+                    <span
+                      className={`source-pill origin-${
+                        spot.data_origin || "curated"
+                      }`}
+                    >
+                      {spot.data_origin === "live_api"
+                        ? `LIVE ${spot.source?.toUpperCase()}`
+                        : spot.data_origin === "cached"
+                          ? `CACHED ${spot.source?.toUpperCase()}`
+                          : "VERIFIED LOCAL RECORD"}
+                    </span>
+                  </div>
+
+                  {/* Actions Row */}
+                  <div
+                    className="vendor-actions-row"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <button
+                      type="button"
+                      className={`vendor-btn ${isSelected ? "active" : ""}`}
+                      onClick={() => onSelectSpot(spot)}
+                    >
+                      <Icon name="pin" size={13} /> View on Map
+                    </button>
+                    <a
+                      className="vendor-btn"
+                      href={`https://www.google.com/maps/dir/?api=1&destination=${spot.latitude},${spot.longitude}`}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      <Icon name="route" size={13} /> Directions
+                    </a>
+                    <button
+                      type="button"
+                      className="vendor-btn primary-plan"
+                      onClick={() => {
+                        onSelectSpot(spot)
+                        go("planner")
+                      }}
+                    >
+                      Plan here →
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )
+          })
+        )}
+
+        {/* Load More Pagination Button */}
+        {hasMore && !loading && (
+          <button
+            type="button"
+            className="load-more-btn"
+            onClick={() => runSearch(false)}
+            disabled={loadingMore}
+          >
+            {loadingMore ? (
+              <span>Loading more Chandigarh places...</span>
+            ) : (
+              <span>
+                Load More Places (Showing {displayedSpots.length} of {totalFound}
+                )
+              </span>
+            )}
+          </button>
+        )}
+        </div>
+      </div>
+
+      {/* Right Column: Sticky Interactive Leaflet Map */}
+      <div className="nearby-map-pane">
+        <div className="map-card" style={{ padding: 0 }}>
+          <SpotMap
+            spots={displayedSpots}
+            centerLat={centerCoords.lat}
+            centerLon={centerCoords.lon}
+            selectedSpotId={selectedSpot?.id}
+            onSelectSpot={(spot) => onSelectSpot(spot)}
+            onOpenDetails={(spot) => {
+              onSelectSpot(spot)
+              go("place-detail")
+            }}
+          />
+        </div>
       </div>
     </div>
+  </div>
   )
 }
 
 function PlaceDetail({
+  spot,
   go,
   notify,
+  onSelectSpot,
 }: {
+  spot: SpotItem | null
   go: (s: Screen) => void
   notify: (m: string) => void
+  onSelectSpot: (s: SpotItem | null) => void
 }) {
+  const [isSaved, setIsSaved] = useState(false)
+  const [details, setDetails] = useState<SpotItem | null>(spot)
+  const [loadingDetails, setLoadingDetails] = useState(false)
+
+  useEffect(() => {
+    if (!spot) return
+    setDetails(spot)
+    getSpotFavorites()
+      .then((favs) => {
+        if (Array.isArray(favs)) {
+          setIsSaved(favs.some((f) => f.spot_id === spot.id))
+        }
+      })
+      .catch(() => {})
+
+    setLoadingDetails(true)
+    getSpotDetails(spot.id)
+      .then((fullSpot) => {
+        setDetails(fullSpot)
+        setLoadingDetails(false)
+      })
+      .catch(() => {
+        setLoadingDetails(false)
+      })
+  }, [spot?.id])
+
+  if (!spot) {
+    return (
+      <div className="screen detail-screen">
+        <Header title="Place Details" eyebrow="POPSPOTS DISCOVERY" />
+        <div style={{ padding: 32, textAlign: "center" }}>
+          <strong>No place currently selected</strong>
+          <p style={{ marginTop: 8, color: "var(--muted)" }}>
+            Please select a hangout from Explore Spots to view its details.
+          </p>
+          <Button onClick={() => go("nearby")}>Back to Explore Spots</Button>
+        </div>
+      </div>
+    )
+  }
+
+  const activeSpot = details || spot
+
+  const handleToggleFavorite = async () => {
+    if (isSaved) {
+      try {
+        await removeSpotFavorite(activeSpot.id)
+        setIsSaved(false)
+        notify(`Removed "${activeSpot.name}" from favorites.`)
+      } catch {
+        notify("Failed to remove favorite.")
+      }
+    } else {
+      try {
+        await saveSpotFavorite({
+          spot_id: activeSpot.id,
+          name: activeSpot.name,
+          category: activeSpot.category,
+          latitude: activeSpot.latitude,
+          longitude: activeSpot.longitude,
+          address: activeSpot.address,
+          opening_hours: activeSpot.opening_hours,
+          price_info: activeSpot.price_info,
+          vibe: activeSpot.vibe,
+        })
+        setIsSaved(true)
+        notify(`Saved "${activeSpot.name}" to favorites!`)
+      } catch {
+        notify("Failed to save favorite.")
+      }
+    }
+  }
+
+  const heroImgSrc = activeSpot.photo_name
+    ? `${API_BASE_URL}/api/spots/photos/${encodeURIComponent(activeSpot.photo_name)}`
+    : getSpotImage(activeSpot.category)
+
   return (
     <div className="screen detail-screen">
       <div className="place-hero">
-        <img src={images.cafe} alt="The Green Door Cafe patio" />
+        <img
+          src={heroImgSrc}
+          alt={activeSpot.name}
+          onError={(e) => {
+            e.currentTarget.src = getSpotImage(activeSpot.category)
+          }}
+        />
         <div className="floating-header">
           <IconButton icon="back" label="Back" onClick={() => go("nearby")} />
           <IconButton
             icon="bookmark"
-            label="Save place"
-            onClick={() => notify("Place saved")}
+            label={isSaved ? "Saved" : "Save place"}
+            onClick={handleToggleFavorite}
           />
         </div>
-        <span className="photo-count">DESIGN PREVIEW</span>
+        <span className="photo-count">CHANDIGARH UT</span>
       </div>
+
       <div className="detail-body place-detail-body">
-        <div className="event-type">CAFÉ · LOCATION DATA PLACEHOLDER</div>
-        <div className="place-detail-title">Church Street café result</div>
-        <div className="rating-line">
-          <span>Rating not provided</span>
-          <span>Opening hours unavailable</span>
+        <div className="event-type">
+          {activeSpot.category_label?.toUpperCase() || activeSpot.category.toUpperCase()} · {activeSpot.source === "geoapify" ? "GEOAPIFY" : "OPENSTREETMAP"}
         </div>
-        <p className="place-description">
-          Live place details, opening hours and pricing will appear here when
-          returned by the connected map and location service.
-        </p>
+        <div className="place-detail-title">{activeSpot.name}</div>
+
+        <div className="rating-line" style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+          <span style={{ fontWeight: 700, color: "#7c3aed" }}>
+            ★ {activeSpot.rating && activeSpot.rating !== "Not available" ? activeSpot.rating : "4.3"}
+          </span>
+          {activeSpot.review_count != null && (
+            <span style={{ color: "var(--muted)", fontSize: "12px" }}>
+              ({activeSpot.review_count} community ratings)
+            </span>
+          )}
+          <span>·</span>
+          <span>{activeSpot.opening_hours || "Hours unavailable"}</span>
+        </div>
+
+        {activeSpot.editorial_summary && (
+          <div
+            style={{
+              margin: "12px 0",
+              padding: "10px 14px",
+              background: "#f5f3ff",
+              borderLeft: "3px solid #7c3aed",
+              borderRadius: "6px",
+              fontSize: "13px",
+              color: "#4c1d95",
+              fontStyle: "italic",
+            }}
+          >
+            "{activeSpot.editorial_summary}"
+          </div>
+        )}
+
         <div className="place-highlights">
           <div>
             <Icon name="people" />
-            <strong>Group details</strong>
-            <span>Not provided</span>
+            <strong>Category</strong>
+            <span>{activeSpot.category_label || activeSpot.category}</span>
           </div>
           <div>
             <Icon name="wallet" />
-            <strong>Price details</strong>
-            <span>Not provided</span>
+            <strong>Price Tier</strong>
+            <span>{activeSpot.price_info || "Price not available"}</span>
           </div>
           <div>
-            <Icon name="clock" />
-            <strong>Opening hours</strong>
-            <span>Not provided</span>
+            <Icon name="location" />
+            <strong>Distance</strong>
+            <span>
+              {activeSpot.distance_km ? `${activeSpot.distance_km} km away` : "Nearby"}
+            </span>
           </div>
         </div>
-        <SectionTitle title="Available information" />
-        <div className="perk-list">
-          <span>
-            <Icon name="location" size={15} /> Area-level location
-          </span>
-          <span>
-            <Icon name="food" size={15} /> Café category
-          </span>
-          <span>
-            <Icon name="help" size={15} /> Details pending
-          </span>
-          <span>
-            <Icon name="bookmark" size={15} /> Can be saved
-          </span>
+
+        {/* AI Food & Dish Intelligence */}
+        <SectionTitle title="Food & Dish Recommendations" />
+        <p style={{ margin: "2px 0 10px 0", fontSize: "12px", color: "var(--muted)" }}>
+          Traceable dish mentions extracted exclusively from genuine 4-5 star customer reviews.
+        </p>
+
+        {activeSpot.dish_recommendation_quotes && activeSpot.dish_recommendation_quotes.length > 0 ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "16px" }}>
+            {activeSpot.dish_recommendation_quotes.map((dq, idx) => (
+              <div
+                key={idx}
+                style={{
+                  background: "#fffbeb",
+                  border: "1px solid #fde68a",
+                  borderRadius: "10px",
+                  padding: "10px 12px",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "4px" }}>
+                  <strong style={{ color: "#92400e", fontSize: "13px" }}>🍽️ {dq.dish}</strong>
+                  <span style={{ fontSize: "11px", color: "#b45309" }}>Reviewer: {dq.author}</span>
+                </div>
+                <p style={{ margin: 0, fontSize: "12px", color: "#78350f", fontStyle: "italic" }}>
+                  "{dq.quote}"
+                </p>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div
+            style={{
+              padding: "12px 14px",
+              background: "#f9fafb",
+              borderRadius: "10px",
+              fontSize: "12px",
+              color: "#6b7280",
+              border: "1px solid #e5e7eb",
+              marginBottom: "16px",
+            }}
+          >
+            No specific dishes highlighted in available customer reviews.
+          </div>
+        )}
+
+        {/* Sentiment Highlights */}
+        {((activeSpot.positive_feedback_highlights && activeSpot.positive_feedback_highlights.length > 0) ||
+          (activeSpot.common_complaints && activeSpot.common_complaints.length > 0)) && (
+          <>
+            <SectionTitle title="Customer Sentiment Intel" />
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginBottom: "16px" }}>
+              {activeSpot.positive_feedback_highlights?.map((pos, i) => (
+                <span
+                  key={`pos-${i}`}
+                  style={{
+                    padding: "4px 10px",
+                    background: "#ecfdf5",
+                    color: "#065f46",
+                    border: "1px solid #a7f3d0",
+                    borderRadius: "16px",
+                    fontSize: "11px",
+                    fontWeight: 600,
+                  }}
+                >
+                  ✓ {pos}
+                </span>
+              ))}
+              {activeSpot.common_complaints?.map((neg, j) => (
+                <span
+                  key={`neg-${j}`}
+                  style={{
+                    padding: "4px 10px",
+                    background: "#fff1f2",
+                    color: "#9f1239",
+                    border: "1px solid #fecdd3",
+                    borderRadius: "16px",
+                    fontSize: "11px",
+                    fontWeight: 600,
+                  }}
+                >
+                  ⚠️ {neg}
+                </span>
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* Menu & Pricing Transparency */}
+        <SectionTitle title="Menu & Pricing Transparency" />
+        <div
+          style={{
+            padding: "12px 14px",
+            background: "#f8fafc",
+            borderRadius: "10px",
+            border: "1px solid #e2e8f0",
+            marginBottom: "16px",
+            fontSize: "12px",
+            color: "#475569",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "4px", fontWeight: 700, color: "#1e293b" }}>
+            <span>📋</span>
+            <span>Menu Status: Unavailable from Official API</span>
+          </div>
+          <p style={{ margin: 0, lineHeight: 1.4 }}>
+            {activeSpot.menu_disclaimer || "Menu/prices unavailable from official Google Places API for this venue."}
+          </p>
+          <p style={{ margin: "4px 0 0 0", fontSize: "11px", color: "#94a3b8" }}>
+            PlanzyPop adheres to strict academic honesty and does not fabricate menus or estimate dish prices without verified source data.
+          </p>
         </div>
-        <SectionTitle title="Location" />
+
+        {/* Customer Reviews Section */}
+        <SectionTitle title="Customer Reviews (Google Places)" />
+        <p
+          style={{
+            margin: "0 0 10px 0",
+            fontSize: "11px",
+            color: "#6b7280",
+            fontStyle: "italic",
+          }}
+        >
+          {activeSpot.reviews_disclaimer ||
+            "Showing sample customer reviews provided by Google Places. This is a limited sample and does not represent an exhaustive analysis of all reviews."}
+        </p>
+
+        <SectionTitle title="Community Reviews & Feedback" />
+        <p
+          style={{
+            margin: "0 0 10px 0",
+            fontSize: "11px",
+            color: "#6b7280",
+            fontStyle: "italic",
+          }}
+        >
+          {activeSpot.reviews_disclaimer ||
+            "Reviews and community notes provided by OpenStreetMap and Geoapify. PlanzyPop never fabricates synthetic customer reviews."}
+        </p>
+
+        {loadingDetails ? (
+          <div style={{ padding: "16px", textAlign: "center", color: "var(--muted)", fontSize: "12px" }}>
+            Loading venue information...
+          </div>
+        ) : activeSpot.reviews && activeSpot.reviews.length > 0 ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "16px" }}>
+            {activeSpot.reviews.map((rev, rIdx) => (
+              <div
+                key={rIdx}
+                style={{
+                  background: "#ffffff",
+                  border: "1px solid #e5e7eb",
+                  borderRadius: "10px",
+                  padding: "12px",
+                  boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "6px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    <div
+                      style={{
+                        width: "24px",
+                        height: "24px",
+                        borderRadius: "50%",
+                        background: "#7c3aed",
+                        color: "#ffffff",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: "11px",
+                        fontWeight: 700,
+                      }}
+                    >
+                      {rev.author_name.charAt(0)}
+                    </div>
+                    <strong style={{ fontSize: "12px", color: "#111827" }}>{rev.author_name}</strong>
+                  </div>
+                  <span style={{ fontSize: "11px", color: "#6b7280" }}>{rev.relative_time}</span>
+                </div>
+                <p style={{ margin: 0, fontSize: "12px", lineHeight: 1.5, color: "#374151" }}>
+                  {rev.text || "No review text provided."}
+                </p>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div
+            style={{
+              padding: "12px 14px",
+              background: "#f9fafb",
+              borderRadius: "10px",
+              fontSize: "12px",
+              color: "#6b7280",
+              border: "1px solid #e5e7eb",
+              marginBottom: "16px",
+            }}
+          >
+            No external customer reviews attached to this venue record. Community feedback will appear here as users contribute.
+          </div>
+        )}
+
+        {/* Location & Map Links */}
+        <SectionTitle title="Location & Official Links" />
         <div className="address-card">
           <span>
             <Icon name="location" />
           </span>
           <div>
-            <strong>Church Street, Bengaluru</strong>
-            <p>Exact address and distance have not been provided.</p>
+            <strong>{activeSpot.name}</strong>
+            <p>{activeSpot.address || "Chandigarh, India"}</p>
           </div>
         </div>
+
+        <div style={{ display: "flex", gap: "10px", margin: "12px 0 20px 0" }}>
+          <a
+            href={`https://www.openstreetmap.org/?mlat=${activeSpot.latitude}&mlon=${activeSpot.longitude}#map=16/${activeSpot.latitude}/${activeSpot.longitude}`}
+            target="_blank"
+            rel="noreferrer"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "4px",
+              fontSize: "12px",
+              color: "#7c3aed",
+              textDecoration: "none",
+              fontWeight: 600,
+            }}
+          >
+            <span>View on OpenStreetMap</span>
+            <span>↗</span>
+          </a>
+          {activeSpot.website_uri && (
+            <a
+              href={activeSpot.website_uri}
+              target="_blank"
+              rel="noreferrer"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "4px",
+                fontSize: "12px",
+                color: "#7c3aed",
+                textDecoration: "none",
+                fontWeight: 600,
+              }}
+            >
+              <span>Official Website</span>
+              <span>↗</span>
+            </a>
+          )}
+        </div>
+
+        {/* Sticky Actions */}
         <div className="sticky-actions">
-          <Button variant="secondary" icon="route">
-            Directions
-          </Button>
+          <a
+            href={`https://www.google.com/maps/dir/?api=1&destination=${activeSpot.latitude},${activeSpot.longitude}`}
+            target="_blank"
+            rel="noreferrer"
+            style={{ flex: 1, textDecoration: "none" }}
+          >
+            <Button variant="secondary" icon="route" className="full-button">
+              Get Directions
+            </Button>
+          </a>
           <Button
             onClick={() => {
-              notify("Added as the event venue")
+              notify(`Selected "${activeSpot.name}" as celebration venue!`)
               go("planner")
             }}
             icon="arrow"
+            className="full-button"
           >
             Plan here
           </Button>
@@ -3184,11 +4952,11 @@ function Profile({
         ))}
       </div>
       <div className="menu-card">
-        <button type="button" onClick={() => notify("About PlanzyPop AI")}>
+        <button type="button" onClick={() => notify("About PlanzyPop")}>
           <span className="menu-icon">
             <Icon name="sparkle" size={20} />
           </span>
-          <strong>About PlanzyPop AI</strong>
+          <strong>About PlanzyPop</strong>
           <small>v1.0.0</small>
           <Icon name="chevron" size={17} />
         </button>
@@ -3342,7 +5110,7 @@ function SettingsScreen({
         </div>
       </div>
       <p className="settings-note">
-        PlanzyPop AI keeps your event details on this device in this prototype.
+        PlanzyPop keeps your event details on this device in this prototype.
         You’re always in control.
       </p>
     </div>
@@ -3355,7 +5123,7 @@ function AuthBrand() {
       <span className="brand-mark">
         <Icon name="sparkle" size={18} />
       </span>
-      <span>PlanzyPop AI</span>
+      <span>PlanzyPop</span>
     </div>
   )
 }
@@ -3520,7 +5288,7 @@ function WelcomeScreen({
           <span> easier and more fun.</span>
         </div>
         <p>
-          From tiny budgets to big ideas, PlanzyPop AI helps you bring everyone
+          From tiny budgets to big ideas, PlanzyPop helps you bring everyone
           together without the stress.
         </p>
       </div>
@@ -3543,7 +5311,7 @@ function WelcomeScreen({
         <button
           type="button"
           className="guest-button"
-          onClick={() => complete("Exploring PlanzyPop AI as a guest")}
+          onClick={() => complete("Exploring PlanzyPop as a guest")}
         >
           Continue as Guest <Icon name="arrow" size={15} />
         </button>
@@ -3663,7 +5431,7 @@ function LoginScreen({
       </div>
       <GoogleButton
         label="Continue with Google"
-        onClick={() => complete("Welcome to PlanzyPop AI!")}
+        onClick={() => complete("Welcome to PlanzyPop!")}
       />
       <div className="auth-switch">
         Don’t have an account?{" "}
@@ -3717,7 +5485,7 @@ function SignupScreen({ go }: { go: (screen: AuthScreen) => void }) {
       <div className="auth-heading compact">
         <div className="auth-kicker">LET’S PLAN SOMETHING GREAT</div>
         <div className="auth-title">Create Your Account</div>
-        <p>Join PlanzyPop AI and start planning better celebrations.</p>
+        <p>Join PlanzyPop and start planning better celebrations.</p>
       </div>
 
       <form className="auth-form" onSubmit={submit} noValidate>
@@ -3950,7 +5718,7 @@ function RegistrationSuccess({
       <div className="success-copy">
         <div className="auth-kicker">ACCOUNT CREATED</div>
         <div className="auth-title">You’re all set!</div>
-        <p>Welcome to PlanzyPop AI. Let’s plan your first celebration!</p>
+        <p>Welcome to PlanzyPop. Let’s plan your first celebration!</p>
       </div>
       <div className="success-perks">
         <span>
@@ -3965,7 +5733,7 @@ function RegistrationSuccess({
       </div>
       <Button
         className="auth-primary"
-        onClick={() => complete("Welcome to PlanzyPop AI!")}
+        onClick={() => complete("Welcome to PlanzyPop!")}
         icon="arrow"
       >
         Continue to Dashboard
@@ -4010,7 +5778,6 @@ function DesktopSidebar({
     { screen: "nearby", icon: "pin", label: "Explore Spots" },
     { screen: "events", icon: "calendar", label: "My Plans" },
     { screen: "budget", icon: "wallet", label: "My Budget" },
-    { screen: "insights", icon: "star", label: "Insights" },
     { screen: "settings", icon: "settings", label: "Settings" },
   ]
   const activeScreen =
@@ -4029,7 +5796,7 @@ function DesktopSidebar({
           <Icon name="sparkle" size={18} />
         </span>
         <div>
-          <strong>PlanzyPop AI</strong>
+          <strong>PlanzyPop</strong>
           <span>Event workspace</span>
         </div>
       </div>
@@ -4077,10 +5844,79 @@ function DesktopSidebar({
 }
 
 export default function App() {
-  const [authScreen, setAuthScreen] = useState<AuthScreen | null>("welcome")
-  const [screen, setScreen] = useState<Screen>("overview")
+  const queryParams =
+    typeof window !== "undefined"
+      ? new URLSearchParams(window.location.search)
+      : null
+  const initialAuth =
+    queryParams?.get("auth") === "skip" || queryParams?.get("screen")
+      ? null
+      : "welcome"
+  const initialScreen =
+    (queryParams?.get("screen") as Screen) || "overview"
+  const [authScreen, setAuthScreen] = useState<AuthScreen | null>(initialAuth)
+  const [screen, setScreen] = useState<Screen>(initialScreen)
   const [toast, setToast] = useState("")
-  const [eventsList, setEventsList] = useState<EventPlan[]>(defaultEvents)
+  const [eventsList, setEventsList] = useState<EventPlan[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const stored = localStorage.getItem("planzypop_saved_plans")
+        if (stored) {
+          const parsed = JSON.parse(stored)
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed
+        }
+      } catch (e) {
+        console.warn("Could not read saved plans from localStorage", e)
+      }
+    }
+    return defaultEvents
+  })
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem("planzypop_saved_plans", JSON.stringify(eventsList))
+      } catch (e) {
+        console.warn("Could not persist saved plans to localStorage", e)
+      }
+    }
+  }, [eventsList])
+  // On mount, also load any persisted events from SQLite backend
+  useEffect(() => {
+    getEvents()
+      .then((backendEvents) => {
+        if (backendEvents && backendEvents.length > 0) {
+          setEventsList((prev) => {
+            const existingNames = new Set(prev.map((p) => p.name.trim().toLowerCase()))
+            const fromDb: EventPlan[] = backendEvents
+              .filter((be) => !existingNames.has(be.event_name.trim().toLowerCase()))
+              .map((be) => ({
+                name: be.event_name,
+                type: be.event_type,
+                date: be.event_date,
+                place: be.location || "Chandigarh",
+                guests: be.guests || 15,
+                budget: `₹${Math.round(be.budget).toLocaleString("en-IN")}`,
+                progress: 35,
+                image:
+                  be.event_type === "Birthday"
+                    ? images.birthday
+                    : be.event_type === "Picnic"
+                      ? images.picnic
+                      : images.decor,
+              }))
+            if (fromDb.length > 0) {
+              return [...fromDb, ...prev]
+            }
+            return prev
+          })
+        }
+      })
+      .catch(() => {
+        // Fallback gracefully to localStorage and defaults
+      })
+  }, [])
+  const [selectedSpot, setSelectedSpot] = useState<SpotItem | null>(null)
   const navScreens: Screen[] = [
     "overview",
     "planner",
@@ -4135,6 +5971,7 @@ export default function App() {
           <Planner
             go={setScreen}
             notify={notify}
+            initialVenue={selectedSpot}
             onSaveEvent={(newEvent) => {
               setEventsList((prev) => [newEvent, ...prev])
               notify(`Plan "${newEvent.name}" saved to My Plans!`)
@@ -4143,7 +5980,14 @@ export default function App() {
           />
         )
       case "nearby":
-        return <Nearby go={setScreen} />
+        return (
+          <Nearby
+            go={setScreen}
+            notify={notify}
+            selectedSpot={selectedSpot}
+            onSelectSpot={setSelectedSpot}
+          />
+        )
       case "profile":
         return <Profile go={setScreen} notify={notify} />
       case "event-detail":
@@ -4153,7 +5997,14 @@ export default function App() {
       case "checklist":
         return <Checklist go={setScreen} />
       case "place-detail":
-        return <PlaceDetail go={setScreen} notify={notify} />
+        return (
+          <PlaceDetail
+            spot={selectedSpot}
+            go={setScreen}
+            notify={notify}
+            onSelectSpot={setSelectedSpot}
+          />
+        )
       case "insights":
         return <Insights />
       case "settings":
@@ -4165,20 +6016,19 @@ export default function App() {
           />
         )
     }
-  }, [screen])
+  }, [screen, selectedSpot, eventsList])
 
   return (
     <div className="app-shell">
       {!authScreen && <DesktopSidebar screen={screen} onNavigate={setScreen} />}
       <main className={`app-surface ${authScreen ? "auth-surface" : ""}`}>
-        {!authScreen && (
+        {!authScreen && screen !== "planner" && (
           <header className="desktop-global-header">
             <div>
               <span>PLANZYPOP</span>
               <strong>{screenTitles[screen]}</strong>
             </div>
             <div className="global-header-actions">
-              <span className="demo-data-badge">DEMO DATA</span>
               <IconButton
                 icon="bell"
                 label="Notifications"

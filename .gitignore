@@ -1,9 +1,25 @@
+# Virtual environments
 .venv/
+backend/.venv/
+**/.venv/
+
+# Python cache & artifacts
 __pycache__/
 *.pyc
+.pytest_cache/
+
+# Node & Frontend build artifacts
 frontend/node_modules/
 frontend/dist/
 frontend/.cache/
 frontend/.vite/
 frontend/*.tsbuildinfo
+
+# Sensitive environment configuration files (NEVER commit secrets or real keys)
+.env
+*.env
+backend/.env
 frontend/.env
+
+# Local audit screenshots
+*.png

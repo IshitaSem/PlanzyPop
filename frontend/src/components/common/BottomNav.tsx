@@ -14,7 +14,6 @@ export function BottomNav({
     { screen: "nearby", icon: "pin", label: "Explore Spots" },
     { screen: "events", icon: "calendar", label: "My Plans" },
     { screen: "budget", icon: "wallet", label: "My Budget" },
-    { screen: "insights", icon: "star", label: "Insights" },
     { screen: "settings", icon: "settings", label: "Settings" },
   ]
   const activeScreen =

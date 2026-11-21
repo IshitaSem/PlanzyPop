@@ -26,6 +26,13 @@ export type {
   SuggestionRequest,
   SuggestionResponse,
   ExpenseCategory,
+  SpotItem,
+  SpotReview,
+  SpotDishRecommendation,
+  SpotSearchParams,
+  SpotSearchResponse,
+  SpotCategory,
+  SpotFavorite,
 } from "../services/api"
 
 export type Screen = "overview" | "events" | "planner" | "nearby" | "profile" | "event-detail" | "budget" | "checklist" | "place-detail" | "insights" | "settings"

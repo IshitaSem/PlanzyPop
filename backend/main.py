@@ -9,14 +9,22 @@ Core FastAPI Application Entry Point:
 - Provides system root and health check endpoints.
 """
 
+import sys
+from pathlib import Path
+
+# Ensure backend directory is in the module search path
+BACKEND_DIR = Path(__file__).resolve().parent
+if str(BACKEND_DIR) not in sys.path:
+    sys.path.insert(0, str(BACKEND_DIR))
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from database import engine
 import models
-from routers import events, expenses, tasks, suggestions
+from routers import events, expenses, tasks, suggestions, spots
 
-# Automatically create all database tables (events, expenses, tasks) defined in models.py
+# Automatically create all database tables (events, expenses, tasks, saved_spots) defined in models.py
 models.Base.metadata.create_all(bind=engine)
 
 # Initialize FastAPI application
@@ -31,14 +39,20 @@ app = FastAPI(
 
 # Configure CORS (Cross-Origin Resource Sharing)
 origins = [
+    "https://planzy-pop-ai.vercel.app",
     "http://localhost:5173",
     "http://127.0.0.1:5173",
+    "http://localhost:8443",
+    "http://127.0.0.1:8443",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
     "*"
 ]
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
+    allow_origin_regex=r"https:\/\/.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -81,6 +95,7 @@ app.include_router(events.router)
 app.include_router(expenses.router)
 app.include_router(tasks.router)
 app.include_router(suggestions.router)
+app.include_router(spots.router)
 
 
 # ============================================================================
