@@ -3069,7 +3069,7 @@ function Planner({
         </button>
         <div className="smart-privacy-note">
           <Icon name="check" size={14} />
-          <span>Rule-based AI recommendation engine · Always 100% editable by you</span>
+          
         </div>
       </div>
     </div>
