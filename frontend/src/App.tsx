@@ -704,34 +704,14 @@ function Overview({
           </div>
         </button>
       ) : (
-        <div
-          className="empty-coming-up"
-          style={{
-            padding: "36px 20px",
-            background: "#ffffff",
-            borderRadius: "20px",
-            border: "1px dashed #cbd5e1",
-            textAlign: "center",
-            boxShadow: "0 2px 10px rgba(0,0,0,0.02)",
-            marginBottom: "16px",
-          }}
-        >
-          <div style={{ color: "#7c3aed", marginBottom: "10px" }}>
-            <Icon name="calendar" size={36} />
+        <div className="empty-coming-up">
+          <div className="empty-coming-up-icon">
+            <Icon name="calendar" size={30} />
           </div>
-          <strong
-            style={{ display: "block", fontSize: "16px", marginBottom: "6px" }}
-          >
+          <strong className="empty-coming-up-title">
             Welcome! Start planning your first celebration.
           </strong>
-          <p
-            style={{
-              color: "#64748b",
-              fontSize: "13px",
-              maxWidth: "420px",
-              margin: "0 auto 18px",
-            }}
-          >
+          <p className="empty-coming-up-desc">
             You haven't created any plans yet. Tell us your vibe and budget, and
             PlanzyPop will create your first celebration plan.
           </p>
@@ -849,14 +829,7 @@ function Overview({
               </div>
             </>
           ) : events.length === 0 ? (
-            <div
-              style={{
-                padding: "20px 0",
-                textAlign: "center",
-                color: "var(--muted, #64748b)",
-                fontSize: "13px",
-              }}
-            >
+            <div className="activity-empty">
               No recent activity yet. Your planned events and updates will appear here.
             </div>
           ) : (
