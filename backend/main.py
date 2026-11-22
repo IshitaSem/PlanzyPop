@@ -22,7 +22,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from database import engine
 import models
-from routers import events, expenses, tasks, suggestions, spots
+from routers import events, expenses, tasks, suggestions, spots, ai
 
 # Automatically create all database tables (events, expenses, tasks, saved_spots) defined in models.py
 models.Base.metadata.create_all(bind=engine)
@@ -39,7 +39,10 @@ app = FastAPI(
 
 # Configure CORS (Cross-Origin Resource Sharing)
 origins = [
+    "https://planzy-pop.vercel.app",
+    "https://planzy-pop.vercel.app/",
     "https://planzy-pop-ai.vercel.app",
+    "https://planzy-pop-ai.vercel.app/",
     "http://localhost:5173",
     "http://127.0.0.1:5173",
     "http://localhost:8443",
@@ -96,6 +99,7 @@ app.include_router(expenses.router)
 app.include_router(tasks.router)
 app.include_router(suggestions.router)
 app.include_router(spots.router)
+app.include_router(ai.router)
 
 
 # ============================================================================
@@ -123,3 +127,5 @@ delete_task = tasks.delete_task
 get_task_summary = tasks.get_task_summary
 
 get_event_suggestions = suggestions.get_event_suggestions
+generate_ai_plan = ai.generate_ai_plan
+chat_with_assistant = ai.chat_with_assistant

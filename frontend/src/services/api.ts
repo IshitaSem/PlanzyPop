@@ -9,7 +9,7 @@
 export const API_BASE_URL =
   (import.meta.env.VITE_API_BASE_URL as string) ||
   (import.meta.env.PROD
-    ? "https://planzypop-ai.onrender.com"
+    ? "https://planzypop.onrender.com"
     : "http://127.0.0.1:8000")
 
 // Standard student-friendly expense categories supported by backend
@@ -224,7 +224,8 @@ async function apiRequest<T>(
 
 export interface DeleteResult {
   message: string
-  id: number
+  id?: number
+  deleted_id?: number
 }
 
 export interface RemoveFavoriteResult {

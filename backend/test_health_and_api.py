@@ -64,6 +64,53 @@ def test_health_and_root_endpoints(client: TestClient):
     assert health_data.get("service") == "PlanzyPop Backend"
 
 
+def test_cors_headers_for_vercel(client: TestClient):
+    """Verify that requests from https://planzy-pop.vercel.app receive proper CORS headers."""
+    response = client.options(
+        "/health",
+        headers={
+            "Origin": "https://planzy-pop.vercel.app",
+            "Access-Control-Request-Method": "GET"
+        }
+    )
+    assert response.status_code == 200
+    assert response.headers.get("access-control-allow-origin") == "https://planzy-pop.vercel.app"
+
+
+def test_ai_planner_endpoint(client: TestClient):
+    """Verify POST /api/plan synthesizes a complete celebration plan."""
+    payload = {
+        "eventName": "Hostel Farewell Party",
+        "eventType": "Farewell",
+        "guests": 20,
+        "budgetInr": 6000,
+        "celebrationStyle": "Casual"
+    }
+    response = client.post("/api/plan", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert "conceptTitle" in data
+    assert "budgetAllocation" in data
+    assert len(data["budgetAllocation"]) > 0
+    assert "preparationTimeline" in data
+    assert "checklist" in data
+    assert data["source"] == "planzy_engine"
+
+
+def test_ai_chat_endpoint(client: TestClient):
+    """Verify POST /api/chat responds to party planning queries."""
+    payload = {
+        "message": "How do I split budget for a birthday party?",
+        "eventContext": {"name": "Birthday Bash", "budget": 4000}
+    }
+    response = client.post("/api/chat", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert "response" in data
+    assert len(data["suggestions"]) > 0
+    assert data["source"] == "planzy_assistant"
+
+
 def test_sqlite_database_and_schema():
     """
     Verify that the SQLite database file exists and contains the required tables

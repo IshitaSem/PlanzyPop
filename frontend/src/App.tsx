@@ -1026,7 +1026,8 @@ function Planner({
     initialVenue ? `Celebration at ${initialVenue.name}` : "Rohan's 21st Birthday Bash",
   )
   const [eventDate, setEventDate] = useState("20 Nov 2026")
-  const [guests, setGuests] = useState(15)
+  const [guests, setGuests] = useState("1")
+  const [guestError, setGuestError] = useState("")
   const [location, setLocation] = useState(
     initialVenue
       ? initialVenue.address || initialVenue.name
@@ -1073,7 +1074,7 @@ function Planner({
   const [editOccasion, setEditOccasion] = useState(eventType)
   const [editDate, setEditDate] = useState(eventDate)
   const [editLocation, setEditLocation] = useState(location)
-  const [editGuests, setEditGuests] = useState(guests)
+  const [editGuests, setEditGuests] = useState<number>(Number(guests) || 1)
   const [editBudget, setEditBudget] = useState(budget)
   const [editStyle, setEditStyle] = useState(style)
 
@@ -1478,7 +1479,7 @@ function Planner({
     setEventType(editOccasion)
     setEventDate(editDate)
     setLocation(editLocation)
-    setGuests(editGuests)
+    setGuests(String(editGuests))
     setBudget(editBudget)
     setStyle(editStyle)
     setIsEditingBasics(false)
@@ -1492,12 +1493,13 @@ function Planner({
     const finalBudget = apiSuggestion?.total_allocated_budget
       ? `₹${Math.round(apiSuggestion.total_allocated_budget).toLocaleString("en-IN")}`
       : `₹${totalEstimated.toLocaleString("en-IN")}`
+    const numGuests = typeof guests === "number" ? guests : parseInt(guests, 10) || 1
     const newPlan = {
       name: finalEventName,
       type: eventType,
       date: eventDate,
       place: location,
-      guests,
+      guests: numGuests,
       budget: finalBudget,
       progress: 35,
       image:
@@ -1513,7 +1515,7 @@ function Planner({
         event_type: eventType,
         event_date: eventDate || new Date().toISOString().split("T")[0],
         location: location,
-        guests: guests,
+        guests: numGuests,
         budget: parseBudgetNum(budget),
         celebration_style: style,
       }).catch((err) => {
@@ -1532,6 +1534,25 @@ function Planner({
   }
 
   const generate = async () => {
+    const trimmed = typeof guests === "string" ? guests.trim() : String(guests).trim()
+    if (!trimmed) {
+      setGuestError("Please enter the estimated guest count.")
+      notify("Please enter the estimated guest count.")
+      const el = document.getElementById("event-guests-input")
+      el?.focus()
+      return
+    }
+    const numGuests = parseInt(trimmed, 10)
+    if (isNaN(numGuests) || numGuests < 1) {
+      setGuestError("Guest count must be at least 1.")
+      notify("Guest count must be at least 1.")
+      const el = document.getElementById("event-guests-input")
+      el?.focus()
+      return
+    }
+
+    setGuestError("")
+    setEditGuests(numGuests)
     setStep("loading")
     setIsAiLoading(true)
 
@@ -1557,7 +1578,7 @@ function Planner({
       const resp = await generateSuggestions({
         event_type: eventType,
         budget: numericBudget,
-        guests: guests,
+        guests: numGuests,
         celebration_style: style,
       })
       if (resp) {
@@ -1578,7 +1599,7 @@ function Planner({
               id: `s-${idCounter++}`,
               name: food,
               category: isCake ? "Cake" : "Food",
-              quantity: isCake ? "1.2 kg" : `${Math.max(1, Math.round(guests / 4))} platters`,
+              quantity: isCake ? "1.2 kg" : `${Math.max(1, Math.round(numGuests / 4))} platters`,
               cost: Math.max(100, cost),
               completed: idCounter % 3 === 0,
             })
@@ -1622,8 +1643,8 @@ function Planner({
           id: `s-${idCounter++}`,
           name: "Eco-friendly plates, cups & napkins",
           category: "Supplies",
-          quantity: `${guests} sets`,
-          cost: Math.max(80, Math.round(guests * 12)),
+          quantity: `${numGuests} sets`,
+          cost: Math.max(80, Math.round(numGuests * 12)),
           completed: true,
         })
 
@@ -1743,7 +1764,7 @@ function Planner({
               setEditOccasion(eventType)
               setEditDate(eventDate)
               setEditLocation(location)
-              setEditGuests(guests)
+              setEditGuests(Number(guests) || 1)
               setEditBudget(budget)
               setEditStyle(style)
               setIsEditingBasics(!isEditingBasics)
@@ -2020,7 +2041,7 @@ function Planner({
           </span>
           <div className="food-cost-breakdown">
             <span className="per-guest-text">
-              ~₹{Math.round((foodCost + cakeCost) / Math.max(1, guests))} / guest
+              ~₹{Math.round((foodCost + cakeCost) / Math.max(1, Number(guests) || 1))} / guest
             </span>
             <strong className="food-total-text">
               ₹{(foodCost + cakeCost).toLocaleString("en-IN")} est.
@@ -2326,7 +2347,7 @@ function Planner({
           <div className="budget-kpi-tile">
             <span className="budget-kpi-label">Per-Guest Cost</span>
             <strong className="budget-kpi-val">
-              ~₹{Math.round(displayTotal / Math.max(1, guests)).toLocaleString("en-IN")}
+              ~₹{Math.round(displayTotal / Math.max(1, Number(guests) || 1)).toLocaleString("en-IN")}
             </strong>
           </div>
         </div>
@@ -2548,7 +2569,7 @@ function Planner({
               setEditOccasion(eventType)
               setEditDate(eventDate)
               setEditLocation(location)
-              setEditGuests(guests)
+              setEditGuests(Number(guests) || 1)
               setEditBudget(budget)
               setEditStyle(style)
               setIsEditingBasics(!isEditingBasics)
@@ -2786,8 +2807,36 @@ function Planner({
               type="number"
               min={1}
               value={guests}
-              onChange={(e) => setGuests(Math.max(1, Number(e.target.value)))}
+              onChange={(e) => {
+                const val = e.target.value
+                if (val === "" || /^\d+$/.test(val)) {
+                  setGuests(val)
+                  if (guestError) setGuestError("")
+                }
+              }}
+              onKeyDown={(e) => {
+                if (["e", "E", "+", "-", "."].includes(e.key)) {
+                  e.preventDefault()
+                }
+              }}
+              placeholder="e.g. 15"
+              style={guestError ? { borderColor: "#e11d48" } : undefined}
             />
+            {guestError && (
+              <span
+                className="field-error-text"
+                role="alert"
+                style={{
+                  color: "#e11d48",
+                  fontSize: "12px",
+                  marginTop: "4px",
+                  display: "block",
+                  fontWeight: 500,
+                }}
+              >
+                {guestError}
+              </span>
+            )}
           </div>
           <div className="form-field-group span-full">
             <label htmlFor="event-location-input">Venue / Location in Chandigarh</label>
@@ -2838,7 +2887,7 @@ function Planner({
         <div className="budget-insight-box">
           <Icon name="wallet" size={18} />
           <div>
-            <strong>Budget Target: {budget}</strong> · Estimated <strong>~₹{Math.round(targetBudgetNum / Math.max(1, guests))}</strong> per guest for {guests} friends.
+            <strong>Budget Target: {budget}</strong> · Estimated <strong>~₹{Math.round(targetBudgetNum / Math.max(1, Number(guests) || 1))}</strong> per guest for {guests && Number(guests) > 0 ? `${guests} friends` : "your celebration"}.
             <div style={{ marginTop: 2, fontSize: 11, opacity: 0.9 }}>
               Includes balanced allocations for bakery celebration cake, savory snack platters, drinks, DIY decor, and games.
             </div>
