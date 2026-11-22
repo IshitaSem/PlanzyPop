@@ -55,7 +55,6 @@ export const SpotMap: React.FC<SpotMapProps> = ({
   const markersRef = useRef<Map<string, L.Marker>>(new Map())
   const boundaryLayerRef = useRef<L.Polygon | null>(null)
 
-  // Initialize Leaflet map
   useEffect(() => {
     if (!mapContainerRef.current) return
     if (mapInstanceRef.current) return
@@ -75,14 +74,12 @@ export const SpotMap: React.FC<SpotMapProps> = ({
       minZoom: 11,
     })
 
-    // OpenStreetMap standard tiles
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       maxZoom: 19,
       attribution:
         '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a> contributors',
     }).addTo(map)
 
-    // Render Chandigarh UT Administrative Boundary Outline
     const boundaryPolygon = L.polygon(CHANDIGARH_BOUNDARY, {
       color: "#7c3aed",
       weight: 2,
@@ -102,7 +99,6 @@ export const SpotMap: React.FC<SpotMapProps> = ({
     }
   }, [])
 
-  // Sync map center if changed
   useEffect(() => {
     const map = mapInstanceRef.current
     if (!map) return
@@ -116,12 +112,10 @@ export const SpotMap: React.FC<SpotMapProps> = ({
     }
   }, [centerLat, centerLon, zoom])
 
-  // Update Markers
   useEffect(() => {
     const map = mapInstanceRef.current
     if (!map) return
 
-    // Remove old markers
     markersRef.current.forEach((marker) => marker.remove())
     markersRef.current.clear()
 
@@ -129,7 +123,6 @@ export const SpotMap: React.FC<SpotMapProps> = ({
       onOpenDetails(spot)
     }
 
-    // Attach global helper for popup buttons
     ;(window as any)._planzypop_open_spot_details = (spotId: string) => {
       const match = spots.find((s) => s.id === spotId)
       if (match) onDetailsClick(match)
@@ -194,14 +187,12 @@ export const SpotMap: React.FC<SpotMapProps> = ({
       markersRef.current.set(spot.id, marker)
     })
 
-    // If a spot is selected, pan to it and open its popup
     if (selectedSpotId && markersRef.current.has(selectedSpotId)) {
       const targetMarker = markersRef.current.get(selectedSpotId)
       if (targetMarker) {
         targetMarker.openPopup()
       }
     }
-    // Automatically invalidate size to ensure proper tile rendering
     const timer = setTimeout(() => {
       map.invalidateSize()
     }, 150)

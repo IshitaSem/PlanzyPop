@@ -12,7 +12,6 @@ export const API_BASE_URL =
     ? "https://planzypop.onrender.com"
     : "http://127.0.0.1:8000")
 
-// Standard student-friendly expense categories supported by backend
 export const EXPENSE_CATEGORIES = [
   "Food",
   "Decorations",
@@ -26,9 +25,6 @@ export const EXPENSE_CATEGORIES = [
 
 export type ExpenseCategory = typeof EXPENSE_CATEGORIES[number]
 
-// ============================================================================
-// TypeScript Data Interfaces
-// ============================================================================
 
 export interface EventItem {
   id: number
@@ -170,17 +166,77 @@ export interface SuggestionResponse {
   disclaimer: string
 }
 
-// ============================================================================
-// HTTP Fetch Helper
-// ============================================================================
+
+export const TOKEN_STORAGE_KEY = "planzypop_auth_token"
+export const USER_STORAGE_KEY = "planzypop_current_user"
+
+export interface UserInfo {
+  id: number
+  name: string
+  email: string
+}
+
+export interface AuthResponse {
+  access_token: string
+  token_type: string
+  user: UserInfo
+}
+
+export function getAuthToken(): string | null {
+  try {
+    return localStorage.getItem(TOKEN_STORAGE_KEY)
+  } catch {
+    return null
+  }
+}
+
+export function setAuthToken(token: string | null): void {
+  try {
+    if (token) {
+      localStorage.setItem(TOKEN_STORAGE_KEY, token)
+    } else {
+      localStorage.removeItem(TOKEN_STORAGE_KEY)
+    }
+  } catch {
+    // Ignore storage quota/permission errors
+  }
+}
+
+export function getStoredUser(): UserInfo | null {
+  try {
+    const raw = localStorage.getItem(USER_STORAGE_KEY)
+    return raw ? JSON.parse(raw) : null
+  } catch {
+    return null
+  }
+}
+
+export function setStoredUser(user: UserInfo | null): void {
+  try {
+    if (user) {
+      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user))
+    } else {
+      localStorage.removeItem(USER_STORAGE_KEY)
+    }
+  } catch {
+    // Ignore storage quota/permission errors
+  }
+}
 
 async function apiRequest<T>(
   path: string,
   options: RequestInit = {},
 ): Promise<T> {
   const url = `${API_BASE_URL}${path}`
+  const token = getAuthToken()
+  const authHeaders: Record<string, string> = {}
+  if (token) {
+    authHeaders["Authorization"] = `Bearer ${token}`
+  }
+
   const headers = {
     "Content-Type": "application/json",
+    ...authHeaders,
     ...(options.headers || {}),
   }
 
@@ -205,12 +261,10 @@ async function apiRequest<T>(
         }
       }
     } catch {
-      // Ignore json parse error and keep statusText
     }
     throw new Error(errorDetail)
   }
 
-  // Handle 204 No Content
   if (response.status === 204) {
     return {} as T
   }
@@ -218,9 +272,6 @@ async function apiRequest<T>(
   return (await response.json()) as T
 }
 
-// ============================================================================
-// API Methods
-// ============================================================================
 
 export interface DeleteResult {
   message: string
@@ -238,12 +289,58 @@ export interface HealthResult {
   service: string
 }
 
-// --- Health / Root ---
 export async function checkHealth(): Promise<HealthResult> {
   return apiRequest<HealthResult>("/health")
 }
 
-// --- Events (Stage 3) ---
+export async function register(data: {
+  name: string
+  email: string
+  password: string
+}): Promise<AuthResponse> {
+  const res = await apiRequest<AuthResponse>("/auth/register", {
+    method: "POST",
+    body: JSON.stringify(data),
+  })
+  if (res.access_token) {
+    setAuthToken(res.access_token)
+    setStoredUser(res.user)
+  }
+  return res
+}
+
+export async function login(data: {
+  email: string
+  password: string
+}): Promise<AuthResponse> {
+  const res = await apiRequest<AuthResponse>("/auth/login", {
+    method: "POST",
+    body: JSON.stringify(data),
+  })
+  if (res.access_token) {
+    setAuthToken(res.access_token)
+    setStoredUser(res.user)
+  }
+  return res
+}
+
+export async function getCurrentUser(): Promise<UserInfo> {
+  return apiRequest<UserInfo>("/auth/me")
+}
+
+export async function logout(): Promise<void> {
+  try {
+    await apiRequest<{ message: string }>("/auth/logout", {
+      method: "POST",
+    })
+  } catch {
+    // Session cleanup proceeds even if network fails
+  } finally {
+    setAuthToken(null)
+    setStoredUser(null)
+  }
+}
+
 export async function getEvents(): Promise<EventItem[]> {
   return apiRequest<EventItem[]>("/events")
 }
@@ -275,7 +372,6 @@ export async function deleteEvent(id: number): Promise<DeleteResult> {
   })
 }
 
-// --- Expenses & Budget (Stage 4) ---
 export async function getExpenses(eventId: number): Promise<ExpenseItem[]> {
   return apiRequest<ExpenseItem[]>(`/events/${eventId}/expenses`)
 }
@@ -334,7 +430,6 @@ export async function getEventSplit(
   return apiRequest<ExpenseSplit>(`/events/${eventId}/split-expense${query}`)
 }
 
-// --- Tasks & Timeline (Stage 5) ---
 export async function getTasks(eventId: number): Promise<TaskItem[]> {
   return apiRequest<TaskItem[]>(`/events/${eventId}/tasks`)
 }
@@ -369,7 +464,6 @@ export async function getTaskSummary(eventId: number): Promise<TaskSummary> {
   return apiRequest<TaskSummary>(`/events/${eventId}/tasks/summary`)
 }
 
-// --- Rule-Based Suggestions (Stage 6) ---
 export async function generateSuggestions(
   data: SuggestionRequest,
 ): Promise<SuggestionResponse> {
@@ -379,9 +473,6 @@ export async function generateSuggestions(
   })
 }
 
-// ============================================================================
-// PopSpots API (Stage 7: Real Local Hangout Discovery & Google Places API)
-// ============================================================================
 
 export interface SpotReview {
   author_name: string

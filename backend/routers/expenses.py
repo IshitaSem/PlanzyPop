@@ -4,20 +4,18 @@ Handles Expense CRUD, Budget Tracking, Overspending Alerts, and Fair Expense Spl
 Academic Mini-Project for M.Sc. Computer Science (Data Science)
 """
 
-from typing import List, Dict
+from typing import List, Dict, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 
 from database import get_db
 import models
 import schemas
+from auth_utils import get_current_user_optional, verify_event_owner as _verify_event_owner
 
 router = APIRouter(tags=["Budget Management", "Expenses"])
 
 
-# ============================================================================
-# Expense CRUD Operations
-# ============================================================================
 
 @router.post(
     "/events/{event_id}/expenses",
@@ -28,6 +26,7 @@ router = APIRouter(tags=["Budget Management", "Expenses"])
 def add_expense(
     event_id: int,
     expense_data: schemas.ExpenseCreate,
+    current_user: Optional[models.User] = Depends(get_current_user_optional),
     db: Session = Depends(get_db)
 ):
     """
@@ -42,6 +41,7 @@ def add_expense(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Cannot add expense. Event with ID {event_id} not found."
         )
+    _verify_event_owner(event, current_user)
 
     new_expense = models.Expense(
         event_id=event_id,
@@ -61,7 +61,11 @@ def add_expense(
     response_model=List[schemas.ExpenseResponse],
     summary="List all expenses for an event"
 )
-def get_event_expenses(event_id: int, db: Session = Depends(get_db)):
+def get_event_expenses(
+    event_id: int,
+    current_user: Optional[models.User] = Depends(get_current_user_optional),
+    db: Session = Depends(get_db)
+):
     """
     VIEW Expenses for an Event:
     - Retrieves all expenses recorded for the specified event.
@@ -73,6 +77,7 @@ def get_event_expenses(event_id: int, db: Session = Depends(get_db)):
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Event with ID {event_id} not found."
         )
+    _verify_event_owner(event, current_user)
 
     expenses = (
         db.query(models.Expense)
@@ -91,6 +96,7 @@ def get_event_expenses(event_id: int, db: Session = Depends(get_db)):
 def update_expense(
     expense_id: int,
     expense_update: schemas.ExpenseUpdate,
+    current_user: Optional[models.User] = Depends(get_current_user_optional),
     db: Session = Depends(get_db)
 ):
     """
@@ -106,6 +112,9 @@ def update_expense(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Expense with ID {expense_id} not found."
         )
+    event = db.query(models.Event).filter(models.Event.id == expense.event_id).first()
+    if event:
+        _verify_event_owner(event, current_user)
 
     update_data = expense_update.model_dump(exclude_unset=True)
     for key, value in update_data.items():
@@ -121,7 +130,11 @@ def update_expense(
     status_code=status.HTTP_200_OK,
     summary="Delete an expense"
 )
-def delete_expense(expense_id: int, db: Session = Depends(get_db)):
+def delete_expense(
+    expense_id: int,
+    current_user: Optional[models.User] = Depends(get_current_user_optional),
+    db: Session = Depends(get_db)
+):
     """
     DELETE an Expense:
     - Removes an individual expense item.
@@ -133,6 +146,9 @@ def delete_expense(expense_id: int, db: Session = Depends(get_db)):
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Expense with ID {expense_id} not found."
         )
+    event = db.query(models.Event).filter(models.Event.id == expense.event_id).first()
+    if event:
+        _verify_event_owner(event, current_user)
 
     db.delete(expense)
     db.commit()
@@ -142,16 +158,17 @@ def delete_expense(expense_id: int, db: Session = Depends(get_db)):
     }
 
 
-# ============================================================================
-# Budget Calculations & Expense Splitting
-# ============================================================================
 
 @router.get(
     "/events/{event_id}/budget",
     response_model=schemas.BudgetSummaryResponse,
     summary="Get budget utilization and category breakdown"
 )
-def get_event_budget_summary(event_id: int, db: Session = Depends(get_db)):
+def get_event_budget_summary(
+    event_id: int,
+    current_user: Optional[models.User] = Depends(get_current_user_optional),
+    db: Session = Depends(get_db)
+):
     """
     CALCULATE Budget Summary:
     - Calculates:
@@ -168,6 +185,7 @@ def get_event_budget_summary(event_id: int, db: Session = Depends(get_db)):
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Event with ID {event_id} not found."
         )
+    _verify_event_owner(event, current_user)
 
     expenses = db.query(models.Expense).filter(models.Expense.event_id == event_id).all()
 
@@ -181,14 +199,12 @@ def get_event_budget_summary(event_id: int, db: Session = Depends(get_db)):
     else:
         utilisation_percentage = 0.0 if total_expenses == 0 else 100.0
 
-    # Overspending detection
     is_over_budget = total_expenses > planned_budget
     warning_message = None
     if is_over_budget:
         over_amount = round(total_expenses - planned_budget, 2)
         warning_message = f"Warning: Spending has exceeded your planned budget by Rs {over_amount}!"
 
-    # Category-wise breakdown
     category_breakdown: Dict[str, float] = {}
     for exp in expenses:
         category_breakdown[exp.category] = round(
@@ -239,6 +255,7 @@ def calculate_expense_split(split_data: schemas.ExpenseSplitRequest):
 def split_event_expenses(
     event_id: int,
     people: int = Query(default=1, gt=0, description="Number of contributing friends"),
+    current_user: Optional[models.User] = Depends(get_current_user_optional),
     db: Session = Depends(get_db)
 ):
     """
@@ -254,6 +271,7 @@ def split_event_expenses(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Event with ID {event_id} not found."
         )
+    _verify_event_owner(event, current_user)
 
     expenses = db.query(models.Expense).filter(models.Expense.event_id == event_id).all()
     total_expenses = sum(exp.amount for exp in expenses)

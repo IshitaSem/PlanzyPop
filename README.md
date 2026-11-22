@@ -17,7 +17,8 @@ The platform provides a centralized, interactive workspace where hosts can:
 - Split bills equally among contributing friends based on actual receipts or planned budgets.
 - Manage preparation checklists with due dates, overdue detection, and chronological timelines.
 - Synthesize balanced celebration themes, DIY decor plans, and budget allocations via a deterministic rule-based engine.
-- Discover authentic local cafés, bakeries, and party venues using browser geolocation and Google Maps searches without paid API keys.
+- Discover authentic local cafés, bakeries, and hangout venues geofenced to Chandigarh Union Territory using Geoapify and OpenStreetMap with interactive map visualization.
+- Maintain independent personal celebration data with secure user authentication, while offering a rich Guest Demo Mode.
 
 ---
 
@@ -31,7 +32,8 @@ The platform provides a centralized, interactive workspace where hosts can:
 | **Equal Expense Splitting** | Automated split calculator dividing actual recorded costs or fallback planned budgets among friends. |
 | **Checklist & Timeline** | Prioritized preparation checklist with toggleable completion states, due dates, overdue detection, and a chronological timeline. |
 | **Rule-Based Suggestions** | Expert decision engine synthesizing themes, DIY decor, menus, and balanced budget allocations (0 database writes, no paid AI API). |
-| **Google Maps Café Finder** | Browser geolocation-powered discovery for cafés near me, budget cafés, birthday spots, bakeries, and small party venues. |
+| **PopSpots Venue Discovery** | Real local café, bakery, and party venue explorer geofenced to Chandigarh UT with interactive Leaflet map, distance sorting, and bookmarks. |
+| **User Authentication & Guest Mode** | User registration and login with bcrypt password hashing and token authentication, with full data isolation and a rich guest demo mode. |
 | **Host Preferences** | Host profile personalization, group naming, default celebration styles, and notification panel. |
 
 ---
@@ -39,20 +41,23 @@ The platform provides a centralized, interactive workspace where hosts can:
 ## 3. Technology Stack
 
 ### Backend
-- **Framework:** FastAPI 0.162.0 (Python 3.14)
+- **Framework:** FastAPI 0.162.0 (Python 3.10+)
 - **ASGI Server:** Uvicorn 0.54.0
 - **Database Engine:** SQLite 3 (Stored at `backend/planzypop.db`)
 - **ORM:** SQLAlchemy 2.0 with foreign key cascade deletion
+- **Authentication:** Token-based session authentication with bcrypt password hashing
 - **Data Validation:** Pydantic 2.x
-- **Testing:** Python `unittest` & `TestClient` (Starlette/HTTPX)
+- **Geodata & Venues:** Geoapify Places API + OpenStreetMap Overpass API, geofenced with Shapely polygon ray-casting
+- **Testing:** Pytest (10 test suites, 74 tests) & `TestClient` (Starlette/HTTPX)
 
 ### Frontend
 - **Framework:** React 19 (SPA Architecture)
 - **Language:** TypeScript 5.7 (Strict Mode)
 - **Build Tool:** Vite 8
 - **Styling:** Tailwind CSS v4 + Custom Neo-Brutalist CSS Design System
+- **Mapping:** Leaflet & React-Leaflet with OpenStreetMap tiles
+- **Session State:** Authentication Context with guest demo fallback
 - **Geolocation:** Browser Geolocation API (`navigator.geolocation`)
-- **Maps Integration:** Google Maps Universal Search URLs
 
 ---
 
@@ -63,26 +68,35 @@ PlanzyPop AI/
 ├── backend/                  # FastAPI Backend & SQLite Database
 │   ├── routers/              # Modular API route controllers
 │   │   ├── __init__.py       # Package marker
-│   │   ├── events.py         # Event CRUD endpoints
+│   │   ├── auth.py           # User authentication & token session endpoints
+│   │   ├── events.py         # Event CRUD endpoints with user isolation
 │   │   ├── expenses.py       # Expense CRUD, budget summary & splits
+│   │   ├── spots.py          # PopSpots Chandigarh venue explorer endpoints
 │   │   ├── tasks.py          # Checklist tasks, timeline & summaries
 │   │   └── suggestions.py    # Rule-based recommendation engine endpoint
+│   ├── auth_utils.py         # Password hashing & session token utilities
+│   ├── chandigarh_boundary.py# Ray-casting geofencing polygon for Chandigarh UT
 │   ├── database.py           # Database connection & session factory
+│   ├── geoapify_client.py    # Geoapify Places API client
 │   ├── models.py             # SQLAlchemy ORM table definitions
 │   ├── schemas.py            # Pydantic validation & response models
+│   ├── spots_service.py      # Venue aggregation, filtering & fallback logic
 │   ├── suggestions.py        # Rule-based decision heuristics logic
 │   ├── main.py               # Application factory & router registration
 │   ├── planzypop.db          # Embedded SQLite database
 │   ├── requirements.txt      # Python dependencies
-│   └── test_stage*.py        # Automated test suites (Stage 1 to 8)
+│   ├── conftest.py           # Pytest fixtures and isolated testing setup
+│   └── test_*.py             # Automated test suites (10 pytest modules)
 │
 ├── frontend/                 # React 19 + TypeScript + Vite Client
 │   ├── public/               # Static assets & favicon
 │   ├── src/
 │   │   ├── components/       # Reusable React UI components
 │   │   │   ├── common/       # Global atom components (Button, Icon, Header, etc.)
-│   │   │   └── nearby/       # CafeSuggestions.tsx (Google Maps finder)
-│   │   ├── pages/            # View screens (Overview, MyEvents, Budget, etc.)
+│   │   │   ├── nearby/       # CafeSuggestions.tsx (Google Maps finder)
+│   │   │   └── spots/        # PopSpots venue cards, filters & Leaflet map
+│   │   ├── context/          # AuthContext.tsx (User authentication & guest session)
+│   │   ├── pages/            # View screens (Overview, MyEvents, Budget, PopSpots, etc.)
 │   │   ├── services/         # api.ts (Typed fetch client to backend)
 │   │   ├── types/            # Central TypeScript interfaces (index.ts)
 │   │   ├── utils/            # formatters.ts & constants.tsx
@@ -98,6 +112,7 @@ PlanzyPop AI/
 │   ├── PROJECT_STRUCTURE.md  # Detailed file & component breakdown
 │   ├── DATABASE_DESIGN.md    # ER diagrams, schemas, cascade rules
 │   ├── API_DOCUMENTATION.md  # Complete endpoint reference & examples
+│   ├── TESTING_GUIDE.md      # Testing architecture & verification guide
 │   ├── WORKING_METHODOLOGY.md# In-depth algorithmic & feature walk-through
 │   └── VIVA_PREPARATION.md   # Oral examination Q&A for M.Sc. CS
 │
@@ -191,23 +206,15 @@ The frontend will start and display:
 
 ## 9. Running Verification & Regression Tests
 
-### Running Backend Unit & Integration Tests (Stages 1 to 8)
+### Running Backend Pytest Suites (10 Modules, 74 Tests)
 
-Run all 8 automated verification suites using the project Python environment:
+Run all backend automated tests with pytest:
 
 ```powershell
-& "D:\PlanzyPop AI\backend\.venv\Scripts\python.exe" -c "
-import subprocess, sys
-tests = [
-    'test_stage1.py', 'test_stage2.py', 'test_stage3.py', 'test_stage4.py',
-    'test_stage5.py', 'test_stage6.py', 'test_stage7.py', 'test_stage8_audit.py'
-]
-for t in tests:
-    res = subprocess.run([sys.executable, f'D:/PlanzyPop AI/backend/{t}'], capture_output=True, text=True)
-    status = '[PASS]' if res.returncode == 0 else '[FAIL]'
-    print(f'{status} {t}')
-"
+pytest backend/ -v
 ```
+
+All 74 tests execute against an isolated test SQLite database configured in `backend/conftest.py`, ensuring zero modification or pollution of the live database file (`planzypop.db`).
 
 ### Running Frontend Type-Checking & Production Build
 
@@ -224,9 +231,12 @@ npm run build
 - **Database Engine:** SQLite 3
 - **File Location:** `D:\PlanzyPop AI\backend\planzypop.db`
 - **Tables:**
-  - `events`: Stores celebration titles, dates, locations, guests, and planned budgets.
+  - `users`: Stores registered user accounts with bcrypt-hashed passwords.
+  - `user_tokens`: Stores active authentication session tokens with user foreign keys.
+  - `events`: Stores celebration titles, dates, locations, guests, planned budgets, and host user ID.
   - `expenses`: Stores itemized receipts linked to events with foreign key cascade deletion.
   - `tasks`: Stores preparation checklist items, due dates, priorities, and completion flags.
+  - `saved_spots`: Stores bookmarked venues and favourite cafés for registered users and guest sessions.
 - **ORM:** SQLAlchemy models define relationships with `cascade="all, delete-orphan"` to guarantee that deleting an event cleans up all associated records without leaving orphan rows.
 
 ---
@@ -245,22 +255,22 @@ npm run build
   `[Screenshot Placeholder: Checklist View with completed checkboxes and timeline milestones]`
 - **Rule-Based Suggestions Generator:**  
   `[Screenshot Placeholder: Planner Wizard displaying theme synthesis and balanced budget allocations]`
-- **Google Maps Nearby Café Suggestions:**  
-  `[Screenshot Placeholder: Nearby Screen with Geolocation GPS badge and 6 Google Maps search categories]`
+- **PopSpots Venue Discovery & Interactive Map:**  
+  `[Screenshot Placeholder: PopSpots Screen with Chandigarh geofenced search, sector filters & Leaflet map]`
 
 ---
 
 ## 12. Project Limitations
 
-1. **Single-User Workspace:** Designed as a single-host application without multi-user password login or authentication tokens.
-2. **Local Storage Database:** Uses SQLite on the local file system; horizontal multi-server database scaling is not implemented.
+1. **Local SQLite File Storage:** Uses an embedded SQLite database on the local file system; horizontal multi-server database replication is not implemented.
+2. **Chandigarh UT Geofencing:** PopSpots venue discovery is specifically geofenced to the Chandigarh Union Territory boundary polygon for curated local accuracy.
 3. **No Direct SMS/Push Gateway:** Notifications are tracked inside the application drawer rather than sent via external SMS/WhatsApp webhooks.
 
 ---
 
 ## 13. Future Scope
 
-1. **User Authentication:** Implementing user sign-up, JWT token-based authentication, and password hashing with bcrypt.
-2. **UPI Payment Gateway:** Integrating UPI QR code generation or Razorpay webhooks to allow friends to settle their split shares instantly.
-3. **Automated WhatsApp Invitations:** Sending RSVP invitation links and task delegation alerts to attendees via WhatsApp Business API.
-4. **Cloud Database Migration:** Transitioning from SQLite to PostgreSQL for multi-region hosting and concurrent scaling.
+1. **UPI Payment Settlement:** Integrating UPI QR code generation or Razorpay webhooks to allow friends to settle their split shares instantly.
+2. **Automated WhatsApp Invitations:** Sending RSVP invitation links and task delegation alerts to attendees via WhatsApp Business API.
+3. **Cloud Database Migration:** Transitioning from SQLite to PostgreSQL for multi-region hosting and concurrent scaling.
+4. **Multi-City Geofencing:** Expanding boundary definitions and local venue data to support additional student hubs and university towns across India.

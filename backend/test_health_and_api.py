@@ -116,7 +116,6 @@ def test_sqlite_database_and_schema():
     Verify that the SQLite database file exists and contains the required tables
     and column schema definitions.
     """
-    # Trigger table creation if not already present
     models.Base.metadata.create_all(bind=engine)
 
     db_path = BACKEND_DIR / "planzypop.db"
@@ -131,7 +130,6 @@ def test_sqlite_database_and_schema():
     assert "expenses" in tables, "'expenses' table missing from SQLite database"
     assert "tasks" in tables, "'tasks' table missing from SQLite database"
 
-    # Inspect schema of 'events' table
     cursor.execute("PRAGMA table_info(events);")
     columns_info = cursor.fetchall()
     conn.close()
@@ -174,13 +172,11 @@ def test_orm_session_transaction(db_session):
     assert test_event.id is not None
     assert test_event.event_name == "Diagnostic Fresher Party"
 
-    # Query back
     queried = db_session.query(models.Event).filter(models.Event.id == test_event.id).first()
     assert queried is not None
     assert queried.guests == 25
     assert queried.budget == 5000.0
 
-    # Cleanup test record
     db_session.delete(queried)
     db_session.commit()
 

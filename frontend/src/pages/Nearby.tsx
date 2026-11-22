@@ -39,7 +39,6 @@ export function Nearby() {
         eyebrow="LOCAL VENUES & GOOGLE MAPS SEARCH"
       />
 
-      {/* Top View Toggle Tabs */}
       <div
         className="nearby-tabs"
         style={{
@@ -106,10 +105,8 @@ export function Nearby() {
         </button>
       </div>
 
-      {/* View 1: Nearby Café Suggestions (PART 2) */}
       {activeTab === "cafes" && <CafeSuggestions />}
 
-      {/* View 2: Existing Celebration Supplies & Local Categories */}
       {activeTab === "supplies" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           <div className="search-bar">

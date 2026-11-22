@@ -26,13 +26,11 @@ Run this script to verify:
 import sys
 import os
 
-# Safe UTF-8 console output on Windows
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
 if hasattr(sys.stderr, "reconfigure"):
     sys.stderr.reconfigure(encoding="utf-8")
 
-# Ensure backend directory is in the module search path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from starlette.testclient import TestClient
@@ -52,9 +50,6 @@ def run_stage6_tests():
 
     client = TestClient(app)
 
-    # -------------------------------------------------------------
-    # Test 1: Birthday Suggestions
-    # -------------------------------------------------------------
     bday = generate_event_suggestions("Birthday", 3000.0, 10, "Aesthetic")
     assert "Pastel Balloons" in bday["suggested_theme"] or "Polaroid" in bday["suggested_theme"]
     assert any("cake" in f.lower() for f in bday["food_suggestions"])
@@ -62,44 +57,29 @@ def run_stage6_tests():
     assert bday["budget_tier"] == "Low Budget (₹1,500 – ₹4,000)"
     print("[PASS] Test 1: Birthday suggestions generated with cakes, decor, and aesthetic theme")
 
-    # -------------------------------------------------------------
-    # Test 2: College Party Suggestions
-    # -------------------------------------------------------------
     college = generate_event_suggestions("College Party", 6000.0, 25, "Fun / Party")
     assert "Neon" in college["suggested_theme"] or "College" in college["suggested_theme"]
     assert any("playlist" in a.lower() or "mafia" in a.lower() for a in college["activity_suggestions"])
     assert college["budget_tier"] == "Moderate Budget (₹4,000 – ₹10,000)"
     print("[PASS] Test 2: College Party suggestions generated with group activities and high energy vibes")
 
-    # -------------------------------------------------------------
-    # Test 3: Farewell Suggestions
-    # -------------------------------------------------------------
     farewell = generate_event_suggestions("Farewell", 4000.0, 20, "Casual")
     assert "Memory" in farewell["suggested_theme"] or "Nostalgia" in farewell["suggested_theme"]
     assert any("tribute" in a.lower() or "scrapbook" in a.lower() or "roast" in a.lower() for a in farewell["activity_suggestions"])
     assert any("memories" in d.lower() or "notes" in d.lower() for d in farewell["decoration_suggestions"])
     print("[PASS] Test 3: Farewell suggestions generated with memory wall, senior tributes, and mementos")
 
-    # -------------------------------------------------------------
-    # Test 4: Picnic Suggestions
-    # -------------------------------------------------------------
     picnic = generate_event_suggestions("Picnic", 2000.0, 6, "Casual")
     assert "Park" in picnic["suggested_theme"] or "Green" in picnic["suggested_theme"]
     assert any("mat" in d.lower() or "cushion" in d.lower() for d in picnic["decoration_suggestions"])
     assert any("frisbee" in a.lower() or "badminton" in a.lower() for a in picnic["activity_suggestions"])
     print("[PASS] Test 4: Picnic suggestions generated with outdoor setup, portable snacks, and games")
 
-    # -------------------------------------------------------------
-    # Test 5: Hostel Party Suggestions
-    # -------------------------------------------------------------
     hostel = generate_event_suggestions("Hostel Party", 1200.0, 8, "DIY / Budget-Friendly")
     assert "Hostel" in hostel["suggested_theme"] or "Maggi" in hostel["suggested_theme"]
     assert any("maggi" in f.lower() or "samosa" in f.lower() or "popcorn" in f.lower() for f in hostel["food_suggestions"])
     print("[PASS] Test 5: Hostel Party suggestions generated with late-night food and room decor")
 
-    # -------------------------------------------------------------
-    # Test 6: Celebration Styles (Aesthetic, DIY, Traditional, Fun, Casual)
-    # -------------------------------------------------------------
     styles = {
         "Aesthetic": "fairy lights",
         "DIY / Budget-Friendly": "origami",
@@ -116,17 +96,11 @@ def run_stage6_tests():
         )
     print("[PASS] Test 6: All 5 celebration styles reflect distinct decor and themes")
 
-    # -------------------------------------------------------------
-    # Test 7: Very Low Budget (under Rs 1500)
-    # -------------------------------------------------------------
     low = generate_event_suggestions("Birthday", 800.0, 5, "DIY / Budget-Friendly")
     assert low["budget_tier"] == "Very Low Budget (Under ₹1,500)"
     assert any("samosa" in f.lower() or "popcorn" in f.lower() or "bakery" in f.lower() for f in low["food_suggestions"])
     print("[PASS] Test 7: Very low budget correctly classified and suggests affordable snacks")
 
-    # -------------------------------------------------------------
-    # Test 8: Zero Budget Event (Free)
-    # -------------------------------------------------------------
     zero = generate_event_suggestions("Get-together", 0.0, 6, "Casual")
     assert zero["budget_tier"] == "Zero Budget / Free Celebration"
     assert any("potluck" in f.lower() or "homemade" in f.lower() for f in zero["food_suggestions"])
@@ -136,17 +110,11 @@ def run_stage6_tests():
     assert zero["total_allocated_budget"] == 0.0
     print("[PASS] Test 8: Zero budget generates free potluck/DIY activities and 0.0 allocations")
 
-    # -------------------------------------------------------------
-    # Test 9: Larger Budget Event (Above 10k)
-    # -------------------------------------------------------------
     high = generate_event_suggestions("Birthday", 15000.0, 30, "Aesthetic")
     assert high["budget_tier"] == "Higher Budget (Above ₹10,000)"
     assert any("designer" in f.lower() or "sliders" in f.lower() or "nachos" in f.lower() for f in high["food_suggestions"])
     print("[PASS] Test 9: Higher budget suggests premium custom cakes and appetizer platters")
 
-    # -------------------------------------------------------------
-    # Test 10: Guest Count Scaling
-    # -------------------------------------------------------------
     large_group = generate_event_suggestions("College Party", 5000.0, 25, "Fun / Party")
     # For guests > 20, activity list includes team division advice
     assert any("teams" in a.lower() or "relay" in a.lower() for a in large_group["activity_suggestions"])
@@ -154,17 +122,11 @@ def run_stage6_tests():
     assert any("bulk" in f.lower() for f in large_group["food_suggestions"])
     print("[PASS] Test 10: Large guest counts automatically receive bulk and team scaling advice")
 
-    # -------------------------------------------------------------
-    # Test 11: Budget Allocation Percentages Sum to 100%
-    # -------------------------------------------------------------
     for ev_key, ratios in CATEGORY_ALLOCATION_RULES.items():
         total_pct = sum(ratios.values())
         assert abs(total_pct - 100.0) < 1e-6, f"Ratios for '{ev_key}' sum to {total_pct}, not 100.0"
     print("[PASS] Test 11: All category allocation rules sum to exactly 100.0%")
 
-    # -------------------------------------------------------------
-    # Test 12: Exact Total Allocation After Rounding (Edge Cases)
-    # -------------------------------------------------------------
     test_budgets = [1234.57, 100.0, 50.0, 3333.33, 9999.99, 0.0, 1500.0]
     for b in test_budgets:
         allocs = compute_budget_allocation("birthday", b)
@@ -172,9 +134,6 @@ def run_stage6_tests():
         assert sum_allocated == round(b, 2), f"Allocation sum {sum_allocated} does not match budget {b}"
     print("[PASS] Test 12: Exact rounding compensation guarantees sum(allocations) == budget")
 
-    # -------------------------------------------------------------
-    # Test 13: Input Validation: Negative Budget Rejection (HTTP 422)
-    # -------------------------------------------------------------
     res = client.post("/suggestions/generate", json={
         "event_type": "Birthday",
         "budget": -500.0,
@@ -184,9 +143,6 @@ def run_stage6_tests():
     assert res.status_code == 422
     print("[PASS] Test 13: Negative budget rejected with HTTP 422")
 
-    # -------------------------------------------------------------
-    # Test 14: Input Validation: Negative Guest Count Rejection (HTTP 422)
-    # -------------------------------------------------------------
     res = client.post("/suggestions/generate", json={
         "event_type": "Birthday",
         "budget": 2000.0,
@@ -196,7 +152,6 @@ def run_stage6_tests():
     assert res.status_code == 422
     print("[PASS] Test 14: Negative guest count rejected with HTTP 422")
 
-    # Also test blank event_type
     res = client.post("/suggestions/generate", json={
         "event_type": "   ",
         "budget": 2000.0,
@@ -205,26 +160,17 @@ def run_stage6_tests():
     assert res.status_code == 422
     print("[PASS] Test 14b: Blank event_type rejected with HTTP 422")
 
-    # -------------------------------------------------------------
-    # Test 15: Unknown Event Type Handling (Fallback)
-    # -------------------------------------------------------------
     res_unk_event = generate_event_suggestions("Inter-Galactic Robot Launch", 3000.0, 10, "Casual")
     assert res_unk_event["suggested_theme"] is not None
     assert len(res_unk_event["food_suggestions"]) > 0
     assert len(res_unk_event["budget_allocations"]) > 0
     print("[PASS] Test 15: Unknown event type gracefully falls back to general celebration heuristics")
 
-    # -------------------------------------------------------------
-    # Test 16: Unknown Celebration Style Handling (Fallback)
-    # -------------------------------------------------------------
     res_unk_style = generate_event_suggestions("Birthday", 3000.0, 10, "Cyberpunk Gothic")
     assert res_unk_style["suggested_theme"] is not None
     assert len(res_unk_style["decoration_suggestions"]) > 0
     print("[PASS] Test 16: Unknown celebration style gracefully falls back to casual decor")
 
-    # -------------------------------------------------------------
-    # Test 17: Full API Endpoint Test (POST /suggestions/generate)
-    # -------------------------------------------------------------
     api_payload = {
         "event_type": "Hostel Party",
         "budget": 2500.0,
@@ -249,17 +195,13 @@ def run_stage6_tests():
     assert "disclaimer" in data
     print(f"[PASS] Test 17: POST /suggestions/generate returned full structured response (Theme: '{data['suggested_theme']}')")
 
-    # -------------------------------------------------------------
-    # Test 18: Database Independence Check
     # Generating suggestions must NOT create or alter records in the database.
-    # -------------------------------------------------------------
     db = SessionLocal()
     try:
         events_count_before = db.query(models.Event).count()
         expenses_count_before = db.query(models.Expense).count()
         tasks_count_before = db.query(models.Task).count()
 
-        # Call the suggestion API multiple times
         client.post("/suggestions/generate", json=api_payload)
         client.post("/suggestions/generate", json={"event_type": "Picnic", "budget": 1500.0, "guests": 6, "celebration_style": "Casual"})
         client.post("/suggestions/generate", json={"event_type": "Birthday", "budget": 0.0, "guests": 10, "celebration_style": "Aesthetic"})

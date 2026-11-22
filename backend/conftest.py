@@ -17,7 +17,6 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from starlette.testclient import TestClient
 
-# Ensure backend directory is in the module search path
 BACKEND_DIR = Path(__file__).resolve().parent
 if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
@@ -26,7 +25,6 @@ from database import Base, get_db
 import models
 from main import app
 
-# Isolated SQLite database path for test runs
 TEST_DB_FILE = BACKEND_DIR / "test_planzypop_isolated.db"
 TEST_DATABASE_URL = f"sqlite:///{TEST_DB_FILE}"
 
@@ -49,11 +47,9 @@ def setup_test_environment():
     and overrides FastAPI's get_db dependency.
     Guarantees production 'planzypop.db' and student records remain 100% untouched.
     """
-    # 1. Initialize schema in test database
     Base.metadata.drop_all(bind=test_engine)
     Base.metadata.create_all(bind=test_engine)
 
-    # 2. Dependency override for FastAPI routers
     def override_get_db():
         db = TestingSessionLocal()
         try:
@@ -65,7 +61,6 @@ def setup_test_environment():
 
     yield
 
-    # 3. Teardown: clear override and remove test database
     app.dependency_overrides.clear()
     Base.metadata.drop_all(bind=test_engine)
     test_engine.dispose()

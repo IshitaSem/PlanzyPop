@@ -8,7 +8,6 @@
 
 import type { ReactNode } from "react"
 
-// Re-export backend-driven entity types from api.ts
 export type {
   EventItem,
   EventCreate,

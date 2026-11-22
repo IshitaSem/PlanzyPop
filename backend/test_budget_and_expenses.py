@@ -49,7 +49,6 @@ def test_category_validation_and_normalization(client: TestClient, test_event):
     """Verify category normalization and rejection of invalid categories."""
     event_id = test_event["id"]
 
-    # Invalid category rejected
     res_invalid = client.post(f"/events/{event_id}/expenses", json={
         "expense_name": "Casino Chips",
         "category": "Gambling",
@@ -57,7 +56,6 @@ def test_category_validation_and_normalization(client: TestClient, test_event):
     })
     assert res_invalid.status_code == 422
 
-    # Lowercase valid category normalized to capitalized 'Cake'
     res_valid = client.post(f"/events/{event_id}/expenses", json={
         "expense_name": "Chocolate Birthday Cake",
         "category": "cake",
@@ -81,18 +79,14 @@ def test_expense_update_validation_and_partial_update(client: TestClient, test_e
     })
     exp_id = res_exp.json()["id"]
 
-    # Reject invalid category in update
     assert client.put(f"/expenses/{exp_id}", json={"category": "Luxury Yacht"}).status_code == 422
 
-    # Reject explicit null values
     assert client.put(f"/expenses/{exp_id}", json={"expense_name": None}).status_code == 422
     assert client.put(f"/expenses/{exp_id}", json={"category": None}).status_code == 422
     assert client.put(f"/expenses/{exp_id}", json={"amount": None}).status_code == 422
 
-    # Reject blank string
     assert client.put(f"/expenses/{exp_id}", json={"expense_name": "   "}).status_code == 422
 
-    # Partial update succeeds without resetting other fields
     res_update = client.put(f"/expenses/{exp_id}", json={"amount": 450.0})
     assert res_update.status_code == 200
     updated = res_update.json()
@@ -105,7 +99,6 @@ def test_budget_summary_calculations(client: TestClient, test_event):
     """Verify budget metrics: total spent, remaining, utilisation %, and category breakdown."""
     event_id = test_event["id"]
 
-    # Add Food (700), Cake (550), Decorations (300) = Total 1550 against Budget 2000
     client.post(f"/events/{event_id}/expenses", json={"expense_name": "Food Treats", "category": "Food", "amount": 700.0})
     client.post(f"/events/{event_id}/expenses", json={"expense_name": "Birthday Cake", "category": "Cake", "amount": 550.0})
     client.post(f"/events/{event_id}/expenses", json={"expense_name": "Fairy Lights", "category": "Decorations", "amount": 300.0})
@@ -127,7 +120,6 @@ def test_overspending_detection_and_warning(client: TestClient, test_event):
     """Verify that exceeding planned budget sets is_over_budget to True and provides warning message."""
     event_id = test_event["id"]
 
-    # Budget is 2000. Add expense of 2500
     res_exp = client.post(f"/events/{event_id}/expenses", json={
         "expense_name": "Luxury DJ Sound System",
         "category": "Entertainment",
@@ -144,7 +136,6 @@ def test_overspending_detection_and_warning(client: TestClient, test_event):
     assert b["is_over_budget"] is True
     assert "exceeded" in b["warning_message"]
 
-    # Delete overspending expense
     client.delete(f"/expenses/{exp_id}")
 
 
@@ -152,7 +143,6 @@ def test_expense_splitting_and_fallback(client: TestClient, test_event):
     """Verify split calculations with actual expenses, planned budget fallback, zero costs, and custom calculator."""
     event_id = test_event["id"]
 
-    # 1. With actual recorded expenses
     client.post(f"/events/{event_id}/expenses", json={"expense_name": "Snacks", "category": "Food", "amount": 1200.0})
     res_actual = client.get(f"/events/{event_id}/split-expense?people=4")
     assert res_actual.status_code == 200
@@ -161,7 +151,6 @@ def test_expense_splitting_and_fallback(client: TestClient, test_event):
     assert data_actual["share_per_person"] == 300.0
     assert data_actual["split_basis"] == "actual_expenses"
 
-    # 2. Planned budget fallback on a brand new event with 0 expenses
     res_plan = client.post("/events", json={
         "event_name": "Farewell Fallback Test",
         "event_type": "Farewell",
@@ -178,7 +167,6 @@ def test_expense_splitting_and_fallback(client: TestClient, test_event):
     assert data_fallback["split_basis"] == "planned_budget"
     client.delete(f"/events/{plan_event_id}")
 
-    # 3. Custom standalone calculator endpoint
     res_calc = client.post("/calculate-split", json={"total_amount": 2000.0, "num_people": 5})
     assert res_calc.status_code == 200
     calc_data = res_calc.json()
@@ -200,7 +188,6 @@ def test_safe_zero_budget_and_cascade_deletion(client: TestClient):
     assert res_budget.status_code == 200
     assert res_budget.json()["utilisation_percentage"] == 0.0
 
-    # Add expense to zero budget event
     res_exp = client.post(f"/events/{zero_id}/expenses", json={
         "expense_name": "Paper Cups",
         "category": "Decorations",
@@ -208,16 +195,13 @@ def test_safe_zero_budget_and_cascade_deletion(client: TestClient):
     })
     exp_id = res_exp.json()["id"]
 
-    # 404 checks for non-existent IDs
     assert client.post("/events/999999/expenses", json={"expense_name": "Cake", "category": "Cake", "amount": 100.0}).status_code == 404
     assert client.put("/expenses/999999", json={"amount": 100.0}).status_code == 404
     assert client.delete("/expenses/999999").status_code == 404
 
-    # Delete parent event
     res_del = client.delete(f"/events/{zero_id}")
     assert res_del.status_code == 200
 
-    # Verify expense was cascaded and no longer exists
     assert client.get(f"/events/{zero_id}/expenses").status_code == 404
     assert client.delete(f"/expenses/{exp_id}").status_code == 404
 

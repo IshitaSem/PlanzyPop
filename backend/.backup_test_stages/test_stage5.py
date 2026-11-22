@@ -23,13 +23,11 @@ import sys
 import os
 from datetime import date, timedelta
 
-# Safe UTF-8 console output on Windows
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
 if hasattr(sys.stderr, "reconfigure"):
     sys.stderr.reconfigure(encoding="utf-8")
 
-# Ensure backend directory is in the module search path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from starlette.testclient import TestClient
@@ -42,9 +40,6 @@ def run_stage5_tests():
 
     client = TestClient(app)
 
-    # -------------------------------------------------------------
-    # Setup: Create a test event
-    # -------------------------------------------------------------
     event_payload = {
         "event_name": "Farewell Party 2026",
         "event_type": "Farewell",
@@ -59,9 +54,6 @@ def run_stage5_tests():
     event_id = res_event.json()["id"]
     print(f"[PASS] Created test event (ID: {event_id})")
 
-    # -------------------------------------------------------------
-    # Test 1: Empty Task List Returns 0% Progress (Requirement 12)
-    # -------------------------------------------------------------
     res = client.get(f"/events/{event_id}/tasks/summary")
     assert res.status_code == 200
     summary = res.json()
@@ -72,14 +64,10 @@ def run_stage5_tests():
     assert summary["progress_percentage"] == 0.0
     print("[PASS] Empty task list returns 0% progress and zero counts")
 
-    # -------------------------------------------------------------
-    # Test 2: Create Tasks (Requirements 1 & 11)
-    # -------------------------------------------------------------
     past_date = (date.today() - timedelta(days=2)).isoformat()
     future_date_1 = (date.today() + timedelta(days=3)).isoformat()
     future_date_2 = (date.today() + timedelta(days=5)).isoformat()
 
-    # Task A: Overdue task (past due date, incomplete)
     res_a = client.post(f"/events/{event_id}/tasks", json={
         "task_name": "Book College Seminar Hall",
         "description": "Get permission letter signed by HOD",
@@ -91,7 +79,6 @@ def run_stage5_tests():
     task_a_id = task_a["id"]
     print(f"[PASS] Created Task A (Overdue): '{task_a['task_name']}' (Due: {past_date})")
 
-    # Task B: Future task
     res_b = client.post(f"/events/{event_id}/tasks", json={
         "task_name": "Order Farewell Mementos",
         "description": "Customized pens and certificates",
@@ -102,7 +89,6 @@ def run_stage5_tests():
     task_b_id = res_b.json()["id"]
     print(f"[PASS] Created Task B: 'Order Farewell Mementos' (Due: {future_date_1})")
 
-    # Task C: Task without due date (Requirement 11)
     res_c = client.post(f"/events/{event_id}/tasks", json={
         "task_name": "Prepare Playlist & Speeches",
         "is_completed": False
@@ -112,7 +98,6 @@ def run_stage5_tests():
     assert res_c.json()["due_date"] is None
     print(f"[PASS] Created Task C without due date: 'Prepare Playlist & Speeches'")
 
-    # Task D: Second future task
     res_d = client.post(f"/events/{event_id}/tasks", json={
         "task_name": "Confirm Snack Catering",
         "due_date": future_date_2,
@@ -122,10 +107,7 @@ def run_stage5_tests():
     task_d_id = res_d.json()["id"]
     print(f"[PASS] Created Task D: 'Confirm Snack Catering' (Due: {future_date_2})")
 
-    # -------------------------------------------------------------
-    # Test 3: Retrieve Tasks & Timeline Sorting (Requirement 2 & 11)
     # Tasks with due date sorted ascending chronologically; None at end
-    # -------------------------------------------------------------
     res = client.get(f"/events/{event_id}/tasks")
     assert res.status_code == 200
     tasks = res.json()
@@ -138,9 +120,6 @@ def run_stage5_tests():
     assert tasks[3]["due_date"] is None
     print("[PASS] Tasks returned in chronological timeline order, tasks without due dates at end")
 
-    # -------------------------------------------------------------
-    # Test 4: Update Task Name and Description (Requirement 3)
-    # -------------------------------------------------------------
     res = client.put(f"/tasks/{task_b_id}", json={
         "task_name": "Order Premium Farewell Mementos",
         "description": "Engraved pens and framed certificates"
@@ -149,15 +128,10 @@ def run_stage5_tests():
     updated_b = res.json()
     assert updated_b["task_name"] == "Order Premium Farewell Mementos"
     assert updated_b["description"] == "Engraved pens and framed certificates"
-    # Unchanged fields remain
     assert updated_b["due_date"] == future_date_1
     assert updated_b["is_completed"] is False
     print("[PASS] Updated task name and description successfully")
 
-    # -------------------------------------------------------------
-    # Test 5: Verify Overdue and Initial Progress Summary (Requirements 7, 8, 9)
-    # Total: 4, Completed: 0, Pending: 4, Overdue: 1 (Task A), Progress: 0%
-    # -------------------------------------------------------------
     res = client.get(f"/events/{event_id}/tasks/summary")
     assert res.status_code == 200
     s1 = res.json()
@@ -168,15 +142,11 @@ def run_stage5_tests():
     assert s1["progress_percentage"] == 0.0
     print(f"[PASS] Initial summary verified: Total 4, Pending 4, Overdue 1, Progress 0%")
 
-    # -------------------------------------------------------------
-    # Test 6: Mark Task Completed (Requirement 4)
-    # -------------------------------------------------------------
     res = client.put(f"/tasks/{task_b_id}", json={"is_completed": True})
     assert res.status_code == 200
     assert res.json()["is_completed"] is True
     print("[PASS] Marked Task B as completed")
 
-    # Progress should now be 1/4 = 25%
     res = client.get(f"/events/{event_id}/tasks/summary")
     assert res.status_code == 200
     s2 = res.json()
@@ -185,9 +155,6 @@ def run_stage5_tests():
     assert s2["progress_percentage"] == 25.0
     print("[PASS] Progress percentage updated to 25.0% (1 of 4 completed)")
 
-    # -------------------------------------------------------------
-    # Test 7: Completed Overdue Task is NOT Counted as Overdue (Requirement 10)
-    # -------------------------------------------------------------
     # Task A was overdue. Mark it completed.
     res = client.put(f"/tasks/{task_a_id}", json={"is_completed": True})
     assert res.status_code == 200
@@ -203,9 +170,6 @@ def run_stage5_tests():
     assert s3["progress_percentage"] == 50.0
     print("[PASS] Completed overdue task is no longer counted as overdue (Overdue: 0, Progress: 50%)")
 
-    # -------------------------------------------------------------
-    # Test 8: Mark Completed Task Pending Again (Requirement 5)
-    # -------------------------------------------------------------
     res = client.put(f"/tasks/{task_a_id}", json={"is_completed": False})
     assert res.status_code == 200
     assert res.json()["is_completed"] is False
@@ -217,9 +181,6 @@ def run_stage5_tests():
     assert s4["overdue_tasks"] == 1
     assert s4["progress_percentage"] == 25.0
 
-    # -------------------------------------------------------------
-    # Test 9: Delete a Task (Requirement 6)
-    # -------------------------------------------------------------
     res = client.delete(f"/tasks/{task_c_id}")
     assert res.status_code == 200
     print(f"[PASS] Deleted Task C (ID: {task_c_id})")
@@ -236,25 +197,18 @@ def run_stage5_tests():
     assert s5["progress_percentage"] == 33.33
     print(f"[PASS] Summary after deletion: Total 3, Progress 33.33%")
 
-    # -------------------------------------------------------------
-    # Test 10: Validation Rejections (Requirements 13 & 14)
-    # -------------------------------------------------------------
-    # 10a. Blank task name
     res = client.post(f"/events/{event_id}/tasks", json={"task_name": "   "})
     assert res.status_code == 422
     print("[PASS] Rejected blank task_name with HTTP 422")
 
-    # 10b. Blank task name on update
     res = client.put(f"/tasks/{task_a_id}", json={"task_name": "   "})
     assert res.status_code == 422
     print("[PASS] PUT /tasks rejected blank task_name with HTTP 422")
 
-    # 10c. Explicit null task_name on update
     res = client.put(f"/tasks/{task_a_id}", json={"task_name": None})
     assert res.status_code == 422
     print("[PASS] PUT /tasks rejected null task_name with HTTP 422")
 
-    # 10d. Invalid date formats
     res = client.post(f"/events/{event_id}/tasks", json={
         "task_name": "Invalid Date Task",
         "due_date": "2026-13-45"
@@ -273,9 +227,6 @@ def run_stage5_tests():
     assert res.status_code == 422
     print("[PASS] PUT /tasks rejected 'tomorrow' date string with HTTP 422")
 
-    # -------------------------------------------------------------
-    # Test 11: 404 for Non-Existent Events and Tasks (Requirement 15)
-    # -------------------------------------------------------------
     ghost_event_id = 777777
     res = client.post(f"/events/{ghost_event_id}/tasks", json={"task_name": "Ghost Task"})
     assert res.status_code == 404
@@ -298,9 +249,6 @@ def run_stage5_tests():
     assert res.status_code == 404
     print(f"[PASS] DELETE /tasks/{ghost_task_id} returned 404 Not Found")
 
-    # -------------------------------------------------------------
-    # Test 12: Cascade Deletion on Event Removal (Requirement 16)
-    # -------------------------------------------------------------
     res = client.delete(f"/events/{event_id}")
     assert res.status_code == 200
     print(f"[PASS] Deleted parent event (ID: {event_id})")

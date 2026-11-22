@@ -12,13 +12,11 @@ import os
 import sys
 import sqlite3
 
-# Safe UTF-8 console output on Windows
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
 if hasattr(sys.stderr, "reconfigure"):
     sys.stderr.reconfigure(encoding="utf-8")
 
-# Ensure backend directory is in sys.path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from database import engine, SessionLocal
@@ -29,10 +27,8 @@ def test_database_and_schema():
     print("PlanzyPop Stage 2: SQLite & Event Table Verification Suite")
     print("=" * 65)
 
-    # 1. Trigger table creation
     models.Base.metadata.create_all(bind=engine)
 
-    # 2. Check if planzypop.db file exists
     db_path = os.path.join(os.path.dirname(__file__), "planzypop.db")
     if os.path.exists(db_path):
         size_kb = os.path.getsize(db_path) / 1024
@@ -41,7 +37,6 @@ def test_database_and_schema():
         print(f"[FAIL] Database file not found at: {db_path}")
         return False
 
-    # 3. Check tables inside SQLite
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
@@ -54,12 +49,10 @@ def test_database_and_schema():
         return False
     print("[PASS] 'events' table exists.")
 
-    # 4. Check schema of events table
     cursor.execute("PRAGMA table_info(events);")
     columns_info = cursor.fetchall()
     conn.close()
 
-    # Required fields according to Stage 2 specification
     expected_fields = {
         "id": "INTEGER",
         "event_name": "VARCHAR(100)",
@@ -85,7 +78,6 @@ def test_database_and_schema():
             return False
     print("\n[PASS] All 9 required fields are present with correct definitions.")
 
-    # 5. Test inserting, querying, and deleting a test record via SQLAlchemy Session
     db = SessionLocal()
     try:
         test_event = models.Event(
@@ -104,13 +96,11 @@ def test_database_and_schema():
         assert test_event.id is not None, "Failed to generate primary key ID"
         print(f"[PASS] Test record inserted successfully (Generated ID: {test_event.id})")
 
-        # Query back
         queried = db.query(models.Event).filter(models.Event.id == test_event.id).first()
         assert queried is not None
         assert queried.event_name == "College Fresher Party"
         print(f"[PASS] Test record queried back: '{queried.event_name}' ({queried.event_type})")
 
-        # Clean up test record so database stays clean
         db.delete(queried)
         db.commit()
         print("[PASS] Test record cleaned up successfully.")

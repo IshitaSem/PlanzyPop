@@ -10,7 +10,6 @@ import os
 import sys
 from pathlib import Path
 
-# Ensure UTF-8 output encoding on Windows consoles
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
 
@@ -24,9 +23,6 @@ def run_stage7_verification():
     print("PlanzyPop Stage 7: Frontend & Backend Integration Test Suite")
     print("=" * 65)
 
-    # -------------------------------------------------------------
-    # 1. Environment & Configuration Check
-    # -------------------------------------------------------------
     frontend_dir = Path(__file__).parent.parent / "frontend"
     env_file = frontend_dir / ".env"
     api_service_file = frontend_dir / "src" / "services" / "api.ts"
@@ -57,9 +53,6 @@ def run_stage7_verification():
         assert f"export async function {fn}" in api_code, f"API function '{fn}' missing in api.ts"
     print("[PASS] frontend/src/services/api.ts exports all 14 required API functions")
 
-    # -------------------------------------------------------------
-    # 2. System Health & CORS Verification
-    # -------------------------------------------------------------
     res = client.get("/health")
     assert res.status_code == 200, f"Expected 200, got {res.status_code}"
     assert res.json().get("status") == "healthy"
@@ -70,10 +63,6 @@ def run_stage7_verification():
     assert res.json().get("currency") == "INR"
     print("[PASS] Root endpoint verified with INR currency standard")
 
-    # -------------------------------------------------------------
-    # 3. Simulate Frontend AI Planner Flow
-    # -------------------------------------------------------------
-    # User asks AI Planner to generate suggestions
     planner_payload = {
         "event_type": "Birthday",
         "budget": 5000.0,
@@ -88,7 +77,6 @@ def run_stage7_verification():
     assert suggestions["total_allocated_budget"] == 5000.0
     print(f"[PASS] AI Planner suggestions generated: Theme '{suggestions['suggested_theme']}'")
 
-    # User clicks 'Add to My Events' in Planner
     event_payload = {
         "event_name": "Rohan's 21st Birthday Bash",
         "event_type": "Birthday",
@@ -104,7 +92,6 @@ def run_stage7_verification():
     event_id = event["id"]
     print(f"[PASS] Event created via API (ID: {event_id}, Name: '{event['event_name']}')")
 
-    # Planner automatically creates starter tasks for the event
     task1 = client.post(f"/events/{event_id}/tasks", json={
         "task_name": "Finalize balloon decor & lights",
         "due_date": "2026-11-20",
@@ -124,9 +111,6 @@ def run_stage7_verification():
     }).json()
     print("[PASS] Created 3 starter checklist tasks for event")
 
-    # -------------------------------------------------------------
-    # 4. Simulate Overview & My Events Queries
-    # -------------------------------------------------------------
     res = client.get("/events")
     assert res.status_code == 200
     events_list = res.json()
@@ -142,10 +126,6 @@ def run_stage7_verification():
     assert ts["progress_percentage"] == 0.0
     print("[PASS] Initial task summary verified: 3 total, 0 completed (0%)")
 
-    # -------------------------------------------------------------
-    # 5. Simulate Budget Tracker Flow
-    # -------------------------------------------------------------
-    # Add two expenses
     exp1 = client.post(f"/events/{event_id}/expenses", json={
         "expense_name": "Chocolate Truffle Cake",
         "category": "Cake",
@@ -161,7 +141,6 @@ def run_stage7_verification():
     }).json()
     print(f"[PASS] Logged expenses: Cake (Rs 750) + Decorations (Rs 450)")
 
-    # Check budget summary
     res = client.get(f"/events/{event_id}/budget")
     assert res.status_code == 200
     bs = res.json()
@@ -174,7 +153,6 @@ def run_stage7_verification():
     assert bs["category_breakdown"]["Decorations"] == 450.0
     print("[PASS] Budget summary verified: Total 1200 / 5000 (Remaining Rs 3800, 24% spent)")
 
-    # Check split calculation
     res = client.get(f"/events/{event_id}/split-expense?people=4")
     assert res.status_code == 200
     split = res.json()
@@ -184,25 +162,19 @@ def run_stage7_verification():
     assert split["split_basis"] == "actual_expenses"
     print(f"[PASS] Split calculation verified: Rs 1200 / 4 = Rs 300 each ({split['split_basis']})")
 
-    # -------------------------------------------------------------
-    # 6. Simulate Checklist & Timeline Flow
-    # -------------------------------------------------------------
     res = client.get(f"/events/{event_id}/tasks")
     assert res.status_code == 200
     tasks_list = res.json()
     assert len(tasks_list) == 3
-    # Check timeline ordering: earliest due date first
     due_dates = [t["due_date"] for t in tasks_list]
     assert due_dates == sorted(due_dates), f"Tasks not chronologically sorted: {due_dates}"
     print(f"[PASS] Timeline order verified: {due_dates}")
 
-    # Mark first task complete
     first_task_id = tasks_list[0]["id"]
     res = client.put(f"/tasks/{first_task_id}", json={"is_completed": True})
     assert res.status_code == 200
     assert res.json()["is_completed"] is True
 
-    # Check updated summary
     res = client.get(f"/events/{event_id}/tasks/summary")
     assert res.status_code == 200
     ts_updated = res.json()
@@ -211,14 +183,10 @@ def run_stage7_verification():
     assert ts_updated["progress_percentage"] == 33.33
     print("[PASS] Progress percentage dynamically updated to 33.33%")
 
-    # -------------------------------------------------------------
-    # 7. Cleanup & Cascade Verification
-    # -------------------------------------------------------------
     res = client.delete(f"/events/{event_id}")
     assert res.status_code == 200
     print(f"[PASS] Deleted event {event_id}")
 
-    # Verify cascaded deletion
     res = client.get(f"/events/{event_id}/expenses")
     assert res.status_code == 404
     res = client.get(f"/events/{event_id}/tasks")

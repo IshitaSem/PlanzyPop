@@ -290,3 +290,116 @@ FastAPI automatically generates interactive OpenAPI documentation:
     "disclaimer": "All recommendations and budget allocations are computed using deterministic heuristics."
   }
   ```
+
+---
+
+### Category F: User Authentication Endpoints
+
+PlanzyPop supports registered user authentication via Bearer session tokens alongside Guest Demo Mode. When a valid token is provided in the `Authorization` header (`Authorization: Bearer <access_token>`), events and favourites are automatically isolated to that user account.
+
+#### 21. User Registration
+- **Endpoint:** `POST /auth/register`
+- **Status Code:** `201 Created`
+- **Request Body:**
+  ```json
+  {
+    "name": "Aarav Sharma",
+    "email": "aarav@example.com",
+    "password": "securepassword123"
+  }
+  ```
+- **Response:**
+  ```json
+  {
+    "access_token": "a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6",
+    "token_type": "bearer",
+    "user": {
+      "id": 1,
+      "name": "Aarav Sharma",
+      "email": "aarav@example.com",
+      "created_at": "2026-11-20T10:00:00"
+    }
+  }
+  ```
+- **Notes:** Newly registered accounts start with an empty dashboard (no demo events, tasks, or expenses).
+
+#### 22. User Login
+- **Endpoint:** `POST /auth/login`
+- **Status Code:** `200 OK`
+- **Request Body:**
+  ```json
+  {
+    "email": "aarav@example.com",
+    "password": "securepassword123"
+  }
+  ```
+- **Response:** Returns `TokenResponse` with `access_token` and `user` details. Returns `401 Unauthorized` for invalid credentials.
+
+#### 23. Current User Profile
+- **Endpoint:** `GET /auth/me`
+- **Headers:** `Authorization: Bearer <token>`
+- **Response:** `UserResponse` with `id`, `name`, `email`, and `created_at`. Returns `401 Unauthorized` if token is missing or expired.
+
+#### 24. User Logout
+- **Endpoint:** `POST /auth/logout`
+- **Headers:** `Authorization: Bearer <token>`
+- **Response:**
+  ```json
+  {
+    "message": "Logged out successfully"
+  }
+  ```
+
+---
+
+### Category G: PopSpots Chandigarh Venue Discovery Endpoints
+
+PopSpots enables discovery of authentic local cafés, bakeries, and party spots strictly geofenced within Chandigarh Union Territory (UT).
+
+#### 25. Get Supported Spot Categories
+- **Endpoint:** `GET /api/spots/categories`
+- **Response:** Array of category objects (`id`, `name`, `icon`, `count`).
+
+#### 26. Get Available Chandigarh Sectors
+- **Endpoint:** `GET /api/spots/sectors`
+- **Response:** List of valid sectors and landmarks (e.g. `["Sector 10", "Sector 17", "Sector 35", ...]`).
+
+#### 27. Search & Discover Spots
+- **Endpoint:** `GET /api/spots/search`
+- **Query Parameters:**
+  - `location` (optional string): Sector name or landmark (e.g. `Sector 35`).
+  - `latitude`, `longitude` (optional float): Geographic coordinates.
+  - `radius` (optional float, 0.5–15.0 km, default `3.0`).
+  - `category` (optional string, e.g. `cafes`, `bakeries`, `street_food`, default `all`).
+  - `sector` (optional string): Filter by sector.
+  - `budget` (optional string, e.g. `Under ₹100`, `₹100 - ₹300`).
+  - `vibe` (optional string): Filter by ambiance.
+  - `page` (optional int, default `1`).
+  - `page_size` (optional int, default `15`).
+  - `user_id` (optional string): Guest identifier or user session for bookmark indicator.
+- **Geofence Enforcement:** Coordinates or locations outside Chandigarh Union Territory return HTTP `400 Bad Request`.
+
+#### 28. Save Favorite Spot
+- **Endpoint:** `POST /api/spots/favorites`
+- **Status Code:** `201 Created`
+- **Request Body:** `FavoriteCreate` (includes `spot_id`, `name`, `category`, `latitude`, `longitude`, `address`, `user_id`).
+- **Response:** Persisted `SavedSpot` record.
+
+#### 29. List Saved Favorite Spots
+- **Endpoint:** `GET /api/spots/favorites?user_id=guest_default`
+- **Headers:** Optional `Authorization: Bearer <token>`.
+- **Response:** List of `FavoriteResponse` objects bookmarked by the user or guest session.
+
+#### 30. Remove Spot from Favorites
+- **Endpoint:** `DELETE /api/spots/favorites/{spot_id}`
+- **Response:**
+  ```json
+  {
+    "message": "Spot removed from favorites",
+    "spot_id": "spot_123"
+  }
+  ```
+
+#### 31. Get Single Spot Details
+- **Endpoint:** `GET /api/spots/{spot_id}`
+- **Response:** `SpotBase` object with comprehensive metadata, opening hours, coordinates, address, and vibe tags.

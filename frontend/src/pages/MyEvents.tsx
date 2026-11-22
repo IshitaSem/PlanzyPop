@@ -32,7 +32,6 @@ export function MyEvents({
   const [showEdit, setShowEdit] = useState(false)
   const [editingEvent, setEditingEvent] = useState<EventItem | null>(null)
 
-  // Form states for Add/Edit
   const [name, setName] = useState("")
   const [type, setType] = useState("Birthday")
   const [date, setDate] = useState("2026-11-20")
@@ -237,7 +236,6 @@ export function MyEvents({
         </div>
       )}
 
-      {/* Add Event Sheet */}
       {showAdd && (
         <div className="sheet-backdrop" onClick={() => setShowAdd(false)}>
           <div
@@ -328,7 +326,6 @@ export function MyEvents({
         </div>
       )}
 
-      {/* Edit Event Sheet */}
       {showEdit && (
         <div className="sheet-backdrop" onClick={() => setShowEdit(false)}>
           <div

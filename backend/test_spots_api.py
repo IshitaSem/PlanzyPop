@@ -132,7 +132,6 @@ def test_search_spots_with_location():
         assert "latitude" in first_spot
         assert "longitude" in first_spot
         assert "distance_km" in first_spot
-        # Honest fallback check: Prices and ratings must never be fabricated
         assert first_spot["price_info"] in ("Price not available", "Free entry") or "₹" in first_spot["price_info"]
         assert first_spot["rating"] in ("Not available",) or first_spot["rating"] is not None
 
@@ -156,16 +155,13 @@ def test_search_spots_coordinates_validation():
     - Only latitude provided -> 400 Bad Request
     - Latitude or longitude out of range -> 400 Bad Request
     """
-    # Only latitude provided
     resp_lat_only = client.get("/api/spots/search?latitude=12.9716")
     assert resp_lat_only.status_code == 400
     assert "Both latitude and longitude must be provided" in resp_lat_only.json()["detail"]
 
-    # Latitude out of bounds (> 90)
     resp_bad_lat = client.get("/api/spots/search?latitude=120.5&longitude=77.5")
     assert resp_bad_lat.status_code == 400
 
-    # Longitude out of bounds (> 180)
     resp_bad_lon = client.get("/api/spots/search?latitude=12.5&longitude=250.0")
     assert resp_bad_lon.status_code == 400
 
@@ -235,7 +231,6 @@ def test_guest_favourites_session_isolation():
     user_beta = "guest_session_beta_456"
     spot_id = "test/spot/isolation_check"
 
-    # Save favorite for user Alpha (in Chandigarh Sector 17)
     fav_payload = {
         "spot_id": spot_id,
         "name": "Alpha Private Hangout",
@@ -249,15 +244,12 @@ def test_guest_favourites_session_isolation():
     save_resp = client.post("/api/spots/favorites", json=fav_payload)
     assert save_resp.status_code == 201
 
-    # Verify user Beta cannot see Alpha's bookmark
     beta_list = client.get(f"/api/spots/favorites?user_id={user_beta}").json()
     assert not any(f["spot_id"] == spot_id for f in beta_list)
 
-    # Verify user Alpha CAN see their bookmark
     alpha_list = client.get(f"/api/spots/favorites?user_id={user_alpha}").json()
     assert any(f["spot_id"] == spot_id for f in alpha_list)
 
-    # Clean up
     client.delete(f"/api/spots/favorites/{spot_id}?user_id={user_alpha}")
 
 
@@ -269,7 +261,6 @@ def test_favorites_crud_lifecycle():
     test_spot_id = "test/spot/999"
     test_user = "guest_test_runner"
 
-    # 1. Save spot to favorites (in Chandigarh Sector 22)
     fav_payload = {
         "spot_id": test_spot_id,
         "name": "Test Student Tea Stall",
@@ -288,28 +279,23 @@ def test_favorites_crud_lifecycle():
     assert created["spot_id"] == test_spot_id
     assert created["name"] == "Test Student Tea Stall"
 
-    # 2. Retrieve favorites list
     list_resp = client.get(f"/api/spots/favorites?user_id={test_user}")
     assert list_resp.status_code == 200
     favs = list_resp.json()
     assert any(f["spot_id"] == test_spot_id for f in favs)
 
-    # 3. Retrieve single spot details
     detail_resp = client.get(f"/api/spots/{test_spot_id}?user_id={test_user}")
     assert detail_resp.status_code == 200
     detail = detail_resp.json()
     assert detail["name"] == "Test Student Tea Stall"
     assert detail["is_favorite"] is True
 
-    # 4. Delete favorite
     del_resp = client.delete(f"/api/spots/favorites/{test_spot_id}?user_id={test_user}")
     assert del_resp.status_code == 200
 
-    # 5. Verify it's gone
     list_after = client.get(f"/api/spots/favorites?user_id={test_user}").json()
     assert not any(f["spot_id"] == test_spot_id for f in list_after)
 
-    # 6. Deleting again returns 404
     del_again = client.delete(f"/api/spots/favorites/{test_spot_id}?user_id={test_user}")
     assert del_again.status_code == 404
 
@@ -347,14 +333,11 @@ def test_automatic_territory_discovery_on_empty_location():
     assert data["total_found"] > 0
     assert len(data["spots"]) > 0
 
-    # Verify multiple sectors across Chandigarh are represented
     sectors_represented = set()
     for s in data["spots"]:
-        # Verify strict boundary enforcement
         assert chandigarh_boundary.is_point_in_chandigarh(s["latitude"], s["longitude"])
         if s.get("sector"):
             sectors_represented.add(s["sector"])
-        # Verify data origin tag
         assert s["data_origin"] in ("live_api", "cached", "curated")
 
     assert len(sectors_represented) >= 3, f"Expected multiple sectors, got: {sectors_represented}"
@@ -391,7 +374,6 @@ def test_pagination_and_load_more():
     assert len(d2["spots"]) == 5
     assert d2["page"] == 2
 
-    # Check distinct IDs
     ids1 = {s["id"] for s in d1["spots"]}
     ids2 = {s["id"] for s in d2["spots"]}
     assert ids1.isdisjoint(ids2)

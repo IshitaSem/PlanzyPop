@@ -88,7 +88,6 @@ def test_end_to_end_user_journey(client: TestClient):
     5. User marks tasks complete and verifies dynamic progress percentage.
     6. User deletes event and verifies cascade deletion.
     """
-    # 1. AI Planner suggestions
     res_sugg = client.post("/suggestions/generate", json={
         "event_type": "Birthday",
         "budget": 5000.0,
@@ -100,7 +99,6 @@ def test_end_to_end_user_journey(client: TestClient):
     assert sugg["suggested_theme"]
     assert sugg["total_allocated_budget"] == 5000.0
 
-    # 2. Add event
     res_ev = client.post("/events", json={
         "event_name": "Rohan's 21st Birthday Bash",
         "event_type": "Birthday",
@@ -113,46 +111,38 @@ def test_end_to_end_user_journey(client: TestClient):
     assert res_ev.status_code == 201
     event_id = res_ev.json()["id"]
 
-    # 3. Create starter tasks
     client.post(f"/events/{event_id}/tasks", json={"task_name": "Finalize balloon decor", "due_date": "2026-11-20"})
     client.post(f"/events/{event_id}/tasks", json={"task_name": "Order cake", "due_date": "2026-11-22"})
     client.post(f"/events/{event_id}/tasks", json={"task_name": "Send invitations", "due_date": "2026-11-18"})
 
-    # 4. Check initial task summary
     ts1 = client.get(f"/events/{event_id}/tasks/summary").json()
     assert ts1["total_tasks"] == 3
     assert ts1["completed_tasks"] == 0
     assert ts1["progress_percentage"] == 0.0
 
-    # 5. Log expenses
     client.post(f"/events/{event_id}/expenses", json={"expense_name": "Cake", "category": "Cake", "amount": 750.0})
     client.post(f"/events/{event_id}/expenses", json={"expense_name": "Decorations", "category": "Decorations", "amount": 450.0})
 
-    # Check budget summary
     b_sum = client.get(f"/events/{event_id}/budget").json()
     assert b_sum["planned_budget"] == 5000.0
     assert b_sum["total_expenses"] == 1200.0
     assert b_sum["remaining_budget"] == 3800.0
     assert b_sum["utilisation_percentage"] == 24.0
 
-    # Check split: 1200 / 4 = 300 each
     split = client.get(f"/events/{event_id}/split-expense?people=4").json()
     assert split["share_per_person"] == 300.0
     assert split["split_basis"] == "actual_expenses"
 
-    # 6. Timeline order check
     tasks_res = client.get(f"/events/{event_id}/tasks").json()
     assert len(tasks_res) == 3
     dates = [t["due_date"] for t in tasks_res]
     assert dates == sorted(dates)
 
-    # Complete first task and check progress
     client.put(f"/tasks/{tasks_res[0]['id']}", json={"is_completed": True})
     ts2 = client.get(f"/events/{event_id}/tasks/summary").json()
     assert ts2["completed_tasks"] == 1
     assert ts2["progress_percentage"] == 33.33
 
-    # 7. Delete event & verify cascade cleanup
     assert client.delete(f"/events/{event_id}").status_code == 200
     assert client.get(f"/events/{event_id}").status_code == 404
     assert client.get(f"/events/{event_id}/expenses").status_code == 404
@@ -161,11 +151,9 @@ def test_end_to_end_user_journey(client: TestClient):
 
 def test_stage8_11_audit_workflows(client: TestClient):
     """Systematically audit all 11 core functional workflows in sequential order."""
-    # Workflow 1: Fetch events
     res = client.get("/events")
     assert res.status_code == 200
 
-    # Workflow 2: Create an event
     res = client.post("/events", json={
         "event_name": "Audit Test Celebration",
         "event_type": "Birthday",
@@ -178,12 +166,10 @@ def test_stage8_11_audit_workflows(client: TestClient):
     assert res.status_code == 201
     event_id = res.json()["id"]
 
-    # Workflow 3: Fetch individual event
     res = client.get(f"/events/{event_id}")
     assert res.status_code == 200
     assert res.json()["budget"] == 4500.0
 
-    # Workflow 4: Update an event
     res = client.put(f"/events/{event_id}", json={
         "event_name": "Updated Audit Celebration",
         "budget": 5200.0,
@@ -192,7 +178,6 @@ def test_stage8_11_audit_workflows(client: TestClient):
     assert res.status_code == 200
     assert res.json()["budget"] == 5200.0
 
-    # Workflow 6: Generate suggestions
     res = client.post("/suggestions/generate", json={
         "event_type": "Birthday",
         "budget": 5000.0,
@@ -201,42 +186,33 @@ def test_stage8_11_audit_workflows(client: TestClient):
     })
     assert res.status_code == 200
 
-    # Workflow 7a & 7b: Add expenses
     exp1 = client.post(f"/events/{event_id}/expenses", json={"expense_name": "Cake", "category": "Cake", "amount": 850.0}).json()
     exp2 = client.post(f"/events/{event_id}/expenses", json={"expense_name": "Lights", "category": "Decorations", "amount": 400.0}).json()
 
-    # Workflow 8: Fetch budget summary
     b = client.get(f"/events/{event_id}/budget").json()
     assert b["total_expenses"] == 1250.0
     assert b["remaining_budget"] == 3950.0
 
-    # Workflow 9a & 9b: Calculate expense splits
     split_ev = client.get(f"/events/{event_id}/split-expense?people=5").json()
     assert split_ev["share_per_person"] == 250.0
     calc_res = client.post("/calculate-split", json={"total_amount": 3000.0, "num_people": 6}).json()
     assert calc_res["share_per_person"] == 500.0
 
-    # Workflow 7c: Delete expense
     assert client.delete(f"/expenses/{exp2['id']}").status_code == 200
     assert client.get(f"/events/{event_id}/budget").json()["total_expenses"] == 850.0
 
-    # Workflow 10a: Create tasks
     t1 = client.post(f"/events/{event_id}/tasks", json={"task_name": "Order cake", "due_date": "2026-11-21"}).json()
     t2 = client.post(f"/events/{event_id}/tasks", json={"task_name": "Buy decor", "due_date": "2026-11-22"}).json()
 
-    # Workflow 10b: Update task
     assert client.put(f"/tasks/{t1['id']}", json={"is_completed": True}).status_code == 200
 
-    # Workflow 11: Fetch task summary
     tsum = client.get(f"/events/{event_id}/tasks/summary").json()
     assert tsum["total_tasks"] == 2
     assert tsum["completed_tasks"] == 1
     assert tsum["progress_percentage"] == 50.0
 
-    # Workflow 10c: Delete task
     assert client.delete(f"/tasks/{t2['id']}").status_code == 200
 
-    # Workflow 5: Delete event & cascade check
     assert client.delete(f"/events/{event_id}").status_code == 200
     assert client.get(f"/events/{event_id}").status_code == 404
     assert client.get(f"/events/{event_id}/budget").status_code == 404

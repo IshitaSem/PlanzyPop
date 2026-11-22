@@ -20,13 +20,11 @@ Run this script to verify:
 import sys
 import os
 
-# Safe UTF-8 console output on Windows
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
 if hasattr(sys.stderr, "reconfigure"):
     sys.stderr.reconfigure(encoding="utf-8")
 
-# Ensure backend directory is in the module search path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from starlette.testclient import TestClient
@@ -39,9 +37,6 @@ def run_stage4_tests():
 
     client = TestClient(app)
 
-    # -------------------------------------------------------------
-    # Setup: Create a test event with Budget = Rs 2000
-    # -------------------------------------------------------------
     event_payload = {
         "event_name": "Hostel Birthday Celebration",
         "event_type": "Birthday",
@@ -56,10 +51,6 @@ def run_stage4_tests():
     event_id = res_event.json()["id"]
     print(f"[PASS] Created test event (ID: {event_id}, Budget: Rs 2,000)")
 
-    # -------------------------------------------------------------
-    # Test 1: Category Validation & Normalization on Creation
-    # -------------------------------------------------------------
-    # 1a. Invalid category rejected (HTTP 422)
     res = client.post(f"/events/{event_id}/expenses", json={
         "expense_name": "Casino Chips",
         "category": "Gambling",
@@ -68,7 +59,6 @@ def run_stage4_tests():
     assert res.status_code == 422, f"Expected 422, got {res.status_code}"
     print("[PASS] Rejected invalid category 'Gambling' with HTTP 422")
 
-    # 1b. Valid category accepted & normalized (lowercase 'cake' -> 'Cake')
     res = client.post(f"/events/{event_id}/expenses", json={
         "expense_name": "Chocolate Birthday Cake",
         "category": "cake",
@@ -82,7 +72,6 @@ def run_stage4_tests():
     assert exp1["amount"] == 500.0
     print(f"[PASS] Valid category 'cake' normalized to 'Cake' (Expense ID: {exp1_id})")
 
-    # Add Food expense (Rs 700)
     res = client.post(f"/events/{event_id}/expenses", json={
         "expense_name": "Samosas, Chips & Cold Drinks",
         "category": "Food",
@@ -92,7 +81,6 @@ def run_stage4_tests():
     assert res.status_code == 201
     exp2_id = res.json()["id"]
 
-    # Add Decorations expense (Rs 300)
     res = client.post(f"/events/{event_id}/expenses", json={
         "expense_name": "DIY Balloons & Fairy Lights",
         "category": "Decorations",
@@ -103,35 +91,26 @@ def run_stage4_tests():
     exp3_id = res.json()["id"]
     print(f"[PASS] Added Food (Rs 700) and Decorations (Rs 300) expenses")
 
-    # -------------------------------------------------------------
-    # Test 2: ExpenseUpdate Validation (Nulls, Blank, Category, Partial)
-    # -------------------------------------------------------------
-    # 2a. Reject invalid category in PUT
     res = client.put(f"/expenses/{exp1_id}", json={"category": "Luxury Yacht"})
     assert res.status_code == 422
     print("[PASS] PUT /expenses rejected invalid category 'Luxury Yacht' with HTTP 422")
 
-    # 2b. Reject explicit null for expense_name
     res = client.put(f"/expenses/{exp1_id}", json={"expense_name": None})
     assert res.status_code == 422
     print("[PASS] PUT /expenses rejected explicit null expense_name with HTTP 422")
 
-    # 2c. Reject explicit null for category
     res = client.put(f"/expenses/{exp1_id}", json={"category": None})
     assert res.status_code == 422
     print("[PASS] PUT /expenses rejected explicit null category with HTTP 422")
 
-    # 2d. Reject explicit null for amount
     res = client.put(f"/expenses/{exp1_id}", json={"amount": None})
     assert res.status_code == 422
     print("[PASS] PUT /expenses rejected explicit null amount with HTTP 422")
 
-    # 2e. Reject blank expense_name
     res = client.put(f"/expenses/{exp1_id}", json={"expense_name": "   "})
     assert res.status_code == 422
     print("[PASS] PUT /expenses rejected blank expense_name with HTTP 422")
 
-    # 2f. Partial update works: update only amount
     res = client.put(f"/expenses/{exp1_id}", json={"amount": 550.0})
     assert res.status_code == 200
     updated_exp = res.json()
@@ -140,12 +119,6 @@ def run_stage4_tests():
     assert updated_exp["category"] == "Cake"
     print(f"[PASS] Partial update succeeded: amount updated to Rs 550 without affecting other fields")
 
-    # -------------------------------------------------------------
-    # Test 3: Budget Summary Calculations
-    # -------------------------------------------------------------
-    # Total spent: 550 + 700 + 300 = 1550
-    # Remaining: 2000 - 1550 = 450
-    # Utilisation: (1550 / 2000) * 100 = 77.5%
     res = client.get(f"/events/{event_id}/budget")
     assert res.status_code == 200
     b = res.json()
@@ -159,9 +132,6 @@ def run_stage4_tests():
     assert b["category_breakdown"]["Decorations"] == 300.0
     print(f"[PASS] Budget Summary verified: Spent Rs 1550, Remaining Rs 450 (77.5% utilised)")
 
-    # -------------------------------------------------------------
-    # Test 4: Overspending Detection & Warning
-    # -------------------------------------------------------------
     res = client.post(f"/events/{event_id}/expenses", json={
         "expense_name": "Extra Pizza Treats",
         "category": "Food",
@@ -179,13 +149,8 @@ def run_stage4_tests():
     assert "exceeded" in over_data["warning_message"]
     print(f"[PASS] Overspending detected: Remaining Rs -150, Alert: '{over_data['warning_message']}'")
 
-    # Clean up extra expense
     client.delete(f"/expenses/{over_exp_id}")
 
-    # -------------------------------------------------------------
-    # Test 5: Expense Split & Fallback Identification
-    # -------------------------------------------------------------
-    # 5a. Split with actual expenses present
     res = client.get(f"/events/{event_id}/split-expense?people=5")
     assert res.status_code == 200
     split_actual = res.json()
@@ -195,7 +160,6 @@ def run_stage4_tests():
     assert "actual recorded expenses" in split_actual["explanation"]
     print(f"[PASS] Split with actual expenses: split_basis='{split_actual['split_basis']}' -> Rs {split_actual['share_per_person']} each")
 
-    # 5b. Split with planned budget fallback (no expenses yet)
     res_plan = client.post("/events", json={
         "event_name": "Upcoming Farewell Party",
         "event_type": "Farewell",
@@ -216,7 +180,6 @@ def run_stage4_tests():
 
     client.delete(f"/events/{plan_event_id}")
 
-    # 5c. Split with recorded expense totalling Rs 0 (zero-amount expense test)
     res_zero_exp = client.post("/events", json={
         "event_name": "Zero-Cost DIY Event",
         "event_type": "Hostel Party",
@@ -245,7 +208,6 @@ def run_stage4_tests():
     client.delete(f"/events/{zero_exp_event_id}")
     print("[PASS] Cleaned up zero-amount expense test event")
 
-    # 5d. General split calculator endpoint
     res = client.post("/calculate-split", json={"total_amount": 2000.0, "num_people": 5})
     assert res.status_code == 200
     calc = res.json()
@@ -253,9 +215,6 @@ def run_stage4_tests():
     assert calc["split_basis"] == "custom_amount"
     print(f"[PASS] POST /calculate-split: Rs 2000 / 5 = Rs {calc['share_per_person']} (split_basis='{calc['split_basis']}')")
 
-    # -------------------------------------------------------------
-    # Test 6: Safe Zero-Budget Handling & Error Handling
-    # -------------------------------------------------------------
     res_zero = client.post("/events", json={
         "event_name": "Free Campus Meetup",
         "event_type": "College Meetup",
@@ -269,13 +228,11 @@ def run_stage4_tests():
     print("[PASS] Zero-budget event handled safely without ZeroDivisionError")
     client.delete(f"/events/{zero_id}")
 
-    # 404 for ghost records
     assert client.post("/events/999999/expenses", json={"expense_name": "Cake", "category": "Cake", "amount": 100.0}).status_code == 404
     assert client.put("/expenses/999999", json={"amount": 100.0}).status_code == 404
     assert client.delete("/expenses/999999").status_code == 404
     print("[PASS] 404 correctly returned for non-existent events and expenses")
 
-    # Clean up test event and cascaded expenses
     client.delete(f"/events/{event_id}")
     print(f"[PASS] Cleaned up test event and cascaded expenses")
 

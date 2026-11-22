@@ -5,15 +5,17 @@ Academic Mini-Project for M.Sc. Computer Science (Data Science)
 """
 
 from datetime import date
-from typing import List
+from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from database import get_db
 import models
 import schemas
+from auth_utils import get_current_user_optional, verify_event_owner as _verify_event_owner
 
 router = APIRouter(tags=["Checklist & Timeline"])
+
 
 
 @router.post(
@@ -25,6 +27,7 @@ router = APIRouter(tags=["Checklist & Timeline"])
 def create_task(
     event_id: int,
     task_data: schemas.TaskCreate,
+    current_user: Optional[models.User] = Depends(get_current_user_optional),
     db: Session = Depends(get_db)
 ):
     """
@@ -39,6 +42,7 @@ def create_task(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Cannot add task. Event with ID {event_id} not found."
         )
+    _verify_event_owner(event, current_user)
 
     new_task = models.Task(
         event_id=event_id,
@@ -58,7 +62,11 @@ def create_task(
     response_model=List[schemas.TaskResponse],
     summary="Get chronologically sorted tasks for an event"
 )
-def get_event_tasks(event_id: int, db: Session = Depends(get_db)):
+def get_event_tasks(
+    event_id: int,
+    current_user: Optional[models.User] = Depends(get_current_user_optional),
+    db: Session = Depends(get_db)
+):
     """
     GET Event Tasks (Timeline ordering):
     - Returns all tasks for the specified event.
@@ -72,6 +80,7 @@ def get_event_tasks(event_id: int, db: Session = Depends(get_db)):
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Event with ID {event_id} not found."
         )
+    _verify_event_owner(event, current_user)
 
     tasks = db.query(models.Task).filter(models.Task.event_id == event_id).all()
     # Sort: tasks with a due_date come first chronologically; tasks without a due_date come last
@@ -87,6 +96,7 @@ def get_event_tasks(event_id: int, db: Session = Depends(get_db)):
 def update_task(
     task_id: int,
     task_update: schemas.TaskUpdate,
+    current_user: Optional[models.User] = Depends(get_current_user_optional),
     db: Session = Depends(get_db)
 ):
     """
@@ -101,6 +111,9 @@ def update_task(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Task with ID {task_id} not found."
         )
+    event = db.query(models.Event).filter(models.Event.id == task.event_id).first()
+    if event:
+        _verify_event_owner(event, current_user)
 
     update_data = task_update.model_dump(exclude_unset=True)
     for key, value in update_data.items():
@@ -116,7 +129,11 @@ def update_task(
     status_code=status.HTTP_200_OK,
     summary="Delete a task"
 )
-def delete_task(task_id: int, db: Session = Depends(get_db)):
+def delete_task(
+    task_id: int,
+    current_user: Optional[models.User] = Depends(get_current_user_optional),
+    db: Session = Depends(get_db)
+):
     """
     DELETE Task:
     - Removes an individual task.
@@ -128,6 +145,9 @@ def delete_task(task_id: int, db: Session = Depends(get_db)):
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Task with ID {task_id} not found."
         )
+    event = db.query(models.Event).filter(models.Event.id == task.event_id).first()
+    if event:
+        _verify_event_owner(event, current_user)
 
     db.delete(task)
     db.commit()
@@ -142,7 +162,11 @@ def delete_task(task_id: int, db: Session = Depends(get_db)):
     response_model=schemas.TaskSummaryResponse,
     summary="Get task completion counts, overdue tasks, and progress percentage"
 )
-def get_task_summary(event_id: int, db: Session = Depends(get_db)):
+def get_task_summary(
+    event_id: int,
+    current_user: Optional[models.User] = Depends(get_current_user_optional),
+    db: Session = Depends(get_db)
+):
     """
     TASK SUMMARY & PROGRESS:
     - Calculates:
@@ -159,6 +183,7 @@ def get_task_summary(event_id: int, db: Session = Depends(get_db)):
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Event with ID {event_id} not found."
         )
+    _verify_event_owner(event, current_user)
 
     tasks = db.query(models.Task).filter(models.Task.event_id == event_id).all()
     total_tasks = len(tasks)

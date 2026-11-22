@@ -6,10 +6,10 @@ Stage 3, 4, 5 & 6: Pydantic Validation Schemas (Events, Expenses, Budget, Tasks 
 """
 
 from datetime import datetime
+import re
 from typing import Optional, Dict, List, Any
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-# Valid student-friendly expense categories
 EXPENSE_CATEGORIES = [
     "Food",
     "Decorations",
@@ -22,9 +22,6 @@ EXPENSE_CATEGORIES = [
 ]
 
 
-# ============================================================================
-# Event Schemas (Stage 3)
-# ============================================================================
 
 class EventBase(BaseModel):
     """
@@ -72,14 +69,12 @@ class EventUpdate(BaseModel):
 
 class EventResponse(EventBase):
     id: int
+    user_id: Optional[str] = None
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
 
 
-# ============================================================================
-# Expense Schemas (Stage 4)
-# ============================================================================
 
 class ExpenseBase(BaseModel):
     """
@@ -163,9 +158,6 @@ class ExpenseResponse(ExpenseBase):
     model_config = ConfigDict(from_attributes=True)
 
 
-# ============================================================================
-# Budget Management & Calculation Schemas (Stage 4)
-# ============================================================================
 
 class BudgetSummaryResponse(BaseModel):
     """
@@ -204,9 +196,6 @@ class ExpenseSplitResponse(BaseModel):
     explanation: str
 
 
-# ============================================================================
-# Task Schemas (Stage 5: Checklist & Timeline)
-# ============================================================================
 
 class TaskBase(BaseModel):
     """
@@ -302,9 +291,6 @@ class TaskSummaryResponse(BaseModel):
     progress_percentage: float
 
 
-# ============================================================================
-# Suggestion Engine Schemas (Stage 6: Rule-Based Suggestions)
-# ============================================================================
 
 class BudgetAllocationItem(BaseModel):
     """
@@ -351,9 +337,6 @@ class SuggestionResponse(BaseModel):
     disclaimer: str
 
 
-# ============================================================================
-# PopSpots Schemas (Real Local Hangout Discovery System & Google Places)
-# ============================================================================
 
 class SpotCategoryItem(BaseModel):
     id: str
@@ -471,3 +454,49 @@ class FavoriteResponse(BaseModel):
     saved_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class UserRegister(BaseModel):
+    name: str = Field(..., min_length=1, max_length=100)
+    email: str = Field(..., min_length=3, max_length=100)
+    password: str = Field(..., min_length=6, max_length=100)
+
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, v: str) -> str:
+        s = v.strip()
+        if not s:
+            raise ValueError("Name cannot be empty")
+        return s
+
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, v: str) -> str:
+        s = v.strip().lower()
+        if not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", s):
+            raise ValueError("Invalid email format")
+        return s
+
+
+class UserLogin(BaseModel):
+    email: str = Field(..., min_length=1, max_length=100)
+    password: str = Field(..., min_length=1, max_length=100)
+
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, v: str) -> str:
+        return v.strip().lower()
+
+
+class UserResponse(BaseModel):
+    id: int
+    name: str
+    email: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    user: UserResponse

@@ -119,19 +119,36 @@ PlanzyPop offers two splitting methods:
    `https://www.google.com/maps/search/?api=1&query={query} in {city}`
 6. When clicked, the link opens Google Maps in a new tab. No paid Google Cloud API keys are required, and the system never shows fake or fabricated venue ratings.
 
+### Q13: How is user authentication and data privacy implemented?
+**Answer:**  
+PlanzyPop uses a hybrid authentication model:
+- **Password Security:** User passwords are encrypted with `bcrypt` salted hashing before insertion into SQLite. Plain-text passwords are never stored.
+- **Session Tokens:** Upon login or registration, the server generates a cryptographically random Bearer token stored in the `user_tokens` table.
+- **Data Isolation:** All event and bookmark queries are filtered by `user_id`. An authenticated user cannot read, edit, or delete another user's events.
+- **Empty Initialization:** Newly created accounts start with a clean, empty dashboard.
+- **Guest Demo Mode:** Unregistered users can enter Guest Mode to experience pre-populated sample celebrations without writing to or reading from registered accounts.
+
+### Q14: How does the PopSpots geofencing algorithm ensure only Chandigarh venues are shown?
+**Answer:**  
+PopSpots employs a ray-casting **Point-in-Polygon (PIP)** algorithm in `chandigarh_boundary.py`:
+- A polygon covering the exact municipal boundaries of Chandigarh Union Territory is defined as an ordered list of coordinate vertices.
+- For any search center, GPS pin, or venue coordinate, a ray is projected horizontally to the right. The algorithm counts how many times the ray intersects the polygon's edges.
+- If the intersection count is odd, the coordinate is mathematically guaranteed to be inside Chandigarh; if even, it is outside.
+- Coordinate queries outside the boundary or queries referencing surrounding towns (Mohali, Panchkula, Zirakpur) are rejected with HTTP 400 Bad Request.
+
 ---
 
 ## 5. Limitations & Future Scope
 
-### Q13: What are the current limitations of this project?
+### Q15: What are the current limitations of this project?
 **Answer:**  
-1. **Single-User Workspace:** The application does not currently implement multi-user authentication (JWT / OAuth2); all data belongs to the local host.
-2. **Local Database:** The SQLite database is hosted locally on the server machine, which is ideal for single-instance hosting but not distributed multi-server clusters.
+1. **Local Database:** The SQLite database is hosted locally on the server machine, which is ideal for single-instance hosting but not distributed multi-server clusters.
+2. **Chandigarh Boundary Geofencing:** PopSpots venue discovery is specifically geofenced to Chandigarh Union Territory; venues in other states or territories are not loaded.
 3. **No Direct SMS/Push Gateways:** Reminders and notifications are managed inside the application drawer rather than via external SMS or WhatsApp APIs.
 
-### Q14: What is the future scope for expanding this system?
+### Q16: What is the future scope for expanding this system?
 **Answer:**  
-1. **Multi-User Authentication:** Adding user registration and login using JWT tokens and password hashing (bcrypt).
-2. **Payment Gateway Integration:** Integrating UPI/Razorpay webhooks to allow contributing friends to settle their split shares directly through UPI QR codes.
+1. **UPI Payment Gateway Integration:** Integrating UPI/Razorpay webhooks to allow contributing friends to settle their split shares directly through UPI QR codes.
+2. **Multi-City Boundary Expansion:** Expanding the polygon boundaries and POI databases to support Delhi NCR, Bengaluru, Pune, and other university hubs across India.
 3. **WhatsApp / Email RSVP Bot:** Sending automated RSVP invitation links and task delegation alerts to attendees via the WhatsApp Business API.
 4. **Cloud Migration:** Transitioning the database from SQLite to PostgreSQL for multi-region scalability.

@@ -63,6 +63,10 @@ All backend tests reside in the `backend/` directory and use descriptive, domain
 | `test_checklist_and_tasks.py` | Timeline & Tasks | Verifies task creation, chronological ordering (due dates ascending, nulls at end), completion toggling, overdue calculation math, and dynamic progress metrics. |
 | `test_recommendations.py` | Algorithmic Heuristics | Verifies rule-based suggestion engine heuristics for all event types, 5 celebration styles, 5 budget tiers, guest scaling, 100% allocation sum math, and stateless execution. |
 | `test_integration_workflow.py` | End-to-End Audit | Verifies frontend `.env` and `api.ts` contracts, full multi-step user journey, and all 11 core functional workflows from the integration audit. |
+| `test_chandigarh_boundary.py` | Geospatial Geofence | Verifies ray-casting point-in-polygon algorithm for Chandigarh UT, valid coordinate acceptance, and outside town rejection (Mohali, Panchkula, Zirakpur). |
+| `test_geoapify_and_osm.py` | External Geodata Mocks | Verifies Geoapify Places API and OpenStreetMap Overpass client integrations, network timeout resilience, and curated Chandigarh fallback data. |
+| `test_spots_api.py` | PopSpots API | Verifies `/api/spots/search`, `/api/spots/categories`, `/api/spots/sectors`, and bookmarking lifecycle (`POST`, `GET`, `DELETE /api/spots/favorites`). |
+| `test_user_isolation.py` | Security & Data Isolation | Verifies user registration, login, token authentication, user-specific data isolation between accounts, empty new user dashboards, and guest demo data separation. |
 
 ---
 
@@ -102,25 +106,24 @@ def setup_test_environment():
 Open a terminal in the project directory and run:
 
 ```powershell
-cd backend
-.\.venv\Scripts\pytest -v
+pytest backend/ -v
 ```
 
-Or using python module syntax:
+Or from within the backend directory:
 ```powershell
 cd backend
-.\.venv\Scripts\python.exe -m pytest -v
+pytest -v
 ```
 
 **Expected Result:**
 ```
-collected 37 items
+collected 74 items
 
 test_budget_and_expenses.py::test_category_validation_and_normalization PASSED
 test_budget_and_expenses.py::test_expense_update_validation_and_partial_update PASSED
 ...
-test_recommendations.py::test_stateless_database_independence PASSED
-======================= 37 passed in ~1.8s =======================
+test_user_isolation.py::test_guest_mode_remains_intact PASSED
+======================= 74 passed in ~2.5s =======================
 ```
 
 ---

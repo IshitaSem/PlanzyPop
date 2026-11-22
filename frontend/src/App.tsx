@@ -16,9 +16,17 @@ import {
   generateSuggestions,
   createEvent,
   getEvents,
+  login as apiLogin,
+  register as apiRegister,
+  logout as apiLogout,
+  getCurrentUser,
+  getAuthToken,
+  getStoredUser,
   API_BASE_URL,
   type SpotItem,
   type SuggestionResponse,
+  type UserInfo,
+  type SpotFavorite,
 } from "./services/api"
 import { SpotMap } from "./components/nearby/SpotMap"
 
@@ -454,10 +462,27 @@ const plannerCategories: EventCategory[] = [
 function Overview({
   go,
   notify,
+  currentUser,
+  isGuest,
+  events,
+  favoritesCount,
 }: {
   go: (s: Screen) => void
   notify: (m: string) => void
+  currentUser: UserInfo | null
+  isGuest: boolean
+  events: EventPlan[]
+  favoritesCount: number
 }) {
+  const totalBudget = events.reduce((acc, ev) => {
+    const digits = ev.budget.replace(/[^0-9]/g, "")
+    return acc + (parseInt(digits, 10) || 0)
+  }, 0)
+
+  const avatarInitial = isGuest
+    ? "G"
+    : currentUser?.name?.[0]?.toUpperCase() || "U"
+
   return (
     <div className="screen overview-screen">
       <div className="topbar">
@@ -468,7 +493,9 @@ function Overview({
           <span>PlanzyPop</span>
         </div>
         <div className="desktop-page-context">
-          <div className="eyebrow">PLANZYPOP WORKSPACE</div>
+          <div className="eyebrow">
+            {isGuest ? "GUEST DEMO MODE · PREVIEW" : "PLANZYPOP WORKSPACE"}
+          </div>
           <div>Overview</div>
         </div>
         <div className="top-actions">
@@ -482,15 +509,33 @@ function Overview({
             className="avatar"
             onClick={() => go("profile")}
           >
-            M
+            {avatarInitial}
           </button>
         </div>
       </div>
 
       <div className="hello">
-        <div className="eyebrow">WEDNESDAY, 6 NOV · DEMO DATA</div>
+        <div className="eyebrow">
+          {isGuest
+            ? "WEDNESDAY, 6 NOV · GUEST DEMO MODE"
+            : "WEDNESDAY, 6 NOV · YOUR DASHBOARD"}
+        </div>
         <div className="hero-title">
-          Hey, ready to <span className="party-squiggle">make some plans?</span>
+          {isGuest ? (
+            <>
+              Hey, ready to <span className="party-squiggle">make some plans?</span>
+            </>
+          ) : events.length === 0 ? (
+            <>
+              Welcome! Start planning your{" "}
+              <span className="party-squiggle">first celebration.</span>
+            </>
+          ) : (
+            <>
+              Hey {currentUser?.name?.split(" ")[0] || "there"}, ready to{" "}
+              <span className="party-squiggle">make some plans?</span>
+            </>
+          )}
         </div>
       </div>
 
@@ -501,9 +546,15 @@ function Overview({
           </span>
           <div>
             <span>Planned events</span>
-            <strong>7</strong>
+            <strong>{isGuest ? 7 : events.length}</strong>
           </div>
-          <small>3 upcoming</small>
+          <small>
+            {isGuest
+              ? "3 upcoming"
+              : events.length === 0
+                ? "No plans yet"
+                : `${events.length} planned`}
+          </small>
         </div>
         <div className="metric-card">
           <span className="metric-icon peach">
@@ -511,9 +562,19 @@ function Overview({
           </span>
           <div>
             <span>Total planned budget</span>
-            <strong>₹20,000</strong>
+            <strong>
+              {isGuest
+                ? "₹20,000"
+                : `₹${totalBudget.toLocaleString("en-IN")}`}
+            </strong>
           </div>
-          <small>Across 3 events</small>
+          <small>
+            {isGuest
+              ? "Across 3 events"
+              : events.length === 0
+                ? "No budget records yet"
+                : `Across ${events.length} event${events.length > 1 ? "s" : ""}`}
+          </small>
         </div>
         <div className="metric-card">
           <span className="metric-icon yellow">
@@ -521,9 +582,9 @@ function Overview({
           </span>
           <div>
             <span>Tasks completed</span>
-            <strong>18 / 24</strong>
+            <strong>{isGuest ? "18 / 24" : "0 / 0"}</strong>
           </div>
-          <small>75% on track</small>
+          <small>{isGuest ? "75% on track" : "0% on track"}</small>
         </div>
         <div className="metric-card">
           <span className="metric-icon blue">
@@ -531,9 +592,15 @@ function Overview({
           </span>
           <div>
             <span>Saved spots</span>
-            <strong>12</strong>
+            <strong>{isGuest ? 12 : favoritesCount}</strong>
           </div>
-          <small>4 recently viewed</small>
+          <small>
+            {isGuest
+              ? "4 recently viewed"
+              : favoritesCount === 0
+                ? "No saved spots yet"
+                : `${favoritesCount} bookmarked`}
+          </small>
         </div>
       </div>
 
@@ -586,30 +653,93 @@ function Overview({
         action="See all"
         onAction={() => go("events")}
       />
-      <button
-        type="button"
-        className="event-feature"
-        onClick={() => go("event-detail")}
-      >
-        <img
-          src={images.birthday}
-          alt="Friends celebrating a birthday around a cake"
-        />
-        <div className="event-date">
-          <strong>12</strong>
-          <span>NOV</span>
-        </div>
-        <div className="event-overlay">
-          <div className="event-meta">
-            <span>Birthday</span>
-            <span>9 days to go</span>
+      {isGuest ? (
+        <button
+          type="button"
+          className="event-feature"
+          onClick={() => go("event-detail")}
+        >
+          <img
+            src={images.birthday}
+            alt="Friends celebrating a birthday around a cake"
+          />
+          <div className="event-date">
+            <strong>12</strong>
+            <span>NOV</span>
           </div>
-          <div className="event-name">Aanya’s Birthday</div>
-          <div className="event-sub">
-            <Icon name="location" size={15} /> Rooftop, Indiranagar · 18 friends
+          <div className="event-overlay">
+            <div className="event-meta">
+              <span>Birthday (Demo)</span>
+              <span>9 days to go</span>
+            </div>
+            <div className="event-name">Aanya’s Birthday</div>
+            <div className="event-sub">
+              <Icon name="location" size={15} /> Rooftop, Indiranagar · 18 friends
+            </div>
           </div>
+        </button>
+      ) : events.length > 0 ? (
+        <button
+          type="button"
+          className="event-feature"
+          onClick={() => go("event-detail")}
+        >
+          <img
+            src={events[0].image}
+            alt={events[0].name}
+          />
+          <div className="event-date">
+            <strong>{events[0].date.slice(0, 2) || "UP"}</strong>
+            <span>{events[0].date.slice(3, 6).toUpperCase() || "COMING"}</span>
+          </div>
+          <div className="event-overlay">
+            <div className="event-meta">
+              <span>{events[0].type}</span>
+              <span>Upcoming</span>
+            </div>
+            <div className="event-name">{events[0].name}</div>
+            <div className="event-sub">
+              <Icon name="location" size={15} /> {events[0].place} · {events[0].guests} friends
+            </div>
+          </div>
+        </button>
+      ) : (
+        <div
+          className="empty-coming-up"
+          style={{
+            padding: "36px 20px",
+            background: "#ffffff",
+            borderRadius: "20px",
+            border: "1px dashed #cbd5e1",
+            textAlign: "center",
+            boxShadow: "0 2px 10px rgba(0,0,0,0.02)",
+            marginBottom: "16px",
+          }}
+        >
+          <div style={{ color: "#7c3aed", marginBottom: "10px" }}>
+            <Icon name="calendar" size={36} />
+          </div>
+          <strong
+            style={{ display: "block", fontSize: "16px", marginBottom: "6px" }}
+          >
+            Welcome! Start planning your first celebration.
+          </strong>
+          <p
+            style={{
+              color: "#64748b",
+              fontSize: "13px",
+              maxWidth: "420px",
+              margin: "0 auto 18px",
+            }}
+          >
+            You haven't created any plans yet. Tell us your vibe and budget, and
+            PlanzyPop will create your first celebration plan.
+          </p>
+          <Button onClick={() => go("planner")} variant="dark" icon="arrow">
+            Plan an Event
+          </Button>
         </div>
-      </button>
+      )}
 
       <div className="two-col">
         <button
@@ -622,12 +752,22 @@ function Overview({
           </div>
           <div className="card-kicker">Party budget</div>
           <div className="budget-big">
-            ₹3,250 <span>left</span>
+            {isGuest
+              ? "₹3,250 left"
+              : events.length === 0
+                ? "₹0 left"
+                : `${events[0].budget} planned`}
           </div>
-          <Progress value={46} />
+          <Progress value={isGuest ? 46 : events.length === 0 ? 0 : 35} />
           <div className="spread">
-            <span>Spent ₹2,750</span>
-            <strong>54%</strong>
+            <span>
+              {isGuest
+                ? "Spent ₹2,750"
+                : events.length === 0
+                  ? "No budget records yet"
+                  : "Spent ₹0"}
+            </span>
+            <strong>{isGuest ? "54%" : "0%"}</strong>
           </div>
         </button>
         <button
@@ -636,11 +776,25 @@ function Overview({
           onClick={() => go("checklist")}
         >
           <div className="task-ring">
-            <span>5/8</span>
+            <span>{isGuest ? "5/8" : "0/0"}</span>
           </div>
-          <div className="card-kicker">You’re on a roll</div>
-          <div className="task-title">3 tasks left</div>
-          <div className="task-next">Next: Order the cake</div>
+          <div className="card-kicker">
+            {isGuest ? "You’re on a roll" : "Checklist"}
+          </div>
+          <div className="task-title">
+            {isGuest
+              ? "3 tasks left"
+              : events.length === 0
+                ? "No tasks yet"
+                : "5 tasks ready"}
+          </div>
+          <div className="task-next">
+            {isGuest
+              ? "Next: Order the cake"
+              : events.length === 0
+                ? "Create a plan to get started"
+                : "Next: Review event checklist"}
+          </div>
         </button>
         <button
           type="button"
@@ -652,7 +806,7 @@ function Overview({
           </div>
           <div className="card-kicker">POPSPOTS</div>
           <div className="task-title">Find a hangout</div>
-          <div className="task-next">Cafés, parks, desserts & more</div>
+          <div className="task-next">Cafés, parks, desserts & more in Chandigarh</div>
         </button>
       </div>
 
@@ -667,47 +821,83 @@ function Overview({
           </button>
         </div>
         <div className="activity-list">
-          <div>
-            <span className="activity-dot purple" />
-            <p>
-              <strong>Budget updated</strong>
-              <small>Aanya’s Birthday · ₹350 added</small>
-            </p>
-            <time>10 min</time>
-          </div>
-          <div>
-            <span className="activity-dot coral" />
-            <p>
-              <strong>Spot saved</strong>
-              <small>Church Street café placeholder</small>
-            </p>
-            <time>Yesterday</time>
-          </div>
-          <div>
-            <span className="activity-dot yellow" />
-            <p>
-              <strong>5 tasks completed</strong>
-              <small>College Fresher Party</small>
-            </p>
-            <time>2 days</time>
-          </div>
+          {isGuest ? (
+            <>
+              <div>
+                <span className="activity-dot purple" />
+                <p>
+                  <strong>Budget updated</strong>
+                  <small>Aanya’s Birthday · ₹350 added</small>
+                </p>
+                <time>10 min</time>
+              </div>
+              <div>
+                <span className="activity-dot coral" />
+                <p>
+                  <strong>Spot saved</strong>
+                  <small>Church Street café placeholder</small>
+                </p>
+                <time>Yesterday</time>
+              </div>
+              <div>
+                <span className="activity-dot yellow" />
+                <p>
+                  <strong>5 tasks completed</strong>
+                  <small>College Fresher Party</small>
+                </p>
+                <time>2 days</time>
+              </div>
+            </>
+          ) : events.length === 0 ? (
+            <div
+              style={{
+                padding: "20px 0",
+                textAlign: "center",
+                color: "var(--muted, #64748b)",
+                fontSize: "13px",
+              }}
+            >
+              No recent activity yet. Your planned events and updates will appear here.
+            </div>
+          ) : (
+            <div>
+              <span className="activity-dot purple" />
+              <p>
+                <strong>Plan active</strong>
+                <small>{events[0].name} · {events[0].place}</small>
+              </p>
+              <time>Just now</time>
+            </div>
+          )}
         </div>
-        <div className="saved-spot-strip">
-          <button type="button" onClick={() => go("nearby")}>
-            <img src={images.cafe} alt="Third Wave Coffee" />
-            <span>
-              <strong>Third Wave Coffee</strong>
-              <small>Church Street · Saved café</small>
-            </span>
-          </button>
-          <button type="button" onClick={() => go("nearby")}>
-            <img src={images.games} alt="Board 4 Boredom Lounge" />
-            <span>
-              <strong>Board 4 Boredom Lounge</strong>
-              <small>Koramangala · Saved activity space</small>
-            </span>
-          </button>
-        </div>
+        {isGuest ? (
+          <div className="saved-spot-strip">
+            <button type="button" onClick={() => go("nearby")}>
+              <img src={images.cafe} alt="Third Wave Coffee" />
+              <span>
+                <strong>Third Wave Coffee</strong>
+                <small>Church Street · Saved café (Demo)</small>
+              </span>
+            </button>
+            <button type="button" onClick={() => go("nearby")}>
+              <img src={images.games} alt="Board 4 Boredom Lounge" />
+              <span>
+                <strong>Board 4 Boredom Lounge</strong>
+                <small>Koramangala · Saved activity space (Demo)</small>
+              </span>
+            </button>
+          </div>
+        ) : (
+          <div
+            style={{
+              padding: "12px 14px",
+              color: "var(--muted, #64748b)",
+              fontSize: "12px",
+            }}
+          >
+            Browse Explore Spots to bookmark hangout spots across Chandigarh.
+          </div>
+        )}
       </div>
     </div>
   )
@@ -759,17 +949,23 @@ const defaultEvents: EventPlan[] = [
 
 function MyEvents({
   go,
-  events = defaultEvents,
+  events = [],
+  isGuest = false,
 }: {
   go: (s: Screen) => void
   events?: EventPlan[]
+  isGuest?: boolean
 }) {
   const [tab, setTab] = useState("Upcoming")
   return (
     <div className="screen">
       <Header
         title="My Plans"
-        eyebrow="CELEBRATIONS YOU’RE SHAPING"
+        eyebrow={
+          isGuest
+            ? "GUEST DEMO MODE · 3 SAMPLE PLANS"
+            : "CELEBRATIONS YOU’RE SHAPING"
+        }
         action={
           <IconButton
             icon="plus"
@@ -790,9 +986,27 @@ function MyEvents({
           </button>
         ))}
       </div>
-      {tab === "Upcoming" ? (
+      {events.length === 0 ? (
+        <div className="empty-state">
+          <div className="empty-visual">
+            <Icon name="calendar" size={42} />
+          </div>
+          <div className="empty-title">You haven’t created any plans yet.</div>
+          <p>
+            Start planning your first celebration with AI-curated themes, budgets,
+            and spots.
+          </p>
+          <Button onClick={() => go("planner")} icon="plus">
+            Plan an Event
+          </Button>
+        </div>
+      ) : tab === "Upcoming" ? (
         <div className="event-list">
-          <div className="month-label">NOVEMBER · 3 EVENTS</div>
+          <div className="month-label">
+            {isGuest
+              ? "DEMO PREVIEW · 3 EVENTS"
+              : `${events.length} CELEBRATION${events.length > 1 ? "S" : ""}`}
+          </div>
           {events.map((event) => (
             <button
               type="button"
@@ -863,19 +1077,63 @@ function MyEvents({
   )
 }
 
-function EventDetail({ go }: { go: (s: Screen) => void }) {
+function EventDetail({
+  go,
+  events = [],
+  isGuest = false,
+}: {
+  go: (s: Screen) => void
+  events?: EventPlan[]
+  isGuest?: boolean
+}) {
+  if (!isGuest && events.length === 0) {
+    return (
+      <div className="screen detail-screen">
+        <Header
+          title="Event Details"
+          eyebrow="NO CELEBRATION SELECTED"
+          onBack={() => go("events")}
+        />
+        <div
+          className="empty-state"
+          style={{ padding: "60px 20px", textAlign: "center" }}
+        >
+          <div className="empty-visual">
+            <Icon name="calendar" size={48} />
+          </div>
+          <div
+            className="empty-title"
+            style={{ fontSize: "19px", marginTop: "16px", fontWeight: "700" }}
+          >
+            No celebration selected
+          </div>
+          <p style={{ color: "var(--muted)", margin: "8px 0 20px 0" }}>
+            You haven't created any celebrations yet. Start planning one now.
+          </p>
+          <Button onClick={() => go("planner")} icon="plus">
+            Plan an Event
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  const ev = isGuest || events.length === 0 ? defaultEvents[0] : events[0]
+
   return (
     <div className="screen detail-screen">
       <div className="detail-hero">
-        <img src={images.birthday} alt="Aanya's birthday celebration" />
+        <img src={ev.image} alt={ev.name} />
         <div className="floating-header">
           <IconButton icon="back" label="Back" onClick={() => go("events")} />
           <IconButton icon="edit" label="Edit event" />
         </div>
         <div className="detail-gradient">
-          <span className="event-type">BIRTHDAY</span>
-          <div className="detail-title">Aanya’s Birthday</div>
-          <div>12 Nov · 6:30 PM · Indiranagar</div>
+          <span className="event-type">
+            {isGuest ? `${ev.type.toUpperCase()} (DEMO)` : ev.type.toUpperCase()}
+          </span>
+          <div className="detail-title">{ev.name}</div>
+          <div>{ev.date} · {ev.place}</div>
         </div>
       </div>
       <div className="detail-body">
@@ -884,20 +1142,26 @@ function EventDetail({ go }: { go: (s: Screen) => void }) {
             <span>A</span>
             <span>R</span>
             <span>K</span>
-            <span>+15</span>
+            <span>+{ev.guests > 3 ? ev.guests - 3 : 0}</span>
           </div>
           <div>
-            <strong>18 friends invited</strong>
-            <small>12 confirmed · 4 pending</small>
+            <strong>{ev.guests} friends invited</strong>
+            <small>
+              {isGuest ? "12 confirmed · 4 pending" : "Ready to celebrate"}
+            </small>
           </div>
         </div>
         <div className="summary-card">
           <div className="summary-top">
             <span>Planning progress</span>
-            <strong>68%</strong>
+            <strong>{ev.progress}%</strong>
           </div>
-          <Progress value={68} />
-          <p>You’re doing great! Complete 3 more tasks this week.</p>
+          <Progress value={ev.progress} />
+          <p>
+            {isGuest
+              ? "You’re doing great! Complete 3 more tasks this week."
+              : "Review checklist items and track your celebration budget."}
+          </p>
         </div>
         <div className="detail-grid">
           <button
@@ -909,7 +1173,7 @@ function EventDetail({ go }: { go: (s: Screen) => void }) {
               <Icon name="check" />
             </span>
             <strong>Checklist</strong>
-            <small>5 of 8 done</small>
+            <small>{isGuest ? "5 of 8 done" : "View tasks"}</small>
           </button>
           <button
             type="button"
@@ -920,7 +1184,7 @@ function EventDetail({ go }: { go: (s: Screen) => void }) {
               <Icon name="wallet" />
             </span>
             <strong>Budget</strong>
-            <small>₹3,250 left</small>
+            <small>{ev.budget}</small>
           </button>
           <button
             type="button"
@@ -931,14 +1195,14 @@ function EventDetail({ go }: { go: (s: Screen) => void }) {
               <Icon name="sparkle" />
             </span>
             <strong>AI Plan</strong>
-            <small>8 ideas saved</small>
+            <small>Recommendations</small>
           </button>
           <button type="button" className="detail-tool pink">
             <span>
               <Icon name="people" />
             </span>
             <strong>Guests</strong>
-            <small>12 confirmed</small>
+            <small>{ev.guests} total</small>
           </button>
         </div>
         <SectionTitle
@@ -1043,7 +1307,6 @@ function Planner({
   const [apiSuggestion, setApiSuggestion] = useState<SuggestionResponse | null>(null)
   const [isAiLoading, setIsAiLoading] = useState(false)
 
-  // Active section tab for navigation
   type PopPlanTab =
     | "all"
     | "overview"
@@ -1059,7 +1322,6 @@ function Planner({
     (queryParams?.get("tab") as PopPlanTab) || "all",
   )
 
-  // Actionable Celebration Tasks State
   const [plannerTasks, setPlannerTasks] = useState([
     { id: "t1", title: "Finalize guest count & send digital WhatsApp invites", timing: "1–2 Weeks Before", priority: "HIGH", completed: true },
     { id: "t2", title: "Order celebration cake from local bakery", timing: "3 Days Before", priority: "HIGH", completed: false },
@@ -1068,7 +1330,6 @@ function Planner({
     { id: "t5", title: "Set up venue decorations & photo backdrop corner", timing: "Day of Event", priority: "HIGH", completed: false },
   ])
 
-  // Inline editing state for Section A (Event Overview)
   const [isEditingBasics, setIsEditingBasics] = useState(false)
   const [editName, setEditName] = useState(eventName)
   const [editOccasion, setEditOccasion] = useState(eventType)
@@ -1078,13 +1339,11 @@ function Planner({
   const [editBudget, setEditBudget] = useState(budget)
   const [editStyle, setEditStyle] = useState(style)
 
-  // Section-level adaptation variations
   const [themeIndex, setThemeIndex] = useState(0)
   const [foodIndex, setFoodIndex] = useState(0)
   const [decorIndex, setDecorIndex] = useState(0)
   const [activityIndex, setActivityIndex] = useState(0)
 
-  // Curated theme presets
   const themePresets = [
     {
       title: "Pastel Pop Celebration",
@@ -1127,7 +1386,6 @@ function Planner({
     },
   ]
 
-  // Curated food & cake presets
   const foodPresets = [
     {
       cakeTitle: "1.2 kg Customized Pastel Bento Cake",
@@ -1179,7 +1437,6 @@ function Planner({
     },
   ]
 
-  // Curated decoration & DIY presets
   const decorPresets = [
     {
       recommendation:
@@ -1285,7 +1542,6 @@ function Planner({
     },
   ]
 
-  // Curated activity presets
   const activityPresets = [
     {
       activities:
@@ -1332,7 +1588,6 @@ function Planner({
     },
   ]
 
-  // Interactive Shopping Checklist State
   const [shoppingItems, setShoppingItems] = useState<ShoppingItem[]>([
     {
       id: "s1",
@@ -1409,7 +1664,6 @@ function Planner({
   const currentDecor = decorPresets[decorIndex]
   const currentActivity = activityPresets[activityIndex]
 
-  // Dynamic budget computations
   const themeCost = currentTheme.themeCost
   const decorCost = currentDecor.decorCost
   const foodCost = currentFood.foodCost
@@ -1556,7 +1810,6 @@ function Planner({
     setStep("loading")
     setIsAiLoading(true)
 
-    // Sync curated presets with chosen preferences
     if (cakePreference.includes("Cupcake")) {
       setFoodIndex(1)
     } else if (cakePreference.includes("Classic")) {
@@ -1749,7 +2002,6 @@ function Planner({
             ],
           ] as const)
 
-    // Section A: Event Overview
     const renderSectionA = (
       <section id="section-overview" className="planner-section-card">
         <div className="card-header-row">
@@ -1923,7 +2175,6 @@ function Planner({
       </section>
     )
 
-    // Section B: Theme & Colour Palette
     const renderSectionB = (
       <section id="section-theme" className="planner-section-card">
         <div className="card-header-row">
@@ -1972,7 +2223,6 @@ function Planner({
       </section>
     )
 
-    // Section C: Food & Cake
     const renderSectionC = (
       <section id="section-food" className="planner-section-card">
         <div className="card-header-row">
@@ -1991,7 +2241,6 @@ function Planner({
           </button>
         </div>
 
-        {/* 1. Cake & Bakery Special */}
         <div className="food-subcard">
           <div className="food-subcard-header">
             <span className="food-subcard-title">
@@ -2005,7 +2254,6 @@ function Planner({
           <p className="food-subcard-desc">{currentFood.cakeFlavor}</p>
         </div>
 
-        {/* 2. Snacks & Platters */}
         <div className="food-subcard">
           <div className="food-subcard-header">
             <span className="food-subcard-title">
@@ -2025,7 +2273,6 @@ function Planner({
           </div>
         </div>
 
-        {/* 3. Beverages & Refreshments */}
         <div className="food-subcard">
           <div className="food-subcard-header">
             <span className="food-subcard-title">
@@ -2051,7 +2298,6 @@ function Planner({
       </section>
     )
 
-    // Section D: Decor & DIY
     const renderSectionD = (
       <section id="section-decor" className="planner-section-card">
         <div className="card-header-row">
@@ -2108,7 +2354,6 @@ function Planner({
       </section>
     )
 
-    // Section E: Activities
     const renderSectionE = (
       <section id="section-activities" className="planner-section-card">
         <div className="card-header-row">
@@ -2172,7 +2417,6 @@ function Planner({
       </section>
     )
 
-    // Section F: Shopping Checklist
     const renderSectionF = (
       <section id="section-shopping" className="planner-section-card">
         <div className="card-header-row">
@@ -2281,7 +2525,6 @@ function Planner({
       </section>
     )
 
-    // Section G: Budget Breakdown
     const renderSectionG = (
       <section id="section-budget" className="planner-section-card">
         <div className="card-header-row">
@@ -2301,7 +2544,6 @@ function Planner({
           </span>
         </div>
 
-        {/* Clear Overspending Indicator Banner */}
         <div className={`budget-status-banner ${!isOverBudget ? "within" : "over"}`}>
           {!isOverBudget ? (
             <div className="budget-banner-content">
@@ -2388,7 +2630,6 @@ function Planner({
       </section>
     )
 
-    // Section H: Tasks & Timeline
     const renderSectionH = (
       <section id="section-tasks" className="planner-section-card">
         <div className="card-header-row">
@@ -2488,7 +2729,6 @@ function Planner({
 
     return (
       <div className="screen planner-results">
-        {/* Modern SaaS Top Header */}
         <div className="planner-top-header">
           <div className="planner-header-left">
             <div className="planner-header-title-row">
@@ -2532,7 +2772,6 @@ function Planner({
           </div>
         </div>
 
-        {/* Compact Event Summary Card */}
         <div className="event-summary-card">
           <div className="event-summary-meta-grid">
             <div className="summary-meta-item">
@@ -2580,7 +2819,6 @@ function Planner({
           </button>
         </div>
 
-        {/* Section Navigation Tabs */}
         <div
           className="plan-tabs-bar"
           role="tablist"
@@ -2611,7 +2849,6 @@ function Planner({
           ))}
         </div>
 
-        {/* Balanced Vertical Dashboard Layout */}
         {activeTab === "all" ? (
           <div className="planner-dashboard-grid">
             <div className="planner-grid-col">
@@ -2640,7 +2877,6 @@ function Planner({
           </div>
         )}
 
-        {/* Floating Bottom Quick Action Bar */}
         <div className="planner-floating-actions">
           <div className="planner-floating-inner">
             <button
@@ -2674,7 +2910,6 @@ function Planner({
     )
   }
 
-  // Celebration Style Theme Palettes Mapping
   const stylePalettes: Record<string, { colors: string[]; names: string; desc: string }> = {
     Casual: {
       colors: ["#C8B6FF", "#FFF0A5", "#FFD6E0", "#B9DFF2"],
@@ -2705,10 +2940,8 @@ function Planner({
 
   const currentStylePalette = stylePalettes[style] || stylePalettes["Casual"]
 
-  // Modern Clean SaaS AI Planner Form View
   return (
     <div className="screen planner-screen">
-      {/* Section A: Page Introduction Card */}
       <div className="planner-intro-card">
         <div className="intro-badge-row">
           <span className="intro-badge">
@@ -2730,7 +2963,6 @@ function Planner({
         </div>
       </div>
 
-      {/* Stepper bar */}
       <div className="planner-stepper">
         <div className="stepper-step active">
           <span className="step-num">1</span>
@@ -2753,7 +2985,6 @@ function Planner({
         </div>
       </div>
 
-      {/* Section B: Event Details Card */}
       <div className="planner-form-card">
         <div className="form-card-header">
           <span className="form-card-badge">
@@ -2854,7 +3085,6 @@ function Planner({
         </div>
       </div>
 
-      {/* Section C: Budget Planning Card */}
       <div className="planner-form-card">
         <div className="form-card-header">
           <span className="form-card-badge">
@@ -2895,7 +3125,6 @@ function Planner({
         </div>
       </div>
 
-      {/* Section D: Theme and Preferences Card */}
       <div className="planner-form-card">
         <div className="form-card-header">
           <span className="form-card-badge">
@@ -2950,7 +3179,6 @@ function Planner({
           ))}
         </div>
 
-        {/* Color Palette Preview */}
         <div className="vibe-palette-preview">
           <span className="vibe-palette-preview-label">Selected Color Palette:</span>
           <div className="vibe-preview-dots">
@@ -2972,7 +3200,6 @@ function Planner({
         </div>
       </div>
 
-      {/* Section E: Food, Cake & Setting Card */}
       <div className="planner-form-card">
         <div className="form-card-header">
           <span className="form-card-badge">
@@ -3057,7 +3284,6 @@ function Planner({
         </div>
       </div>
 
-      {/* Section F: Generate Plan Row */}
       <div className="form-submit-row">
         <button
           type="button"
@@ -3079,10 +3305,46 @@ function Planner({
 function Budget({
   go,
   notify,
+  events = [],
+  isGuest = false,
 }: {
   go: (s: Screen) => void
   notify: (m: string) => void
+  events?: EventPlan[]
+  isGuest?: boolean
 }) {
+  if (!isGuest && events.length === 0) {
+    return (
+      <div className="screen budget-screen">
+        <Header
+          title="My Budget"
+          eyebrow="BUDGET & EXPENSES"
+          onBack={() => go("overview")}
+        />
+        <div
+          className="empty-state"
+          style={{ padding: "60px 20px", textAlign: "center" }}
+        >
+          <div className="empty-visual">
+            <Icon name="wallet" size={48} />
+          </div>
+          <div
+            className="empty-title"
+            style={{ fontSize: "19px", marginTop: "16px", fontWeight: "700" }}
+          >
+            No budget records yet.
+          </div>
+          <p style={{ color: "var(--muted)", margin: "8px 0 20px 0" }}>
+            You haven't created any celebration budgets yet. Start by planning an event.
+          </p>
+          <Button onClick={() => go("planner")} icon="plus">
+            Create an Event Plan
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
   const [showAdd, setShowAdd] = useState(false)
   const [simGuests, setSimGuests] = useState(25)
   const expenses = [
@@ -3095,7 +3357,11 @@ function Budget({
     <div className="screen budget-screen">
       <Header
         title="PopSmart"
-        eyebrow="BUDGET FOR AANYA’S BIRTHDAY"
+        eyebrow={
+          isGuest
+            ? "BUDGET FOR AANYA’S BIRTHDAY (DEMO)"
+            : `BUDGET FOR ${events[0]?.name.toUpperCase() || "EVENT"}`
+        }
         onBack={() => go("event-detail")}
         action={
           <IconButton
@@ -3308,7 +3574,47 @@ function Budget({
   )
 }
 
-function Checklist({ go }: { go: (s: Screen) => void }) {
+function Checklist({
+  go,
+  events = [],
+  isGuest = false,
+}: {
+  go: (s: Screen) => void
+  events?: EventPlan[]
+  isGuest?: boolean
+}) {
+  if (!isGuest && events.length === 0) {
+    return (
+      <div className="screen checklist-screen">
+        <Header
+          title="Checklist"
+          eyebrow="TASKS & TIMELINE"
+          onBack={() => go("overview")}
+        />
+        <div
+          className="empty-state"
+          style={{ padding: "60px 20px", textAlign: "center" }}
+        >
+          <div className="empty-visual">
+            <Icon name="check" size={48} />
+          </div>
+          <div
+            className="empty-title"
+            style={{ fontSize: "19px", marginTop: "16px", fontWeight: "700" }}
+          >
+            No tasks yet.
+          </div>
+          <p style={{ color: "var(--muted)", margin: "8px 0 20px 0" }}>
+            You have no active checklists. Create a celebration plan to generate automated tasks.
+          </p>
+          <Button onClick={() => go("planner")} icon="plus">
+            Plan an Event
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
   const initial = [
     { title: "Decide the theme", date: "2 Nov", priority: "HIGH", done: true },
     {
@@ -3356,7 +3662,11 @@ function Checklist({ go }: { go: (s: Screen) => void }) {
     <div className="screen checklist-screen">
       <Header
         title="Checklist"
-        eyebrow="AANYA’S BIRTHDAY"
+        eyebrow={
+          isGuest
+            ? "AANYA’S BIRTHDAY (DEMO)"
+            : `TASKS FOR ${events[0]?.name.toUpperCase() || "EVENT"}`
+        }
         onBack={() => go("event-detail")}
         action={<IconButton icon="plus" label="Add task" />}
       />
@@ -3623,7 +3933,6 @@ function Nearby({
   const [showSavedOnly, setShowSavedOnly] = useState(false)
   const lastSearchKeyRef = useRef("")
 
-  // Load favorites & sectors on mount
   useEffect(() => {
     let mounted = true
     getSpotFavorites()
@@ -3647,7 +3956,6 @@ function Nearby({
     }
   }, [])
 
-  // Execute search / discovery
   const runSearch = (
     isReset = true,
     overrideCoords?: { lat?: number; lon?: number; label?: string },
@@ -3741,7 +4049,6 @@ function Nearby({
       })
   }
 
-  // Automatic discovery on opening + filter-driven updates with de-duplication
   useEffect(() => {
     const searchKey = `${searchInput}_${filters.category}_${filters.sector}_${filters.budget}_${filters.minRating}_${filters.occasion}`
     if (lastSearchKeyRef.current === searchKey) return
@@ -3764,7 +4071,6 @@ function Nearby({
     runSearch(true)
   }
 
-  // "Use My Location" with explicit user consent only
   const handleUseMyLocation = () => {
     if (!navigator.geolocation) {
       notify("Geolocation is not supported by your browser.")
@@ -3801,7 +4107,6 @@ function Nearby({
     )
   }
 
-  // Save / Bookmark toggle
   const handleToggleFavorite = async (spot: SpotItem, e?: React.MouseEvent) => {
     if (e) e.stopPropagation()
     const isSaved = savedSpotIds.has(spot.id)
@@ -3849,7 +4154,6 @@ function Nearby({
         eyebrow="CHANDIGARH UT EXCLUSIVE · REAL VENDOR & RESTAURANT DISCOVERY"
       />
 
-      {/* Search Bar with manual input and GPS button */}
       <form className="search-bar" onSubmit={handleSearchSubmit}>
         <button
           type="button"
@@ -3884,7 +4188,6 @@ function Nearby({
         </button>
       </form>
 
-      {/* Optional Quick Sector Filter Chips (All Sectors default, never forced) */}
       <div
         className="chandigarh-sector-chips"
         style={{
@@ -3920,7 +4223,6 @@ function Nearby({
         ))}
       </div>
 
-      {/* Optional Filters Panel */}
       <div className="spot-filter-panel">
         {[
           {
@@ -3993,11 +4295,8 @@ function Nearby({
         ))}
       </div>
 
-      {/* PopSpots Discovery Workspace (Side-by-side Map + Listing on Desktop) */}
       <div className="nearby-workspace">
-        {/* Left Column: Vendor Listings & Search Results */}
         <div className="nearby-listing-pane">
-          {/* Heading & List Header */}
           <div className="nearby-heading">
             <div>
               <strong>
@@ -4026,7 +4325,6 @@ function Nearby({
             </button>
           </div>
 
-          {/* Horizontal Vendor Listing Cards List (Google Maps-style) */}
           <div className="vendor-listing-container">
         {loading ? (
           <div
@@ -4129,7 +4427,6 @@ function Nearby({
                   go("place-detail")
                 }}
               >
-                {/* Visual Thumbnail or Category Placeholder (Zero Fake Images) */}
                 <div className="vendor-thumb-container">
                   {spot.photo_url ? (
                     <img
@@ -4148,7 +4445,6 @@ function Nearby({
                   )}
                 </div>
 
-                {/* Main Card Info Body */}
                 <div className="vendor-card-body">
                   <div className="vendor-top-row">
                     <h3 className="vendor-name">{spot.name}</h3>
@@ -4163,7 +4459,6 @@ function Nearby({
                     </button>
                   </div>
 
-                  {/* Rating, Price, Category */}
                   <div className="vendor-meta-row">
                     {spot.rating && spot.rating !== "Not available" ? (
                       <span className="vendor-rating">
@@ -4197,7 +4492,6 @@ function Nearby({
                     </span>
                   </div>
 
-                  {/* Address & Sector */}
                   <div className="vendor-address-row">
                     <Icon name="location" size={12} />
                     <span>
@@ -4206,7 +4500,6 @@ function Nearby({
                     </span>
                   </div>
 
-                  {/* Status / Operating Hours */}
                   <div className="vendor-status-row">
                     <Icon name="clock" size={12} />
                     <span
@@ -4226,14 +4519,12 @@ function Nearby({
                     </span>
                   </div>
 
-                  {/* Description / Highlights if available */}
                   {spot.description ? (
                     <p className="vendor-description-text">
                       {spot.description}
                     </p>
                   ) : null}
 
-                  {/* Data origin badge */}
                   <div className="vendor-source-row">
                     <span
                       className={`source-pill origin-${
@@ -4248,7 +4539,6 @@ function Nearby({
                     </span>
                   </div>
 
-                  {/* Actions Row */}
                   <div
                     className="vendor-actions-row"
                     onClick={(e) => e.stopPropagation()}
@@ -4285,7 +4575,6 @@ function Nearby({
           })
         )}
 
-        {/* Load More Pagination Button */}
         {hasMore && !loading && (
           <button
             type="button"
@@ -4306,7 +4595,6 @@ function Nearby({
         </div>
       </div>
 
-      {/* Right Column: Sticky Interactive Leaflet Map */}
       <div className="nearby-map-pane">
         <div className="map-card" style={{ padding: 0 }}>
           <SpotMap
@@ -4492,7 +4780,6 @@ function PlaceDetail({
           </div>
         </div>
 
-        {/* AI Food & Dish Intelligence */}
         <SectionTitle title="Food & Dish Recommendations" />
         <p style={{ margin: "2px 0 10px 0", fontSize: "12px", color: "var(--muted)" }}>
           Traceable dish mentions extracted exclusively from genuine 4-5 star customer reviews.
@@ -4536,7 +4823,6 @@ function PlaceDetail({
           </div>
         )}
 
-        {/* Sentiment Highlights */}
         {((activeSpot.positive_feedback_highlights && activeSpot.positive_feedback_highlights.length > 0) ||
           (activeSpot.common_complaints && activeSpot.common_complaints.length > 0)) && (
           <>
@@ -4578,7 +4864,6 @@ function PlaceDetail({
           </>
         )}
 
-        {/* Menu & Pricing Transparency */}
         <SectionTitle title="Menu & Pricing Transparency" />
         <div
           style={{
@@ -4603,7 +4888,6 @@ function PlaceDetail({
           </p>
         </div>
 
-        {/* Customer Reviews Section */}
         <SectionTitle title="Customer Reviews (Google Places)" />
         <p
           style={{
@@ -4691,7 +4975,6 @@ function PlaceDetail({
           </div>
         )}
 
-        {/* Location & Map Links */}
         <SectionTitle title="Location & Official Links" />
         <div className="address-card">
           <span>
@@ -4742,7 +5025,6 @@ function PlaceDetail({
           )}
         </div>
 
-        {/* Sticky Actions */}
         <div className="sticky-actions">
           <a
             href={`https://www.google.com/maps/dir/?api=1&destination=${activeSpot.latitude},${activeSpot.longitude}`}
@@ -4927,9 +5209,17 @@ function Insights() {
 function Profile({
   go,
   notify,
+  currentUser,
+  isGuest,
+  eventsCount,
+  onLogout,
 }: {
   go: (s: Screen) => void
   notify: (m: string) => void
+  currentUser: UserInfo | null
+  isGuest: boolean
+  eventsCount: number
+  onLogout: () => void
 }) {
   const rows: {
     icon: IconName
@@ -4944,11 +5234,16 @@ function Profile({
     { icon: "settings", label: "Settings", onClick: () => go("settings") },
     { icon: "help", label: "Help & support" },
   ]
+
+  const avatarChar = isGuest
+    ? "G"
+    : currentUser?.name?.[0]?.toUpperCase() || "U"
+
   return (
     <div className="screen">
       <Header
         title="Profile"
-        eyebrow="MAKE IT YOURS"
+        eyebrow={isGuest ? "GUEST DEMO PREVIEW" : "MAKE IT YOURS"}
         action={
           <IconButton
             icon="settings"
@@ -4959,28 +5254,32 @@ function Profile({
       />
       <div className="profile-card">
         <div className="profile-avatar">
-          M
+          {avatarChar}
           <span>
             <Icon name="sparkle" size={14} />
           </span>
         </div>
         <div>
-          <div className="profile-name">Meera Kapoor</div>
-          <p>meera.kapoor@example.com</p>
-          <span className="plan-badge">PARTY STARTER</span>
+          <div className="profile-name">
+            {isGuest ? "Guest Explorer" : currentUser?.name || "Member"}
+          </div>
+          <p>{isGuest ? "guest@planzypop.local" : currentUser?.email || ""}</p>
+          <span className="plan-badge">
+            {isGuest ? "GUEST DEMO MODE" : "VERIFIED MEMBER"}
+          </span>
         </div>
       </div>
       <div className="profile-stats">
         <div>
-          <strong>7</strong>
+          <strong>{isGuest ? 7 : eventsCount}</strong>
           <span>Events</span>
         </div>
         <div>
-          <strong>12</strong>
+          <strong>{isGuest ? 12 : 0}</strong>
           <span>Ideas saved</span>
         </div>
         <div>
-          <strong>₹4.8k</strong>
+          <strong>{isGuest ? "₹4.8k" : "₹0"}</strong>
           <span>Saved with AI</span>
         </div>
       </div>
@@ -5009,7 +5308,7 @@ function Profile({
           <small>v1.0.0</small>
           <Icon name="chevron" size={17} />
         </button>
-        <button type="button" className="logout-row">
+        <button type="button" className="logout-row" onClick={onLogout}>
           <span className="menu-icon">
             <Icon name="logout" size={20} />
           </span>
@@ -5293,9 +5592,11 @@ function CheckControl({
 function WelcomeScreen({
   go,
   complete,
+  onGuestEnter,
 }: {
   go: (screen: AuthScreen) => void
   complete: (message: string) => void
+  onGuestEnter: () => void
 }) {
   return (
     <div className="auth-screen welcome-screen">
@@ -5360,7 +5661,10 @@ function WelcomeScreen({
         <button
           type="button"
           className="guest-button"
-          onClick={() => complete("Exploring PlanzyPop as a guest")}
+          onClick={() => {
+            onGuestEnter()
+            complete("Exploring PlanzyPop in Guest Mode")
+          }}
         >
           Continue as Guest <Icon name="arrow" size={15} />
         </button>
@@ -5375,9 +5679,11 @@ function WelcomeScreen({
 function LoginScreen({
   go,
   complete,
+  onLoginSuccess,
 }: {
   go: (screen: AuthScreen) => void
   complete: (message: string) => void
+  onLoginSuccess: (user: UserInfo) => void
 }) {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -5385,20 +5691,27 @@ function LoginScreen({
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(false)
 
-  const submit = (event: FormEvent) => {
+  const submit = async (event: FormEvent) => {
     event.preventDefault()
     const nextErrors: Record<string, string> = {}
     if (!email.trim()) nextErrors.email = "Enter your email address."
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
       nextErrors.email = "Enter a valid email address."
     if (!password) nextErrors.password = "Enter your password."
-    if (password.toLowerCase() === "wrong")
-      nextErrors.form = "That email or password doesn’t look right. Try again."
     setErrors(nextErrors)
     if (Object.keys(nextErrors).length) return
 
     setLoading(true)
-    window.setTimeout(() => complete("Welcome back, Meera!"), 850)
+    try {
+      const res = await apiLogin({ email: email.trim(), password })
+      onLoginSuccess(res.user)
+      complete(`Welcome back, ${res.user.name}!`)
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Invalid email or password."
+      setErrors({ form: msg })
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -5488,14 +5801,17 @@ function LoginScreen({
           Sign Up
         </button>
       </div>
-      <div className="auth-demo-note">
-        Prototype tip: enter “wrong” as the password to preview an error.
-      </div>
     </div>
   )
 }
 
-function SignupScreen({ go }: { go: (screen: AuthScreen) => void }) {
+function SignupScreen({
+  go,
+  onSignupSuccess,
+}: {
+  go: (screen: AuthScreen) => void
+  onSignupSuccess: (user: UserInfo) => void
+}) {
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -5504,7 +5820,7 @@ function SignupScreen({ go }: { go: (screen: AuthScreen) => void }) {
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(false)
 
-  const submit = (event: FormEvent) => {
+  const submit = async (event: FormEvent) => {
     event.preventDefault()
     const nextErrors: Record<string, string> = {}
     if (!name.trim()) nextErrors.name = "Tell us your name."
@@ -5522,7 +5838,20 @@ function SignupScreen({ go }: { go: (screen: AuthScreen) => void }) {
     if (Object.keys(nextErrors).length) return
 
     setLoading(true)
-    window.setTimeout(() => go("registered"), 900)
+    try {
+      const res = await apiRegister({
+        name: name.trim(),
+        email: email.trim(),
+        password,
+      })
+      onSignupSuccess(res.user)
+      go("registered")
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Registration failed. Try a different email."
+      setErrors({ email: msg })
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -5795,18 +6124,36 @@ function AuthFlow({
   screen,
   go,
   complete,
+  onGuestEnter,
+  onLoginSuccess,
+  onSignupSuccess,
 }: {
   screen: AuthScreen
   go: (screen: AuthScreen) => void
   complete: (message: string) => void
+  onGuestEnter: () => void
+  onLoginSuccess: (user: UserInfo) => void
+  onSignupSuccess: (user: UserInfo) => void
 }) {
   switch (screen) {
     case "welcome":
-      return <WelcomeScreen go={go} complete={complete} />
+      return (
+        <WelcomeScreen
+          go={go}
+          complete={complete}
+          onGuestEnter={onGuestEnter}
+        />
+      )
     case "login":
-      return <LoginScreen go={go} complete={complete} />
+      return (
+        <LoginScreen
+          go={go}
+          complete={complete}
+          onLoginSuccess={onLoginSuccess}
+        />
+      )
     case "signup":
-      return <SignupScreen go={go} />
+      return <SignupScreen go={go} onSignupSuccess={onSignupSuccess} />
     case "forgot":
       return <ForgotPasswordScreen go={go} />
     case "registered":
@@ -5817,9 +6164,13 @@ function AuthFlow({
 function DesktopSidebar({
   screen,
   onNavigate,
+  currentUser,
+  isGuest,
 }: {
   screen: Screen
   onNavigate: (screen: Screen) => void
+  currentUser: UserInfo | null
+  isGuest: boolean
 }) {
   const items: NavItem[] = [
     { screen: "overview", icon: "home", label: "Overview" },
@@ -5880,11 +6231,19 @@ function DesktopSidebar({
           Start planning <Icon name="arrow" size={14} />
         </i>
       </button>
-      <div className="sidebar-user">
-        <span className="avatar">M</span>
+      <div
+        className="sidebar-user"
+        onClick={() => onNavigate("profile")}
+        style={{ cursor: "pointer" }}
+      >
+        <span className="avatar">
+          {isGuest ? "G" : currentUser?.name?.[0]?.toUpperCase() || "U"}
+        </span>
         <div>
-          <strong>Meera Kapoor</strong>
-          <small>Party Starter</small>
+          <strong>
+            {isGuest ? "Guest Mode" : currentUser?.name || "Member"}
+          </strong>
+          <small>{isGuest ? "Demo Mode" : "Event Planner"}</small>
         </div>
         <Icon name="chevron" size={16} />
       </div>
@@ -5897,74 +6256,138 @@ export default function App() {
     typeof window !== "undefined"
       ? new URLSearchParams(window.location.search)
       : null
-  const initialAuth =
-    queryParams?.get("auth") === "skip" || queryParams?.get("screen")
-      ? null
-      : "welcome"
+
+  const [currentUser, setCurrentUser] = useState<UserInfo | null>(() =>
+    getStoredUser(),
+  )
+  const [isGuest, setIsGuest] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem("planzypop_is_guest") === "true"
+    } catch {
+      return false
+    }
+  })
+
+  const initialAuth: AuthScreen | null = (() => {
+    if (queryParams?.get("auth") === "skip") return null
+    if (queryParams?.get("auth") === "login") return "login"
+    if (queryParams?.get("auth") === "signup") return "signup"
+    const token = getAuthToken()
+    const storedUser = getStoredUser()
+    const guestFlag =
+      typeof window !== "undefined" &&
+      localStorage.getItem("planzypop_is_guest") === "true"
+    if ((token && storedUser) || guestFlag) {
+      return null
+    }
+    return "welcome"
+  })()
+
   const initialScreen =
     (queryParams?.get("screen") as Screen) || "overview"
   const [authScreen, setAuthScreen] = useState<AuthScreen | null>(initialAuth)
   const [screen, setScreen] = useState<Screen>(initialScreen)
   const [toast, setToast] = useState("")
-  const [eventsList, setEventsList] = useState<EventPlan[]>(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const stored = localStorage.getItem("planzypop_saved_plans")
-        if (stored) {
-          const parsed = JSON.parse(stored)
-          if (Array.isArray(parsed) && parsed.length > 0) return parsed
-        }
-      } catch (e) {
-        console.warn("Could not read saved plans from localStorage", e)
-      }
+  const [eventsList, setEventsList] = useState<EventPlan[]>([])
+  const [favoritesCount, setFavoritesCount] = useState<number>(0)
+  const [backendError, setBackendError] = useState<string | null>(null)
+
+  const loadUserData = () => {
+    if (currentUser && !isGuest) {
+      setBackendError(null)
+      getEvents()
+        .then((backendEvents) => {
+          const mapped: EventPlan[] = (backendEvents || []).map((be) => ({
+            name: be.event_name,
+            type: be.event_type,
+            date: be.event_date,
+            place: be.location || "Chandigarh",
+            guests: be.guests || 1,
+            budget: `₹${Math.round(be.budget).toLocaleString("en-IN")}`,
+            progress: 35,
+            image:
+              be.event_type === "Birthday"
+                ? images.birthday
+                : be.event_type === "Picnic"
+                  ? images.picnic
+                  : images.decor,
+          }))
+          setEventsList(mapped)
+        })
+        .catch((err) => {
+          console.error("Backend fetch error:", err)
+          setBackendError(
+            "Could not connect to server. Displaying empty dashboard without demo fallback.",
+          )
+          setEventsList([])
+        })
+
+      getSpotFavorites()
+        .then((favs) => setFavoritesCount(favs.length))
+        .catch(() => setFavoritesCount(0))
+    } else if (isGuest) {
+      setEventsList(defaultEvents)
+      setFavoritesCount(12)
+      setBackendError(null)
+    } else {
+      setEventsList([])
+      setFavoritesCount(0)
+      setBackendError(null)
     }
-    return defaultEvents
-  })
+  }
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      try {
-        localStorage.setItem("planzypop_saved_plans", JSON.stringify(eventsList))
-      } catch (e) {
-        console.warn("Could not persist saved plans to localStorage", e)
-      }
-    }
-  }, [eventsList])
-  // On mount, also load any persisted events from SQLite backend
-  useEffect(() => {
-    getEvents()
-      .then((backendEvents) => {
-        if (backendEvents && backendEvents.length > 0) {
-          setEventsList((prev) => {
-            const existingNames = new Set(prev.map((p) => p.name.trim().toLowerCase()))
-            const fromDb: EventPlan[] = backendEvents
-              .filter((be) => !existingNames.has(be.event_name.trim().toLowerCase()))
-              .map((be) => ({
-                name: be.event_name,
-                type: be.event_type,
-                date: be.event_date,
-                place: be.location || "Chandigarh",
-                guests: be.guests || 15,
-                budget: `₹${Math.round(be.budget).toLocaleString("en-IN")}`,
-                progress: 35,
-                image:
-                  be.event_type === "Birthday"
-                    ? images.birthday
-                    : be.event_type === "Picnic"
-                      ? images.picnic
-                      : images.decor,
-              }))
-            if (fromDb.length > 0) {
-              return [...fromDb, ...prev]
-            }
-            return prev
-          })
-        }
-      })
-      .catch(() => {
-        // Fallback gracefully to localStorage and defaults
-      })
-  }, [])
+    loadUserData()
+  }, [currentUser?.id, isGuest])
+
+  const handleGuestEnter = () => {
+    setIsGuest(true)
+    setCurrentUser(null)
+    try {
+      localStorage.setItem("planzypop_is_guest", "true")
+    } catch {}
+    setEventsList(defaultEvents)
+    setFavoritesCount(12)
+    setAuthScreen(null)
+    setScreen("overview")
+  }
+
+  const handleLoginSuccess = (user: UserInfo) => {
+    setIsGuest(false)
+    setCurrentUser(user)
+    try {
+      localStorage.removeItem("planzypop_is_guest")
+    } catch {}
+    setAuthScreen(null)
+    setScreen("overview")
+  }
+
+  const handleSignupSuccess = (user: UserInfo) => {
+    setIsGuest(false)
+    setCurrentUser(user)
+    try {
+      localStorage.removeItem("planzypop_is_guest")
+    } catch {}
+    setEventsList([])
+    setFavoritesCount(0)
+  }
+
+  const handleLogout = async () => {
+    try {
+      await apiLogout()
+    } catch {}
+    setCurrentUser(null)
+    setIsGuest(false)
+    setEventsList([])
+    setFavoritesCount(0)
+    try {
+      localStorage.removeItem("planzypop_is_guest")
+      localStorage.removeItem("planzypop_saved_plans")
+    } catch {}
+    setAuthScreen("welcome")
+    setToast("You have been logged out.")
+  }
+
   const [selectedSpot, setSelectedSpot] = useState<SpotItem | null>(null)
   const navScreens: Screen[] = [
     "overview",
@@ -6012,9 +6435,24 @@ export default function App() {
   const content = useMemo(() => {
     switch (screen) {
       case "overview":
-        return <Overview go={setScreen} notify={notify} />
+        return (
+          <Overview
+            go={setScreen}
+            notify={notify}
+            currentUser={currentUser}
+            isGuest={isGuest}
+            events={eventsList}
+            favoritesCount={favoritesCount}
+          />
+        )
       case "events":
-        return <MyEvents go={setScreen} events={eventsList} />
+        return (
+          <MyEvents
+            go={setScreen}
+            events={eventsList}
+            isGuest={isGuest}
+          />
+        )
       case "planner":
         return (
           <Planner
@@ -6038,13 +6476,41 @@ export default function App() {
           />
         )
       case "profile":
-        return <Profile go={setScreen} notify={notify} />
+        return (
+          <Profile
+            go={setScreen}
+            notify={notify}
+            currentUser={currentUser}
+            isGuest={isGuest}
+            eventsCount={eventsList.length}
+            onLogout={handleLogout}
+          />
+        )
       case "event-detail":
-        return <EventDetail go={setScreen} />
+        return (
+          <EventDetail
+            go={setScreen}
+            events={eventsList}
+            isGuest={isGuest}
+          />
+        )
       case "budget":
-        return <Budget go={setScreen} notify={notify} />
+        return (
+          <Budget
+            go={setScreen}
+            notify={notify}
+            events={eventsList}
+            isGuest={isGuest}
+          />
+        )
       case "checklist":
-        return <Checklist go={setScreen} />
+        return (
+          <Checklist
+            go={setScreen}
+            events={eventsList}
+            isGuest={isGuest}
+          />
+        )
       case "place-detail":
         return (
           <PlaceDetail
@@ -6061,21 +6527,47 @@ export default function App() {
           <SettingsScreen
             go={setScreen}
             notify={notify}
-            onLogout={() => setAuthScreen("welcome")}
+            onLogout={handleLogout}
           />
         )
     }
-  }, [screen, selectedSpot, eventsList])
+  }, [screen, selectedSpot, eventsList, currentUser, isGuest, favoritesCount])
+
+  const avatarChar = isGuest
+    ? "G"
+    : currentUser?.name?.[0]?.toUpperCase() || "U"
 
   return (
     <div className="app-shell">
-      {!authScreen && <DesktopSidebar screen={screen} onNavigate={setScreen} />}
+      {!authScreen && (
+        <DesktopSidebar
+          screen={screen}
+          onNavigate={setScreen}
+          currentUser={currentUser}
+          isGuest={isGuest}
+        />
+      )}
       <main className={`app-surface ${authScreen ? "auth-surface" : ""}`}>
         {!authScreen && screen !== "planner" && (
           <header className="desktop-global-header">
             <div>
               <span>PLANZYPOP</span>
               <strong>{screenTitles[screen]}</strong>
+              {isGuest && (
+                <span
+                  style={{
+                    marginLeft: "10px",
+                    background: "#fef3c7",
+                    color: "#92400e",
+                    fontSize: "11px",
+                    fontWeight: 700,
+                    padding: "3px 8px",
+                    borderRadius: "12px",
+                  }}
+                >
+                  DEMO MODE
+                </span>
+              )}
             </div>
             <div className="global-header-actions">
               <IconButton
@@ -6088,16 +6580,53 @@ export default function App() {
                 className="avatar"
                 onClick={() => setScreen("profile")}
               >
-                M
+                {avatarChar}
               </button>
             </div>
           </header>
+        )}
+        {backendError && !authScreen && (
+          <div
+            style={{
+              margin: "12px 16px",
+              padding: "12px 16px",
+              background: "#fef2f2",
+              border: "1px solid #fecaca",
+              borderRadius: "12px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              color: "#991b1b",
+              fontSize: "13px",
+            }}
+          >
+            <span>⚠️ {backendError}</span>
+            <button
+              type="button"
+              onClick={loadUserData}
+              style={{
+                background: "#dc2626",
+                color: "#fff",
+                border: "none",
+                padding: "6px 12px",
+                borderRadius: "8px",
+                cursor: "pointer",
+                fontWeight: "600",
+                fontSize: "12px",
+              }}
+            >
+              Retry
+            </button>
+          </div>
         )}
         {authScreen ? (
           <AuthFlow
             screen={authScreen}
             go={setAuthScreen}
             complete={completeAuth}
+            onGuestEnter={handleGuestEnter}
+            onLoginSuccess={handleLoginSuccess}
+            onSignupSuccess={handleSignupSuccess}
           />
         ) : (
           content

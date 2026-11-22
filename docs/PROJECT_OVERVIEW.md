@@ -25,7 +25,8 @@ PlanzyPop was engineered as a reliable, responsive, full-stack event workspace t
 3. **Fair Expense Splitting:** Provide an automated splitting mechanism that divides actual recorded expenses or planned budgets equally among contributing participants.
 4. **Timeline-Driven Checklist:** Organize preparation tasks chronologically, calculate completion progress dynamically, and flag overdue items.
 5. **Rule-Based Recommendation Engine:** Provide a deterministic, expert-rules-driven synthesis of event themes, food menus, DIY decor concepts, and percentage-based budget allocations without incurring paid API costs.
-6. **Live Google Maps Café Integration:** Utilize browser geolocation and direct Google Maps query generation to find verified, authentic local venues without fabricating fake ratings or business listings.
+6. **Live Google Maps & PopSpots Integration:** Utilize browser geolocation and direct Google Maps query generation alongside PopSpots—a geofenced venue discovery system for Chandigarh UT with interactive Leaflet mapping and bookmarking.
+7. **Secure User Authentication & Data Isolation:** Provide registered user sign-up and login with bcrypt password hashing and token-based data isolation, alongside an interactive Guest Demo Mode.
 
 ---
 
@@ -47,6 +48,8 @@ PlanzyPop was engineered as a reliable, responsive, full-stack event workspace t
 | **Expense Splitting** | Automated calculator dividing actual recorded event expenses or fallback planned budgets evenly among invited friends. |
 | **Checklist & Timeline** | Prioritized preparation checklist with toggleable completion states, due dates, overdue detection, and a chronological timeline view. |
 | **Rule-Based Planner** | Heuristic expert engine evaluating event type, guest size, celebration vibe, and budget tier to output balanced allocations and DIY tips. |
+| **PopSpots Venue Discovery** | Real local café, bakery, and party venue explorer geofenced to Chandigarh UT with interactive Leaflet map, distance sorting, and bookmarks. |
+| **User Authentication & Guest Mode** | User registration and login with bcrypt password hashing and token authentication, with full data isolation and a rich guest demo mode. |
 | **Nearby Café & Venue Suggestions** | Browser geolocation-enabled Google Maps integration with 6 curated categories, fallback manual city entry, and authentic live listings. |
 | **Host Preferences** | Local profile personalization, host name and group customization, notification drawer, and application settings. |
 
@@ -59,19 +62,25 @@ PlanzyPop was engineered as a reliable, responsive, full-stack event workspace t
 - **Language:** TypeScript 5.7 (Strict type-checking)
 - **Build & Dev Tooling:** Vite 8 (Hot Module Replacement, fast bundling)
 - **Styling:** Tailwind CSS v4 + Custom Neo-Brutalist CSS Design System (solid inks, pastel palettes, responsive cards)
+- **Mapping:** Leaflet & React-Leaflet with OpenStreetMap tiles
+- **Session Management:** React Authentication Context (`AuthContext`)
 - **Navigation:** State-driven SPA screen router with desktop sidebar and mobile bottom navigation bar
 
 ### Backend Architecture
-- **Web Framework:** FastAPI (Python 3.14)
+- **Web Framework:** FastAPI (Python 3.10+)
+- **Authentication:** Token-based session authentication with bcrypt password hashing
+- **Geodata & Venues:** Geoapify Places API v2 + OpenStreetMap Overpass API, geofenced with Shapely ray-casting
 - **API Paradigm:** RESTful Architecture with standard HTTP verbs (`GET`, `POST`, `PUT`, `DELETE`)
 - **Documentation:** Interactive OpenAPI (Swagger UI) at `/docs` and ReDoc at `/redoc`
 - **CORS Middleware:** Enabled for local frontend origins (`http://localhost:5173`, `http://127.0.0.1:5173`)
 - **Validation Engine:** Pydantic v2 (Strict request/response schema modeling)
+- **Testing:** Pytest (10 test suites, 74 tests)
 
 ### Database Layer
 - **Database Engine:** SQLite (Embedded relational database stored at `backend/planzypop.db`)
 - **ORM (Object Relational Mapping):** SQLAlchemy 2.x
-- **Integrity Constraints:** Foreign keys with `ON DELETE CASCADE` between Events, Expenses, and Tasks
+- **Tables:** `users`, `user_tokens`, `events`, `expenses`, `tasks`, `saved_spots`
+- **Integrity Constraints:** Foreign keys with `ON DELETE CASCADE` between Events, Expenses, Tasks, and User Tokens
 
 ---
 
@@ -80,14 +89,14 @@ PlanzyPop was engineered as a reliable, responsive, full-stack event workspace t
 ```
 +--------------------------------------------------------------------+
 |                         React 19 Frontend                          |
-|  (Components, Pages, State Management, Geolocation, Vite Bundler)   |
+|  (Components, Pages, AuthContext, Leaflet Map, Geolocation, Vite)   |
 +--------------------------------------------------------------------+
                                   |
-                                  | HTTP / JSON (Fetch API)
+                                  | HTTP / JSON (Fetch API + Bearer Token)
                                   v
 +--------------------------------------------------------------------+
 |                         FastAPI Backend                            |
-|       (Routers: events.py, expenses.py, tasks.py, suggestions.py)  |
+|       (Routers: auth, events, expenses, spots, tasks, suggestions)  |
 |               (Pydantic Schemas & Request Validation)              |
 +--------------------------------------------------------------------+
                                   |
@@ -95,7 +104,7 @@ PlanzyPop was engineered as a reliable, responsive, full-stack event workspace t
                                   v
 +--------------------------------------------------------------------+
 |                         SQLite Database                            |
-|                  (planzypop.db: events, expenses, tasks)           |
+| (planzypop.db: users, user_tokens, events, expenses, tasks, spots) |
 +--------------------------------------------------------------------+
 ```
 

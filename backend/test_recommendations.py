@@ -34,28 +34,23 @@ from suggestions import (
 
 def test_event_type_heuristics():
     """Verify suggestions for Birthday, College Party, Farewell, Picnic, and Hostel Party."""
-    # Birthday
     bday = generate_event_suggestions("Birthday", 3000.0, 10, "Aesthetic")
     assert any("cake" in f.lower() for f in bday["food_suggestions"])
     assert any("cake" in a.lower() for a in bday["activity_suggestions"])
     assert bday["budget_tier"] == "Low Budget (₹1,500 – ₹4,000)"
 
-    # College Party
     college = generate_event_suggestions("College Party", 6000.0, 25, "Fun / Party")
     assert "Neon" in college["suggested_theme"] or "College" in college["suggested_theme"]
     assert any("playlist" in a.lower() or "mafia" in a.lower() for a in college["activity_suggestions"])
     assert college["budget_tier"] == "Moderate Budget (₹4,000 – ₹10,000)"
 
-    # Farewell
     farewell = generate_event_suggestions("Farewell", 4000.0, 20, "Casual")
     assert any("tribute" in a.lower() or "scrapbook" in a.lower() or "roast" in a.lower() for a in farewell["activity_suggestions"])
 
-    # Picnic
     picnic = generate_event_suggestions("Picnic", 2000.0, 6, "Casual")
     assert any("mat" in d.lower() or "cushion" in d.lower() for d in picnic["decoration_suggestions"])
     assert any("frisbee" in a.lower() or "badminton" in a.lower() for a in picnic["activity_suggestions"])
 
-    # Hostel Party
     hostel = generate_event_suggestions("Hostel Party", 1200.0, 8, "DIY / Budget-Friendly")
     assert any("maggi" in f.lower() or "samosa" in f.lower() or "popcorn" in f.lower() for f in hostel["food_suggestions"])
 
@@ -78,12 +73,10 @@ def test_celebration_styles():
 
 def test_budget_tiers_and_guest_scaling():
     """Verify budget tier classifications and guest count scaling advice."""
-    # Very Low Budget
     low = generate_event_suggestions("Birthday", 800.0, 5, "DIY / Budget-Friendly")
     assert low["budget_tier"] == "Very Low Budget (Under ₹1,500)"
     assert any("samosa" in f.lower() or "popcorn" in f.lower() or "bakery" in f.lower() for f in low["food_suggestions"])
 
-    # Zero Budget
     zero = generate_event_suggestions("Get-together", 0.0, 6, "Casual")
     assert zero["budget_tier"] == "Zero Budget / Free Celebration"
     assert any("potluck" in f.lower() or "homemade" in f.lower() for f in zero["food_suggestions"])
@@ -91,7 +84,6 @@ def test_budget_tiers_and_guest_scaling():
         assert alloc["allocated_amount"] == 0.0
     assert zero["total_allocated_budget"] == 0.0
 
-    # Higher Budget
     high = generate_event_suggestions("Birthday", 15000.0, 30, "Aesthetic")
     assert high["budget_tier"] == "Higher Budget (Above ₹10,000)"
 
@@ -159,7 +151,6 @@ def test_stateless_database_independence(client: TestClient, db_session):
     expenses_count_before = db_session.query(models.Expense).count()
     tasks_count_before = db_session.query(models.Task).count()
 
-    # Generate several suggestions
     client.post("/suggestions/generate", json={"event_type": "Hostel Party", "budget": 2500.0, "guests": 12})
     client.post("/suggestions/generate", json={"event_type": "Picnic", "budget": 1500.0, "guests": 6})
     client.post("/suggestions/generate", json={"event_type": "Birthday", "budget": 0.0, "guests": 10})

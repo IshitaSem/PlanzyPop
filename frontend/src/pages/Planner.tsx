@@ -81,7 +81,6 @@ export function Planner({
         celebration_style: style,
       })
 
-      // Add starter checklist tasks from suggestion items
       const tasksToCreate: string[] = []
       if (
         suggestion?.decoration_suggestions &&

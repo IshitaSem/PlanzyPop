@@ -205,7 +205,6 @@ export function CafeSuggestions() {
         width: "100%",
       }}
     >
-      {/* Informational Hero Card */}
       <div
         className="cafe-hero-card"
         style={{
@@ -271,7 +270,6 @@ export function CafeSuggestions() {
           </div>
         </div>
 
-        {/* Geolocation Status and Manual Controls */}
         <div
           style={{
             marginTop: 14,
@@ -397,7 +395,6 @@ export function CafeSuggestions() {
             </div>
           </div>
 
-          {/* Feedback messages for permission denied or unavailable */}
           {(locationState.status === "denied" ||
             locationState.status === "error") && (
             <div
@@ -415,7 +412,6 @@ export function CafeSuggestions() {
             </div>
           )}
 
-          {/* Manual City / Area Fallback Input */}
           <form
             onSubmit={handleApplyManualCity}
             style={{
@@ -468,7 +464,6 @@ export function CafeSuggestions() {
         </div>
       </div>
 
-      {/* Grid / List of Curated Café Search Categories */}
       <div
         className="cafe-cards-grid"
         style={{
@@ -630,7 +625,6 @@ export function CafeSuggestions() {
         })}
       </div>
 
-      {/* Transparent Disclaimer Card (Requirement 8, 9, 11) */}
       <div
         style={{
           padding: "12px 14px",

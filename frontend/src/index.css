@@ -3757,11 +3757,6 @@
   }
 }
 
-/* ==========================================================================
-   PlanzyPop AI Celebration Planner – Modern Premium SaaS UI
-   ========================================================================== */
-
-/* Page Containers */
 .planner-screen {
   display: flex;
   flex-direction: column;
@@ -3784,7 +3779,6 @@
   box-sizing: border-box;
 }
 
-/* Page Introduction Card */
 .planner-intro-card {
   background: #ffffff;
   border: 1.5px solid var(--ink);
@@ -3862,7 +3856,6 @@
   color: var(--ink);
 }
 
-/* Stepper Progress Bar */
 .planner-stepper {
   display: flex;
   align-items: center;
@@ -3915,7 +3908,6 @@
   background: var(--line);
 }
 
-/* Form Cards */
 .planner-form-card {
   background: #ffffff;
   border: 1.5px solid var(--ink);
@@ -3960,7 +3952,6 @@
   line-height: 1.4;
 }
 
-/* Category Choice Grid */
 .choice-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(115px, 1fr));
@@ -4020,7 +4011,6 @@
   text-align: center;
 }
 
-/* Form Fields */
 .form-fields-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -4099,7 +4089,6 @@
   padding-left: 42px;
 }
 
-/* Budget Tiers Grid */
 .budget-options-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
@@ -4162,7 +4151,6 @@
   color: #713f12;
 }
 
-/* Celebration Vibe Grid */
 .vibe-options-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
@@ -4252,7 +4240,6 @@
   border: 1.5px solid var(--ink);
 }
 
-/* Submit Action Row */
 .form-submit-row {
   display: flex;
   flex-direction: column;
@@ -4302,10 +4289,6 @@
   font-weight: 600;
   text-align: center;
 }
-
-/* ==========================================================================
-   Generated Results UI
-   ========================================================================== */
 
 .planner-top-header {
   display: flex;
@@ -4393,7 +4376,6 @@
   box-shadow: 3px 4px 0 var(--ink);
 }
 
-/* Summary Card */
 .event-summary-card {
   background: #ffffff;
   border: 1.5px solid var(--ink);
@@ -4476,7 +4458,6 @@
   background: #faf8ff;
 }
 
-/* Inline Editor Panel */
 .summary-edit-panel {
   width: 100%;
   background: #faf8ff;
@@ -4536,7 +4517,6 @@
   border-top: 1px solid rgba(117, 87, 217, 0.2);
 }
 
-/* Overview Tiles Grid */
 .overview-tiles-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
@@ -4571,7 +4551,6 @@
   white-space: nowrap;
 }
 
-/* Tabs Bar */
 .plan-tabs-bar {
   display: flex;
   align-items: center;
@@ -4619,7 +4598,6 @@
   box-shadow: 2px 2px 0 var(--ink);
 }
 
-/* Results Dashboard 2-Column Grid */
 .planner-dashboard-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -4647,7 +4625,6 @@
   gap: 20px;
 }
 
-/* Section Cards */
 .planner-section-card {
   background: #ffffff;
   border: 1.5px solid var(--ink);
@@ -4762,7 +4739,6 @@
   line-height: 1.45;
 }
 
-/* Theme Swatches */
 .theme-swatches-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -4829,7 +4805,6 @@
   color: var(--purple-dark);
 }
 
-/* Food & Cake */
 .food-subcard {
   background: #fafafc;
   border: 1px solid var(--line);
@@ -4934,7 +4909,6 @@
   font-weight: 800;
 }
 
-/* Decor & DIY */
 .materials-tag-list {
   display: flex;
   flex-wrap: wrap;
@@ -5005,7 +4979,6 @@
   line-height: 1.35;
 }
 
-/* Activities */
 .activity-box {
   background: #fafafc;
   border: 1px solid var(--line);
@@ -5065,7 +5038,6 @@
   color: var(--muted);
 }
 
-/* Budget Breakdown */
 .budget-status-banner {
   padding: 12px 16px;
   border-radius: 12px;
@@ -5207,7 +5179,6 @@
   line-height: 1.35;
 }
 
-/* Shopping Checklist */
 .shopping-progress-track {
   height: 8px;
   background: #e8e4ef;
@@ -5377,7 +5348,6 @@
   background: #ffffff;
 }
 
-/* Tasks & Checklist */
 .tasks-items-list {
   display: flex;
   flex-direction: column;
@@ -5458,7 +5428,6 @@
   border: 1px solid #a7f3d0;
 }
 
-/* Timeline */
 .timeline-phases-list {
   display: flex;
   flex-direction: column;
@@ -5530,7 +5499,6 @@
   line-height: 1.35;
 }
 
-/* Sticky / Floating Action Bar */
 .planner-floating-actions {
   position: fixed;
   bottom: 0;
@@ -5556,11 +5524,6 @@
 }
 
 
-/* ==========================================================================
-   Google Maps-Style Horizontal Vendor Listing UI & Workspace
-   ========================================================================== */
-
-/* PopSpots Discovery Workspace (Mobile / Tablet Stacked) */
 @media (max-width: 1099px) {
   .nearby-workspace {
     display: flex;

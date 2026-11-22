@@ -43,7 +43,6 @@ export function EventDetail({
   const [tasks, setTasks] = useState<TaskItem[]>([])
   const [showEdit, setShowEdit] = useState(false)
 
-  // Edit fields
   const [name, setName] = useState("")
   const [type, setType] = useState("Birthday")
   const [date, setDate] = useState("")
@@ -309,7 +308,6 @@ export function EventDetail({
         </div>
       </div>
 
-      {/* Edit Event Sheet */}
       {showEdit && (
         <div className="sheet-backdrop" onClick={() => setShowEdit(false)}>
           <div

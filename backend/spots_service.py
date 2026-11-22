@@ -44,7 +44,6 @@ GEOCODE_NEGATIVE_TTL = 300  # 5 minutes for unresolvable queries
 PLACES_TTL = 3600  # 1 hour
 TERRITORY_CACHE_TTL = 3600  # 1 hour
 
-# Authoritative Chandigarh Hubs & Sectors (100% verified inside Chandigarh UT boundary)
 KNOWN_HUBS: Dict[str, Tuple[float, float, str]] = {
     "chandigarh": (30.7333, 76.7794, "Chandigarh, India"),
     "chandigarh city": (30.7333, 76.7794, "Chandigarh, India"),
@@ -106,10 +105,8 @@ KNOWN_HUBS: Dict[str, Tuple[float, float, str]] = {
     "elante mall": (30.7056, 76.8013, "Elante Mall, Industrial Area Phase 1, Chandigarh"),
 }
 
-# Authentic, 100% verified Chandigarh local hangouts dataset
 CURATED_LOCAL_SPOTS: List[Dict[str, Any]] = [{'id': 'osm/node/10101', 'osm_id': '10101', 'osm_type': 'node', 'name': 'Indian Coffee House', 'category': 'cafes', 'category_label': 'Café & Coffee House', 'latitude': 30.7408, 'longitude': 76.7828, 'address': 'Sector 17 Plaza, Sector 17, Chandigarh', 'opening_hours': '09:00 - 22:00', 'price_info': 'Under ₹100', 'rating': '4.2', 'review_count': 1850, 'vibe': 'Cozy', 'occasion': 'Friends Hangout', 'is_independent': True, 'tags': {'amenity': 'cafe', 'heritage': 'yes', 'student_favorite': 'yes'}, 'source': 'openstreetmap', 'rating_source': 'OpenStreetMap Community'}, {'id': 'osm/node/10102', 'osm_id': '10102', 'osm_type': 'node', 'name': 'Softy Corner', 'category': 'desserts', 'category_label': 'Bakery & Desserts', 'latitude': 30.7402, 'longitude': 76.7819, 'address': 'SCO 87, Sector 17 Plaza, Sector 17, Chandigarh', 'opening_hours': '11:00 - 23:00', 'price_info': 'Under ₹100', 'rating': '4.4', 'review_count': 1420, 'vibe': 'Lively', 'occasion': 'After College', 'is_independent': True, 'tags': {'amenity': 'ice_cream', 'shop': 'confectionery', 'speciality': 'soft_serve'}, 'source': 'openstreetmap', 'rating_source': 'OpenStreetMap Community'}, {'id': 'osm/way/129774086', 'osm_id': '129774086', 'osm_type': 'way', 'name': 'Sindhi Sweets & Vegetarian Restaurant', 'category': 'restaurants', 'category_label': 'Restaurant & Dhaba', 'latitude': 30.741, 'longitude': 76.7835, 'address': 'SCO 108-109, Sector 17C, Sector 17, Chandigarh', 'opening_hours': '09:00 - 22:30', 'price_info': 'Under ₹200', 'rating': '4.3', 'review_count': 2100, 'vibe': 'Cozy', 'occasion': 'Friends Hangout', 'is_independent': True, 'tags': {'amenity': 'restaurant', 'cuisine': 'north_indian_chaat', 'vegetarian': 'yes'}, 'source': 'openstreetmap', 'rating_source': 'OpenStreetMap Community'}, {'id': 'osm/node/10103', 'osm_id': '10103', 'osm_type': 'node', 'name': 'The Crown Patisserie', 'category': 'cafes', 'category_label': 'Café & Bakery', 'latitude': 30.7401, 'longitude': 76.7807, 'address': 'Jan Marg, Sector 17, Chandigarh', 'opening_hours': '10:00 - 22:00', 'price_info': 'Under ₹300', 'rating': '4.3', 'review_count': 520, 'vibe': 'Aesthetic', 'occasion': 'Casual Date', 'is_independent': True, 'tags': {'amenity': 'cafe', 'shop': 'bakery', 'seating': 'indoor'}, 'source': 'openstreetmap', 'rating_source': 'OpenStreetMap Community'}, {'id': 'osm/node/6964126390', 'osm_id': '6964126390', 'osm_type': 'node', 'name': 'The Chef', 'category': 'restaurants', 'category_label': 'Restaurant & Eatery', 'latitude': 30.7395, 'longitude': 76.7812, 'address': 'Udyog Path, Sector 17, Chandigarh', 'opening_hours': '11:00 - 23:00', 'price_info': 'Under ₹300', 'rating': '4.0', 'review_count': 340, 'vibe': 'Cozy', 'occasion': 'Friends Hangout', 'is_independent': True, 'tags': {'amenity': 'restaurant', 'cuisine': 'multi_cuisine'}, 'source': 'openstreetmap', 'rating_source': 'OpenStreetMap Community'}, {'id': 'osm/node/5863235598', 'osm_id': '5863235598', 'osm_type': 'node', 'name': 'Sagar Ratna', 'category': 'restaurants', 'category_label': 'South Indian Restaurant', 'latitude': 30.7414, 'longitude': 76.783, 'address': 'Himalaya Marg, Sector 17, Chandigarh', 'opening_hours': '08:30 - 22:30', 'price_info': 'Under ₹250', 'rating': '4.2', 'review_count': 1600, 'vibe': 'Cozy', 'occasion': 'Friends Hangout', 'is_independent': False, 'tags': {'amenity': 'restaurant', 'cuisine': 'south_indian'}, 'source': 'openstreetmap', 'rating_source': 'OpenStreetMap Community'}, {'id': 'osm/node/4656651496', 'osm_id': '4656651496', 'osm_type': 'node', 'name': 'Gurbax Dhaba', 'category': 'restaurants', 'category_label': 'Student Dhaba & Eatery', 'latitude': 30.7317, 'longitude': 76.7648, 'address': '3025-D, Dakshin Marg, Sector 22, Chandigarh', 'opening_hours': '10:30 - 23:00', 'price_info': 'Under ₹150', 'rating': '4.1', 'review_count': 1240, 'vibe': 'Lively', 'occasion': 'After College', 'is_independent': True, 'tags': {'amenity': 'restaurant', 'cuisine': 'punjabi_dhaba', 'pocket_friendly': 'yes'}, 'source': 'openstreetmap', 'rating_source': 'OpenStreetMap Community'}, {'id': 'osm/node/12597170495', 'osm_id': '12597170495', 'osm_type': 'node', 'name': "NIK BAKER'S Sector 22", 'category': 'desserts', 'category_label': 'Bakery & Desserts', 'latitude': 30.732, 'longitude': 76.7766, 'address': 'SCO 1124-25, Sector 22B, Sector 22, Chandigarh', 'opening_hours': '08:30 - 23:00', 'price_info': 'Under ₹250', 'rating': '4.4', 'review_count': 1890, 'vibe': 'Aesthetic', 'occasion': 'Birthday', 'is_independent': True, 'tags': {'shop': 'bakery', 'amenity': 'cafe', 'pastry': 'yes'}, 'source': 'openstreetmap', 'rating_source': 'OpenStreetMap Community'}, {'id': 'osm/node/2338877377', 'osm_id': '2338877377', 'osm_type': 'node', 'name': 'Sai Sweets & Snacks', 'category': 'street_food', 'category_label': 'Street Food & Chaat', 'latitude': 30.7319, 'longitude': 76.7765, 'address': 'Himalaya Marg, Sector 22, Chandigarh', 'opening_hours': '08:00 - 22:00', 'price_info': 'Under ₹100', 'rating': '4.2', 'review_count': 680, 'vibe': 'Lively', 'occasion': 'After College', 'is_independent': True, 'tags': {'shop': 'confectionery', 'amenity': 'fast_food', 'chaat': 'yes'}, 'source': 'openstreetmap', 'rating_source': 'OpenStreetMap Community'}, {'id': 'osm/node/12597169455', 'osm_id': '12597169455', 'osm_type': 'node', 'name': 'Keventers - Aroma Hotel', 'category': 'street_food', 'category_label': 'Shakes & Quick Bites', 'latitude': 30.7303, 'longitude': 76.7734, 'address': 'Aroma Complex, Himalaya Marg, Sector 22C, Sector 22, Chandigarh', 'opening_hours': '10:00 - 01:00', 'price_info': 'Under ₹180', 'rating': '4.3', 'review_count': 890, 'vibe': 'Lively', 'occasion': 'After College', 'is_independent': False, 'tags': {'amenity': 'fast_food', 'beverages': 'shakes'}, 'source': 'openstreetmap', 'rating_source': 'OpenStreetMap Community'}, {'id': 'osm/node/10201', 'osm_id': '10201', 'osm_type': 'node', 'name': 'Sector 22 Shastri Market Tea Stall', 'category': 'street_food', 'category_label': 'Tea Stall & Snacks', 'latitude': 30.734, 'longitude': 76.772, 'address': 'Shastri Market, Sector 22, Chandigarh', 'opening_hours': '07:30 - 21:30', 'price_info': 'Under ₹50', 'rating': '4.5', 'review_count': 420, 'vibe': 'Lively', 'occasion': 'After College', 'is_independent': True, 'tags': {'amenity': 'fast_food', 'cuisine': 'tea_snacks', 'street_vendor': 'yes'}, 'source': 'openstreetmap', 'rating_source': 'OpenStreetMap Community'}, {'id': 'osm/node/10301', 'osm_id': '10301', 'osm_type': 'node', 'name': 'Student Corner & Roll Express', 'category': 'street_food', 'category_label': 'Street Food & Rolls', 'latitude': 30.7532, 'longitude': 76.7725, 'address': 'Sector 15D Market, Sector 15, Chandigarh', 'opening_hours': '11:00 - 22:30', 'price_info': 'Under ₹100', 'rating': '4.3', 'review_count': 760, 'vibe': 'Lively', 'occasion': 'After College', 'is_independent': True, 'tags': {'amenity': 'fast_food', 'cuisine': 'rolls_street_food', 'student_hub': 'yes'}, 'source': 'openstreetmap', 'rating_source': 'OpenStreetMap Community'}, {'id': 'osm/node/10302', 'osm_id': '10302', 'osm_type': 'node', 'name': 'Patel Market Tea & Snacks Stall', 'category': 'street_food', 'category_label': 'Tea Stall & Snacks', 'latitude': 30.7538, 'longitude': 76.7718, 'address': 'Patel Market, Sector 15, Chandigarh', 'opening_hours': '08:00 - 22:00', 'price_info': 'Under ₹50', 'rating': '4.4', 'review_count': 510, 'vibe': 'Lively', 'occasion': 'After College', 'is_independent': True, 'tags': {'amenity': 'fast_food', 'cuisine': 'chai_samosa', 'street_vendor': 'yes'}, 'source': 'openstreetmap', 'rating_source': 'OpenStreetMap Community'}, {'id': 'osm/node/10303', 'osm_id': '10303', 'osm_type': 'node', 'name': 'Garg Chaat Bhandar', 'category': 'street_food', 'category_label': 'Chaat & Street Food', 'latitude': 30.7525, 'longitude': 76.773, 'address': 'Booth 42, Sector 15 Market, Sector 15, Chandigarh', 'opening_hours': '15:00 - 22:00', 'price_info': 'Under ₹80', 'rating': '4.5', 'review_count': 920, 'vibe': 'Lively', 'occasion': 'After College', 'is_independent': True, 'tags': {'amenity': 'fast_food', 'cuisine': 'chaat_golgappe'}, 'source': 'openstreetmap', 'rating_source': 'OpenStreetMap Community'}, {'id': 'osm/node/10304', 'osm_id': '10304', 'osm_type': 'node', 'name': "La Pino'z Pizza Sector 15", 'category': 'cafes', 'category_label': 'Fast Food & Pizza', 'latitude': 30.7544, 'longitude': 76.7702, 'address': 'Vidya Marg, Sector 15, Chandigarh', 'opening_hours': '11:00 - 23:00', 'price_info': 'Under ₹200', 'rating': '4.1', 'review_count': 810, 'vibe': 'Cozy', 'occasion': 'Friends Hangout', 'is_independent': False, 'tags': {'amenity': 'fast_food', 'cuisine': 'pizza'}, 'source': 'openstreetmap', 'rating_source': 'OpenStreetMap Community'}, {'id': 'osm/node/10250155998', 'osm_id': '10250155998', 'osm_type': 'node', 'name': 'Night Food Street', 'category': 'street_food', 'category_label': 'Late Night Street Food', 'latitude': 30.7619, 'longitude': 76.7732, 'address': 'Madhya Marg, Near Panjab University / Sector 14-15, Chandigarh', 'opening_hours': '19:00 - 04:00', 'price_info': 'Under ₹100', 'rating': '4.2', 'review_count': 2400, 'vibe': 'Lively', 'occasion': 'After College', 'is_independent': True, 'tags': {'amenity': 'food_court', 'cuisine': 'street_food_maggi_paratha', 'night_spot': 'yes'}, 'source': 'openstreetmap', 'rating_source': 'OpenStreetMap Community'}, {'id': 'osm/node/1431156028', 'osm_id': '1431156028', 'osm_type': 'node', 'name': 'Citco Cafe', 'category': 'cafes', 'category_label': 'Art Gallery Café', 'latitude': 30.7504, 'longitude': 76.7875, 'address': 'Government Museum & Art Gallery, Sector 10, Chandigarh', 'opening_hours': '10:00 - 18:00', 'price_info': 'Under ₹200', 'rating': '4.3', 'review_count': 480, 'vibe': 'Peaceful', 'occasion': 'Solo Visit', 'is_independent': True, 'tags': {'amenity': 'cafe', 'culture': 'art_museum', 'quiet': 'yes'}, 'source': 'openstreetmap', 'rating_source': 'OpenStreetMap Community'}, {'id': 'osm/node/10401', 'osm_id': '10401', 'osm_type': 'node', 'name': 'Willow Cafe & Garden', 'category': 'cafes', 'category_label': 'Garden Café', 'latitude': 30.7548, 'longitude': 76.7895, 'address': 'SCO 01, Sector 10D Market, Sector 10, Chandigarh', 'opening_hours': '08:30 - 23:30', 'price_info': 'Under ₹350', 'rating': '4.5', 'review_count': 1320, 'vibe': 'Aesthetic', 'occasion': 'Casual Date', 'is_independent': True, 'tags': {'amenity': 'cafe', 'outdoor_seating': 'yes', 'ambience': 'garden'}, 'source': 'openstreetmap', 'rating_source': 'OpenStreetMap Community'}, {'id': 'osm/way/10402', 'osm_id': '10402', 'osm_type': 'way', 'name': 'Sector 10 Museum Park & Lawn', 'category': 'parks', 'category_label': 'Park & Garden', 'latitude': 30.752, 'longitude': 76.788, 'address': 'Sector 10, Chandigarh', 'opening_hours': '06:00 - 20:00', 'price_info': 'Free entry', 'rating': '4.4', 'review_count': 650, 'vibe': 'Peaceful', 'occasion': 'Solo Visit', 'is_independent': True, 'tags': {'leisure': 'park', 'fee': 'no'}, 'source': 'openstreetmap', 'rating_source': 'OpenStreetMap Community'}, {'id': 'osm/node/9662187731', 'osm_id': '9662187731', 'osm_type': 'node', 'name': "Vinnie's Bakery", 'category': 'desserts', 'category_label': 'Bakery & Desserts', 'latitude': 30.7187, 'longitude': 76.766, 'address': 'Sector 34 Market Road, Sector 34, Chandigarh', 'opening_hours': '09:30 - 22:30', 'price_info': 'Under ₹150', 'rating': '4.3', 'review_count': 710, 'vibe': 'Cozy', 'occasion': 'Birthday', 'is_independent': True, 'tags': {'shop': 'bakery', 'amenity': 'cafe', 'pastry': 'yes'}, 'source': 'openstreetmap', 'rating_source': 'OpenStreetMap Community'}, {'id': 'osm/node/11691617173', 'osm_id': '11691617173', 'osm_type': 'node', 'name': 'Chai Sutta Bar Sector 34', 'category': 'street_food', 'category_label': 'Tea & Student Snacks', 'latitude': 30.7184, 'longitude': 76.7661, 'address': 'SCO 148, Sector 34 Coaching Hub, Sector 34, Chandigarh', 'opening_hours': '08:30 - 23:00', 'price_info': 'Under ₹80', 'rating': '4.3', 'review_count': 1150, 'vibe': 'Lively', 'occasion': 'After College', 'is_independent': False, 'tags': {'amenity': 'fast_food', 'cuisine': 'kulhad_chai', 'student_saver': 'yes'}, 'source': 'openstreetmap', 'rating_source': 'OpenStreetMap Community'}, {'id': 'osm/node/10501', 'osm_id': '10501', 'osm_type': 'node', 'name': 'Sector 34 Sub-City Center Food Stalls', 'category': 'street_food', 'category_label': 'Street Food & Chaat', 'latitude': 30.7205, 'longitude': 76.7645, 'address': 'Sub-City Center, Sector 34, Chandigarh', 'opening_hours': '12:00 - 22:00', 'price_info': 'Under ₹100', 'rating': '4.2', 'review_count': 590, 'vibe': 'Lively', 'occasion': 'After College', 'is_independent': True, 'tags': {'amenity': 'fast_food', 'cuisine': 'chaat_rolls', 'street_vendor': 'yes'}, 'source': 'openstreetmap', 'rating_source': 'OpenStreetMap Community'}, {'id': 'osm/node/11897133641', 'osm_id': '11897133641', 'osm_type': 'node', 'name': 'Dialogue Cafe', 'category': 'cafes', 'category_label': 'Student Café', 'latitude': 30.7258, 'longitude': 76.7669, 'address': 'Himalaya Marg, Sector 35, Chandigarh', 'opening_hours': '10:30 - 23:00', 'price_info': 'Under ₹250', 'rating': '4.3', 'review_count': 840, 'vibe': 'Cozy', 'occasion': 'Friends Hangout', 'is_independent': True, 'tags': {'amenity': 'cafe', 'coffee': 'yes', 'student_seating': 'yes'}, 'source': 'openstreetmap', 'rating_source': 'OpenStreetMap Community'}, {'id': 'osm/node/10601', 'osm_id': '10601', 'osm_type': 'node', 'name': "Books 'N' Brew (Book Café)", 'category': 'book_cafes', 'category_label': 'Book Café & Study Spot', 'latitude': 30.7265, 'longitude': 76.762, 'address': 'SCO 413-414, 1st Floor, Sector 35C, Sector 35, Chandigarh', 'opening_hours': '10:00 - 22:30', 'price_info': 'Under ₹200', 'rating': '4.5', 'review_count': 1420, 'vibe': 'Cozy', 'occasion': 'Solo Visit', 'is_independent': True, 'tags': {'amenity': 'cafe', 'books': 'yes', 'board_games': 'yes', 'quiet': 'yes'}, 'source': 'openstreetmap', 'rating_source': 'OpenStreetMap Community'}, {'id': 'osm/node/1041049974', 'osm_id': '1041049974', 'osm_type': 'node', 'name': 'Country Cafe', 'category': 'cafes', 'category_label': 'Cozy Café', 'latitude': 30.7284, 'longitude': 76.7658, 'address': 'Dakshin Marg, Sector 35, Chandigarh', 'opening_hours': '11:00 - 22:30', 'price_info': 'Under ₹200', 'rating': '4.1', 'review_count': 390, 'vibe': 'Cozy', 'occasion': 'Friends Hangout', 'is_independent': True, 'tags': {'amenity': 'cafe', 'beverages': 'coffee'}, 'source': 'openstreetmap', 'rating_source': 'OpenStreetMap Community'}, {'id': 'osm/node/10602', 'osm_id': '10602', 'osm_type': 'node', 'name': "Uncle Jack's India", 'category': 'street_food', 'category_label': 'Fries, Shakes & Sliders', 'latitude': 30.725, 'longitude': 76.761, 'address': 'Booth 11, Sector 35B, Sector 35, Chandigarh', 'opening_hours': '11:00 - 23:00', 'price_info': 'Under ₹200', 'rating': '4.4', 'review_count': 1780, 'vibe': 'Lively', 'occasion': 'After College', 'is_independent': True, 'tags': {'amenity': 'fast_food', 'speciality': 'waffles_fries_shakes'}, 'source': 'openstreetmap', 'rating_source': 'OpenStreetMap Community'}, {'id': 'osm/node/10603', 'osm_id': '10603', 'osm_type': 'node', 'name': "Gopal's Sweets & Snacks", 'category': 'restaurants', 'category_label': 'Vegetarian Eatery & Chaat', 'latitude': 30.726, 'longitude': 76.7635, 'address': 'SCO 411-412, Sector 35C, Sector 35, Chandigarh', 'opening_hours': '08:30 - 22:30', 'price_info': 'Under ₹180', 'rating': '4.3', 'review_count': 2100, 'vibe': 'Cozy', 'occasion': 'Friends Hangout', 'is_independent': True, 'tags': {'amenity': 'restaurant', 'cuisine': 'north_indian_sweets', 'vegetarian': 'yes'}, 'source': 'openstreetmap', 'rating_source': 'OpenStreetMap Community'}, {'id': 'osm/way/10604', 'osm_id': '10604', 'osm_type': 'way', 'name': 'Topiary Park', 'category': 'parks', 'category_label': 'Themed Park & Garden', 'latitude': 30.722, 'longitude': 76.755, 'address': 'Sector 35, Chandigarh', 'opening_hours': '06:00 - 20:00', 'price_info': 'Free entry', 'rating': '4.3', 'review_count': 820, 'vibe': 'Peaceful', 'occasion': 'Solo Visit', 'is_independent': True, 'tags': {'leisure': 'park', 'fee': 'no'}, 'source': 'openstreetmap', 'rating_source': 'OpenStreetMap Community'}, {'id': 'osm/node/10701', 'osm_id': '10701', 'osm_type': 'node', 'name': "Monica's Puddings & Pies", 'category': 'desserts', 'category_label': 'Bakery & Desserts', 'latitude': 30.742, 'longitude': 76.799, 'address': 'SCO 20-21, Sector 8B Inner Market, Sector 8, Chandigarh', 'opening_hours': '09:30 - 22:30', 'price_info': 'Under ₹250', 'rating': '4.5', 'review_count': 1640, 'vibe': 'Aesthetic', 'occasion': 'Birthday', 'is_independent': True, 'tags': {'shop': 'bakery', 'speciality': 'pies_custom_cakes'}, 'source': 'openstreetmap', 'rating_source': 'OpenStreetMap Community'}, {'id': 'osm/node/4239105393', 'osm_id': '4239105393', 'osm_type': 'node', 'name': 'Circo Cafe', 'category': 'cafes', 'category_label': 'Casual Café', 'latitude': 30.7523, 'longitude': 76.8083, 'address': 'Sector 8 / Sector 9 Belt, Chandigarh', 'opening_hours': '10:30 - 22:30', 'price_info': 'Under ₹250', 'rating': '4.2', 'review_count': 410, 'vibe': 'Cozy', 'occasion': 'Friends Hangout', 'is_independent': True, 'tags': {'amenity': 'cafe', 'fast_food': 'yes'}, 'source': 'openstreetmap', 'rating_source': 'OpenStreetMap Community'}, {'id': 'osm/way/10702', 'osm_id': '10702', 'osm_type': 'way', 'name': 'Sector 8 Neighborhood Green Park', 'category': 'parks', 'category_label': 'Park & Garden', 'latitude': 30.741, 'longitude': 76.7985, 'address': 'Sector 8B, Chandigarh', 'opening_hours': '06:00 - 20:00', 'price_info': 'Free entry', 'rating': '4.2', 'review_count': 310, 'vibe': 'Peaceful', 'occasion': 'Solo Visit', 'is_independent': True, 'tags': {'leisure': 'park', 'fee': 'no'}, 'source': 'openstreetmap', 'rating_source': 'OpenStreetMap Community'}, {'id': 'osm/node/3595994933', 'osm_id': '3595994933', 'osm_type': 'node', 'name': 'Backpackers Cafe Sector 9', 'category': 'cafes', 'category_label': 'Boutique Café', 'latitude': 30.747, 'longitude': 76.794, 'address': 'SCF 16, Inner Market, Sector 9D, Sector 9, Chandigarh', 'opening_hours': '09:00 - 23:30', 'price_info': 'Under ₹350', 'rating': '4.6', 'review_count': 2200, 'vibe': 'Aesthetic', 'occasion': 'Casual Date', 'is_independent': True, 'tags': {'amenity': 'cafe', 'cuisine': 'continental_brunch'}, 'source': 'openstreetmap', 'rating_source': 'OpenStreetMap Community'}, {'id': 'osm/node/10801', 'osm_id': '10801', 'osm_type': 'node', 'name': 'Boombox Cafe Corner', 'category': 'cafes', 'category_label': 'Lively Café', 'latitude': 30.7472, 'longitude': 76.7942, 'address': 'Sector 9D Market, Sector 9, Chandigarh', 'opening_hours': '11:00 - 23:00', 'price_info': 'Under ₹250', 'rating': '4.2', 'review_count': 680, 'vibe': 'Lively', 'occasion': 'Friends Hangout', 'is_independent': True, 'tags': {'amenity': 'cafe', 'music': 'yes'}, 'source': 'openstreetmap', 'rating_source': 'OpenStreetMap Community'}, {'id': 'osm/node/4214697691', 'osm_id': '4214697691', 'osm_type': 'node', 'name': "Nik Baker's Sector 9", 'category': 'desserts', 'category_label': 'Bakery & Desserts', 'latitude': 30.7475, 'longitude': 76.7945, 'address': 'Jan Marg, Sector 9D, Sector 9, Chandigarh', 'opening_hours': '08:30 - 23:00', 'price_info': 'Under ₹280', 'rating': '4.4', 'review_count': 1540, 'vibe': 'Aesthetic', 'occasion': 'Birthday', 'is_independent': True, 'tags': {'shop': 'bakery', 'amenity': 'cafe'}, 'source': 'openstreetmap', 'rating_source': 'OpenStreetMap Community'}, {'id': 'osm/node/10901', 'osm_id': '10901', 'osm_type': 'node', 'name': 'Grain Market Dhaba & Chai Stall', 'category': 'street_food', 'category_label': 'Authentic Dhaba & Tea', 'latitude': 30.7305, 'longitude': 76.8085, 'address': 'Grain Market, Sector 26, Chandigarh', 'opening_hours': '06:00 - 22:30', 'price_info': 'Under ₹100', 'rating': '4.3', 'review_count': 780, 'vibe': 'Lively', 'occasion': 'After College', 'is_independent': True, 'tags': {'amenity': 'restaurant', 'cuisine': 'punjabi_dhaba', 'chai': 'yes'}, 'source': 'openstreetmap', 'rating_source': 'OpenStreetMap Community'}, {'id': 'osm/node/10902', 'osm_id': '10902', 'osm_type': 'node', 'name': 'Sector 26 Timber Market Tea Stall', 'category': 'street_food', 'category_label': 'Street Food & Tea', 'latitude': 30.7312, 'longitude': 76.8095, 'address': 'Timber Market Road, Sector 26, Chandigarh', 'opening_hours': '07:00 - 21:00', 'price_info': 'Under ₹50', 'rating': '4.5', 'review_count': 390, 'vibe': 'Lively', 'occasion': 'After College', 'is_independent': True, 'tags': {'amenity': 'fast_food', 'street_vendor': 'yes'}, 'source': 'openstreetmap', 'rating_source': 'OpenStreetMap Community'}, {'id': 'osm/node/4214695189', 'osm_id': '4214695189', 'osm_type': 'node', 'name': 'Old Pal Dhaba', 'category': 'restaurants', 'category_label': 'Dhaba & Punjabi Eatery', 'latitude': 30.7195, 'longitude': 76.8016, 'address': 'Chandi Path, Sector 28 (Adjacent to Sector 26), Chandigarh', 'opening_hours': '11:00 - 23:00', 'price_info': 'Under ₹200', 'rating': '4.3', 'review_count': 2890, 'vibe': 'Lively', 'occasion': 'Friends Hangout', 'is_independent': True, 'tags': {'amenity': 'restaurant', 'cuisine': 'punjabi_chicken_dal'}, 'source': 'openstreetmap', 'rating_source': 'OpenStreetMap Community'}, {'id': 'osm/node/12632106041', 'osm_id': '12632106041', 'osm_type': 'node', 'name': 'Beige cafe & bakery', 'category': 'cafes', 'category_label': 'Café & Bakery', 'latitude': 30.7325, 'longitude': 76.7994, 'address': 'SCO 16, Sector 7C, Madhya Marg, Sector 7, Chandigarh', 'opening_hours': '09:30 - 22:30', 'price_info': 'Under ₹250', 'rating': '4.4', 'review_count': 820, 'vibe': 'Aesthetic', 'occasion': 'Casual Date', 'is_independent': True, 'tags': {'amenity': 'cafe', 'shop': 'bakery', 'pastry': 'yes'}, 'source': 'openstreetmap', 'rating_source': 'OpenStreetMap Community'}, {'id': 'osm/node/5849007685', 'osm_id': '5849007685', 'osm_type': 'node', 'name': 'The Hedgehog Café', 'category': 'book_cafes', 'category_label': 'Book Café & Eatery', 'latitude': 30.7361, 'longitude': 76.8007, 'address': 'SCO 12, Sector 7C, Sector 7, Chandigarh', 'opening_hours': '10:00 - 23:00', 'price_info': 'Under ₹250', 'rating': '4.5', 'review_count': 1490, 'vibe': 'Cozy', 'occasion': 'Solo Visit', 'is_independent': True, 'tags': {'amenity': 'cafe', 'books': 'yes', 'board_games': 'yes', 'cozy': 'yes'}, 'source': 'openstreetmap', 'rating_source': 'OpenStreetMap Community'}, {'id': 'osm/node/11101', 'osm_id': '11101', 'osm_type': 'node', 'name': "Backpacker's Corner & Waffles", 'category': 'desserts', 'category_label': 'Waffles & Desserts', 'latitude': 30.7355, 'longitude': 76.8035, 'address': 'Sector 7C Market, Sector 7, Chandigarh', 'opening_hours': '12:00 - 23:00', 'price_info': 'Under ₹180', 'rating': '4.3', 'review_count': 590, 'vibe': 'Lively', 'occasion': 'After College', 'is_independent': True, 'tags': {'shop': 'confectionery', 'speciality': 'waffles'}, 'source': 'openstreetmap', 'rating_source': 'OpenStreetMap Community'}, {'id': 'osm/way/11201', 'osm_id': '11201', 'osm_type': 'way', 'name': 'Zakir Hussain Rose Garden', 'category': 'parks', 'category_label': "Asia's Largest Rose Garden", 'latitude': 30.7466, 'longitude': 76.782, 'address': 'Jan Marg, Sector 16, Chandigarh', 'opening_hours': '06:00 - 20:00', 'price_info': 'Free entry', 'rating': '4.6', 'review_count': 4800, 'vibe': 'Peaceful', 'occasion': 'Solo Visit', 'is_independent': True, 'tags': {'leisure': 'park', 'nature': 'garden', 'fee': 'no'}, 'source': 'openstreetmap', 'rating_source': 'OpenStreetMap Community'}, {'id': 'osm/way/11202', 'osm_id': '11202', 'osm_type': 'way', 'name': 'Shanti Kunj Natural Park', 'category': 'parks', 'category_label': 'Serene Green Garden', 'latitude': 30.7485, 'longitude': 76.7805, 'address': 'Sector 16, Chandigarh', 'opening_hours': '05:30 - 20:30', 'price_info': 'Free entry', 'rating': '4.5', 'review_count': 1650, 'vibe': 'Peaceful', 'occasion': 'Solo Visit', 'is_independent': True, 'tags': {'leisure': 'park', 'fee': 'no'}, 'source': 'openstreetmap', 'rating_source': 'OpenStreetMap Community'}, {'id': 'osm/way/11203', 'osm_id': '11203', 'osm_type': 'way', 'name': 'Sukhna Lake Promenade & Garden', 'category': 'parks', 'category_label': 'Waterfront Promenade & Park', 'latitude': 30.7421, 'longitude': 76.8188, 'address': 'Sector 1, Sukhna Lake, Chandigarh', 'opening_hours': '05:00 - 21:00', 'price_info': 'Free entry', 'rating': '4.7', 'review_count': 7500, 'vibe': 'Peaceful', 'occasion': 'Friends Hangout', 'is_independent': True, 'tags': {'leisure': 'park', 'water': 'lake', 'fee': 'no'}, 'source': 'openstreetmap', 'rating_source': 'OpenStreetMap Community'}, {'id': 'osm/way/11204', 'osm_id': '11204', 'osm_type': 'way', 'name': 'Terraced Garden', 'category': 'parks', 'category_label': 'Flower & Musical Fountain Garden', 'latitude': 30.7165, 'longitude': 76.7715, 'address': 'Sector 33, Chandigarh', 'opening_hours': '06:00 - 20:00', 'price_info': 'Free entry', 'rating': '4.5', 'review_count': 2100, 'vibe': 'Peaceful', 'occasion': 'Solo Visit', 'is_independent': True, 'tags': {'leisure': 'park', 'fee': 'no'}, 'source': 'openstreetmap', 'rating_source': 'OpenStreetMap Community'}, {'id': 'osm/node/4301', 'osm_id': '4301', 'osm_type': 'node', 'name': "Gopal's Sweets & Restaurant", 'category': 'restaurants', 'category_label': 'Restaurant & Sweets', 'latitude': 30.7188, 'longitude': 76.746, 'address': 'SCO 112-113, Sector 43B, Sector 43, Chandigarh', 'opening_hours': '09:00 - 22:30', 'price_info': 'Under ₹200', 'rating': '4.3', 'review_count': 1820, 'vibe': 'Cozy', 'occasion': 'Friends Hangout', 'is_independent': True, 'source': 'openstreetmap', 'rating_source': 'OpenStreetMap Community', 'tags': {'amenity': 'restaurant', 'cuisine': 'north_indian', 'sector': '43'}}, {'id': 'osm/node/4302', 'osm_id': '4302', 'osm_type': 'node', 'name': 'Café Coffee Day ISBT 43', 'category': 'cafes', 'category_label': 'Café', 'latitude': 30.7175, 'longitude': 76.7445, 'address': 'Inter-State Bus Terminus, Sector 43, Chandigarh', 'opening_hours': '07:00 - 23:00', 'price_info': 'Under ₹200', 'rating': '3.9', 'review_count': 650, 'vibe': 'Lively', 'occasion': 'After College', 'is_independent': False, 'source': 'openstreetmap', 'rating_source': 'OpenStreetMap Community', 'tags': {'amenity': 'cafe', 'cuisine': 'coffee_shop', 'sector': '43'}}, {'id': 'osm/node/4303', 'osm_id': '4303', 'osm_type': 'node', 'name': 'District Court Canteen & Tea Stall', 'category': 'street_food', 'category_label': 'Street Food & Tea', 'latitude': 30.7202, 'longitude': 76.7485, 'address': 'District Court Complex, Sector 43, Chandigarh', 'opening_hours': '08:30 - 18:00', 'price_info': 'Under ₹100', 'rating': '4.1', 'review_count': 310, 'vibe': 'Lively', 'occasion': 'After College', 'is_independent': True, 'source': 'openstreetmap', 'rating_source': 'OpenStreetMap Community', 'tags': {'amenity': 'fast_food', 'cuisine': 'chai_samosa', 'sector': '43'}}, {'id': 'osm/node/1901', 'osm_id': '1901', 'osm_type': 'node', 'name': 'Pal Dhaba Express', 'category': 'street_food', 'category_label': 'Dhaba & Street Food', 'latitude': 30.7325, 'longitude': 76.7865, 'address': 'Booth 45, Sector 19C, Chandigarh', 'opening_hours': '11:00 - 22:30', 'price_info': 'Under ₹150', 'rating': '4.2', 'review_count': 890, 'vibe': 'Lively', 'occasion': 'Friends Hangout', 'is_independent': True, 'source': 'openstreetmap', 'rating_source': 'OpenStreetMap Community', 'tags': {'amenity': 'fast_food', 'cuisine': 'dhaba_rolls', 'sector': '19'}}, {'id': 'osm/node/1902', 'osm_id': '1902', 'osm_type': 'node', 'name': 'Sector 19 Sadar Bazar Chaat Corner', 'category': 'street_food', 'category_label': 'Chaat & Street Food', 'latitude': 30.7315, 'longitude': 76.788, 'address': 'Sadar Bazar, Sector 19D, Chandigarh', 'opening_hours': '13:00 - 22:00', 'price_info': 'Under ₹100', 'rating': '4.5', 'review_count': 1420, 'vibe': 'Lively', 'occasion': 'After College', 'is_independent': True, 'source': 'openstreetmap', 'rating_source': 'OpenStreetMap Community', 'tags': {'amenity': 'street_vendor', 'cuisine': 'golgappe_tikki', 'sector': '19'}}, {'id': 'osm/node/1101', 'osm_id': '1101', 'osm_type': 'node', 'name': 'Garg Pastry Shop & Bakery', 'category': 'desserts', 'category_label': 'Bakery & Desserts', 'latitude': 30.7605, 'longitude': 76.7835, 'address': 'Booth 84, Sector 11D, Chandigarh', 'opening_hours': '09:30 - 22:00', 'price_info': 'Under ₹150', 'rating': '4.4', 'review_count': 940, 'vibe': 'Cozy', 'occasion': 'Birthday', 'is_independent': True, 'source': 'openstreetmap', 'rating_source': 'OpenStreetMap Community', 'tags': {'shop': 'bakery', 'speciality': 'pastries_cakes', 'sector': '11'}}, {'id': 'osm/node/1102', 'osm_id': '1102', 'osm_type': 'node', 'name': 'PGGC-11 Student Canteen', 'category': 'street_food', 'category_label': 'Student Canteen', 'latitude': 30.758, 'longitude': 76.7815, 'address': 'Post Graduate Govt College, Sector 11, Chandigarh', 'opening_hours': '08:30 - 17:00', 'price_info': 'Under ₹100', 'rating': '4.2', 'review_count': 480, 'vibe': 'Lively', 'occasion': 'After College', 'is_independent': True, 'source': 'openstreetmap', 'rating_source': 'OpenStreetMap Community', 'tags': {'amenity': 'canteen', 'cuisine': 'student_bites', 'sector': '11'}}, {'id': 'osm/node/3201', 'osm_id': '3201', 'osm_type': 'node', 'name': 'Bansal Amritsari Kulcha', 'category': 'street_food', 'category_label': 'Authentic Kulcha & Lassi', 'latitude': 30.711, 'longitude': 76.7725, 'address': 'Booth 24, Sector 32D, Chandigarh', 'opening_hours': '09:00 - 16:30', 'price_info': 'Under ₹150', 'rating': '4.6', 'review_count': 1650, 'vibe': 'Lively', 'occasion': 'Friends Hangout', 'is_independent': True, 'source': 'openstreetmap', 'rating_source': 'OpenStreetMap Community', 'tags': {'amenity': 'fast_food', 'cuisine': 'amritsari_kulcha', 'sector': '32'}}, {'id': 'osm/node/3202', 'osm_id': '3202', 'osm_type': 'node', 'name': 'GMCH-32 Student Nescafe Point', 'category': 'cafes', 'category_label': 'Student Café & Coffee', 'latitude': 30.7085, 'longitude': 76.7745, 'address': 'Medical College Campus, Sector 32, Chandigarh', 'opening_hours': '08:00 - 22:00', 'price_info': 'Under ₹100', 'rating': '4.1', 'review_count': 520, 'vibe': 'Peaceful', 'occasion': 'After College', 'is_independent': True, 'source': 'openstreetmap', 'rating_source': 'OpenStreetMap Community', 'tags': {'amenity': 'cafe', 'cuisine': 'maggi_coffee', 'sector': '32'}}, {'id': 'osm/way/3601', 'osm_id': '3601', 'osm_type': 'way', 'name': 'Garden of Fragrance', 'category': 'parks', 'category_label': 'Park & Fragrance Garden', 'latitude': 30.732, 'longitude': 76.75, 'address': 'Sector 36B, Sector 36, Chandigarh', 'opening_hours': '05:00 - 21:00', 'price_info': 'Free entry', 'rating': '4.5', 'review_count': 2300, 'vibe': 'Peaceful', 'occasion': 'Solo Visit', 'is_independent': True, 'source': 'openstreetmap', 'rating_source': 'OpenStreetMap Community', 'tags': {'leisure': 'park', 'nature': 'flower_garden', 'sector': '36'}}, {'id': 'osm/way/3301', 'osm_id': '3301', 'osm_type': 'way', 'name': 'Terraced Garden Walkway', 'category': 'parks', 'category_label': 'Botanical Park & Garden', 'latitude': 30.717, 'longitude': 76.772, 'address': 'Sector 33B, Sector 33, Chandigarh', 'opening_hours': '05:30 - 21:00', 'price_info': 'Free entry', 'rating': '4.6', 'review_count': 2800, 'vibe': 'Peaceful', 'occasion': 'Solo Visit', 'is_independent': True, 'source': 'openstreetmap', 'rating_source': 'OpenStreetMap Community', 'tags': {'leisure': 'park', 'nature': 'musical_fountain', 'sector': '33'}}, {'id': 'osm/way/3101', 'osm_id': '3101', 'osm_type': 'way', 'name': 'Japanese Garden Chandigarh', 'category': 'parks', 'category_label': 'Theme Park & Zen Garden', 'latitude': 30.705, 'longitude': 76.79, 'address': 'Sector 31A, Sector 31, Chandigarh', 'opening_hours': '05:00 - 22:00', 'price_info': 'Free entry', 'rating': '4.5', 'review_count': 3100, 'vibe': 'Aesthetic', 'occasion': 'Friends Hangout', 'is_independent': True, 'source': 'openstreetmap', 'rating_source': 'OpenStreetMap Community', 'tags': {'leisure': 'park', 'theme': 'japanese', 'sector': '31'}}, {'id': 'osm/way/1001', 'osm_id': '1001', 'osm_type': 'way', 'name': 'Rock Garden of Chandigarh', 'category': 'activities', 'category_label': 'Sculpture Park & Sights', 'latitude': 30.7525, 'longitude': 76.807, 'address': 'Uttar Marg, Sector 1, Chandigarh', 'opening_hours': '09:00 - 19:00', 'price_info': 'Under ₹100', 'rating': '4.7', 'review_count': 14500, 'vibe': 'Aesthetic', 'occasion': 'Friends Hangout', 'is_independent': True, 'source': 'openstreetmap', 'rating_source': 'OpenStreetMap Community', 'tags': {'tourism': 'attraction', 'art': 'recycled_sculpture', 'sector': '1'}}, {'id': 'osm/way/1002', 'osm_id': '1002', 'osm_type': 'way', 'name': 'Sukhna Lake Boating & Promenade', 'category': 'activities', 'category_label': 'Lake & Recreational Boating', 'latitude': 30.7421, 'longitude': 76.8188, 'address': 'Sukhna Lake, Sector 1, Chandigarh', 'opening_hours': '05:00 - 22:00', 'price_info': 'Free entry', 'rating': '4.7', 'review_count': 18200, 'vibe': 'Peaceful', 'occasion': 'Friends Hangout', 'is_independent': True, 'source': 'openstreetmap', 'rating_source': 'OpenStreetMap Community', 'tags': {'leisure': 'park', 'amenity': 'boating', 'sector': '1'}}]
 
-# Supported Categories definition
 CATEGORY_DEFINITIONS: List[Dict[str, str]] = [
     {"id": "all", "label": "All", "icon": "sparkle", "description": "All student-friendly Chandigarh hangouts"},
     {"id": "cafes", "label": "Cafés", "icon": "coffee", "description": "Independent cafés and coffee spots in Chandigarh"},
@@ -147,7 +144,6 @@ def extract_sector(address: str, tags: Optional[Dict[str, Any]] = None) -> Optio
     return None
 
 
-# Enrich verified curated spots with sector, data_origin, and honest attributes at module startup
 for s in CURATED_LOCAL_SPOTS:
     s.setdefault("sector", extract_sector(s.get("address", ""), s.get("tags")))
     s.setdefault("data_origin", "curated")
@@ -204,7 +200,6 @@ def geocode_location(query: str) -> Optional[Tuple[float, float, str]]:
     if not cleaned_query:
         return None
 
-    # Check for explicitly excluded neighboring cities
     if chandigarh_boundary.is_explicitly_excluded_text(cleaned_query):
         logger.info(f"Geocoding rejected excluded region: '{cleaned_query}'")
         return None
@@ -223,13 +218,11 @@ def geocode_location(query: str) -> Optional[Tuple[float, float, str]]:
     norm_key = re.sub(r"[,\-\.]", " ", cache_key).strip()
     norm_key = re.sub(r"\s+", " ", norm_key)
     
-    # 1. Exact match against curated Chandigarh hubs
     if norm_key in KNOWN_HUBS:
         coords = KNOWN_HUBS[norm_key]
         _GEOCODE_CACHE[cache_key] = (now, {"lat": coords[0], "lon": coords[1], "display_name": coords[2]})
         return coords
 
-    # Match normalized "sector X" pattern
     sec_match = re.match(r"^(?:sector|sec)\s*(\d+[a-zA-Z]?)(?:\s*(?:chandigarh|chd))?$", norm_key)
     if sec_match:
         sec_num = sec_match.group(1).lower()
@@ -239,7 +232,6 @@ def geocode_location(query: str) -> Optional[Tuple[float, float, str]]:
             _GEOCODE_CACHE[cache_key] = (now, {"lat": coords[0], "lon": coords[1], "display_name": coords[2]})
             return coords
 
-    # 2. Try Nominatim geocoding bounded strictly to Chandigarh
     nominatim_query = cleaned_query
     if "chandigarh" not in nominatim_query.lower():
         nominatim_query = f"{cleaned_query}, Chandigarh, India"
@@ -268,7 +260,6 @@ def geocode_location(query: str) -> Optional[Tuple[float, float, str]]:
                     lon = float(first["lon"])
                     display_name = first.get("display_name", cleaned_query)
                     
-                    # Strictly validate coordinates against Chandigarh boundary
                     if chandigarh_boundary.is_point_in_chandigarh(lat, lon):
                         _GEOCODE_CACHE[cache_key] = (now, {"lat": lat, "lon": lon, "display_name": display_name})
                         return lat, lon, display_name
@@ -277,13 +268,11 @@ def geocode_location(query: str) -> Optional[Tuple[float, float, str]]:
     except Exception as exc:
         logger.warning(f"Nominatim geocoding lookup failed for '{cleaned_query}': {exc}")
 
-    # 3. Partial substring match for curated Chandigarh hubs
     for hub_name, hub_coords in KNOWN_HUBS.items():
         if hub_name in cache_key.split(",")[0].strip():
             _GEOCODE_CACHE[cache_key] = (now, {"lat": hub_coords[0], "lon": hub_coords[1], "display_name": hub_coords[2]})
             return hub_coords
 
-    # Unresolvable within Chandigarh
     _GEOCODE_CACHE[cache_key] = (now, None)
     return None
 
@@ -441,7 +430,6 @@ def fetch_nearby_places(
     5. Deduplicates results by venue name.
     6. Caches results to respect public API rate limits.
     """
-    # Strict validation: Center must be inside Chandigarh
     if not chandigarh_boundary.is_point_in_chandigarh(center_lat, center_lon):
         logger.info(f"Search center ({center_lat}, {center_lon}) is outside Chandigarh boundary.")
         return []
@@ -456,7 +444,6 @@ def fetch_nearby_places(
     spots: List[Dict[str, Any]] = []
     seen_names = set()
 
-    # 1. Primary Source: Geoapify Places API (if configured)
     if geoapify_client.is_geoapify_configured():
         try:
             geo_spots = geoapify_client.search_geoapify_places(
@@ -476,14 +463,12 @@ def fetch_nearby_places(
         except Exception as exc:
             logger.warning(f"Geoapify request encountered error: {exc}. Falling back to OpenStreetMap.")
 
-    # 2. Complement with verified Curated Local Chandigarh Spots
     cat_norm = (category or "all").lower().replace(" & ", "_").replace(" ", "_")
     for s in CURATED_LOCAL_SPOTS:
         norm_n = s["name"].lower().strip()
         if norm_n in seen_names:
             continue
 
-        # Strictly enforce Chandigarh boundary
         if not chandigarh_boundary.is_point_in_chandigarh(s["latitude"], s["longitude"]):
             continue
 
@@ -497,7 +482,6 @@ def fetch_nearby_places(
                 seen_names.add(norm_n)
                 spots.append(item)
 
-    # 3. Live Overpass API queries if additional spots are needed
     if len(spots) < 4:
         radius_m = int(min(radius_km * 1000.0, 10000.0))
         ql_query = _build_overpass_query(category, center_lat, center_lon, radius_m)
@@ -524,7 +508,6 @@ def fetch_nearby_places(
                             if el_lat is None or el_lon is None:
                                 continue
 
-                            # Strictly enforce Chandigarh boundary
                             if not chandigarh_boundary.is_point_in_chandigarh(el_lat, el_lon):
                                 continue
 
@@ -586,11 +569,9 @@ def rank_and_filter_spots(
     cat_norm = (category or "All").strip().lower().replace(" & ", "_").replace(" ", "_")
 
     for s in spots:
-        # Extra defensive check: Must be inside Chandigarh
         if not chandigarh_boundary.is_point_in_chandigarh(s.get("latitude", 0.0), s.get("longitude", 0.0)):
             continue
 
-        # 1. Category filter
         if cat_norm not in ("all", ""):
             s_cat = s["category"].lower()
             if cat_norm in ("cafes", "café", "cafe") and s_cat not in ("cafes", "book_cafes"):
@@ -608,7 +589,6 @@ def rank_and_filter_spots(
             elif cat_norm in ("activities", "activity") and s_cat != "activities":
                 continue
 
-        # 2. Distance filter
         dist = s.get("distance_km", 999.0)
         dist_norm = (distance_filter or "").lower()
         if "within 2" in dist_norm and dist > 2.0:
@@ -618,7 +598,6 @@ def rank_and_filter_spots(
         elif "nearby" in dist_norm and dist > 3.5:
             continue
 
-        # 3. Budget filter
         b_norm = (budget or "any").lower()
         if "under" in b_norm:
             limit = None
@@ -712,7 +691,6 @@ def fetch_all_chandigarh_places() -> List[Dict[str, Any]]:
         clean = re.sub(r"[^a-zA-Z0-9]", "", (name or "").lower())
         return f"{clean[:16]}_{round(lat, 3)}_{round(lon, 3)}"
 
-    # 1. Geoapify Places API discovery (if configured)
     if geoapify_client.is_geoapify_configured():
         try:
             geo_spots = geoapify_client.search_geoapify_places(
@@ -733,7 +711,6 @@ def fetch_all_chandigarh_places() -> List[Dict[str, Any]]:
         except Exception as exc:
             logger.warning(f"Territory Geoapify error: {exc}")
 
-    # 2. Live OpenStreetMap / Overpass query across Chandigarh UT
     try:
         ql_territory = (
             "[out:json][timeout:4];"
@@ -811,7 +788,6 @@ def fetch_all_chandigarh_places() -> List[Dict[str, Any]]:
     except Exception as exc:
         logger.warning(f"Territory Overpass query error: {exc}")
 
-    # 3. Incorporate verified Authentic Local Chandigarh spots across sectors
     for s in CURATED_LOCAL_SPOTS:
         if not chandigarh_boundary.is_point_in_chandigarh(s["latitude"], s["longitude"]):
             continue
@@ -848,11 +824,9 @@ def filter_and_paginate_vendors(
     sec_norm = (sector or "").strip().lower()
 
     for s in places:
-        # Extra defensive boundary check: 100% Chandigarh UT
         if not chandigarh_boundary.is_point_in_chandigarh(s.get("latitude", 0.0), s.get("longitude", 0.0)):
             continue
 
-        # 1. Category filter (optional)
         if cat_norm not in ("all", ""):
             s_cat = s["category"].lower()
             if cat_norm in ("cafes", "cafe", "café") and s_cat not in ("cafes", "book_cafes"):
@@ -870,7 +844,6 @@ def filter_and_paginate_vendors(
             elif cat_norm in ("activities", "activity") and s_cat != "activities":
                 continue
 
-        # 2. Sector filter (optional)
         if sec_norm and sec_norm not in ("all", "all sectors", "any"):
             s_sec = (s.get("sector") or "").lower()
             s_addr = (s.get("address") or "").lower()
@@ -897,7 +870,6 @@ def filter_and_paginate_vendors(
                 elif sec_norm not in s_sec and sec_norm not in s_addr:
                     continue
 
-        # 3. Budget filter (strict: unknown prices never pass numeric budget limits)
         b_norm = (budget or "any").lower()
         if "under" in b_norm:
             limit = None
@@ -925,7 +897,6 @@ def filter_and_paginate_vendors(
                 if "not available" in price_str:
                     continue
 
-        # 4. Rating filter (only for places with actual ratings)
         if min_rating is not None and min_rating > 0:
             raw_r = s.get("rating")
             if raw_r is None or raw_r == "Not available":
@@ -936,14 +907,12 @@ def filter_and_paginate_vendors(
             except (ValueError, TypeError):
                 continue
 
-        # 5. Vibe filter (optional)
         if vibe and vibe.lower() not in ("any vibe", "all", ""):
             if (s.get("vibe") or "").lower() != vibe.lower():
                 continue
 
         filtered.append(s)
 
-    # Sort: Higher ratings / student-friendly first
     def sort_key(item: Dict[str, Any]) -> float:
         score = 50.0
         r_str = item.get("rating")

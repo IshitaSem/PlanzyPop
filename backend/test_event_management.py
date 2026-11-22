@@ -47,7 +47,6 @@ def test_create_event(client: TestClient, sample_event_payload):
     assert created["budget"] == 2500.0
     assert created["location"] == sample_event_payload["location"]
 
-    # Cleanup
     client.delete(f"/events/{created['id']}")
 
 
@@ -62,7 +61,6 @@ def test_get_all_events(client: TestClient, sample_event_payload):
     assert isinstance(events, list)
     assert any(e["id"] == event_id for e in events)
 
-    # Cleanup
     client.delete(f"/events/{event_id}")
 
 
@@ -78,7 +76,6 @@ def test_get_event_by_id(client: TestClient, sample_event_payload):
     assert event["event_name"] == sample_event_payload["event_name"]
     assert event["location"] == "Hostel Common Room, Block B"
 
-    # Cleanup
     client.delete(f"/events/{event_id}")
 
 
@@ -100,7 +97,6 @@ def test_update_event(client: TestClient, sample_event_payload):
     assert updated["location"] == "Hostel Rooftop Garden"
     assert updated["event_name"] == sample_event_payload["event_name"]
 
-    # Cleanup
     client.delete(f"/events/{event_id}")
 
 
@@ -114,7 +110,6 @@ def test_event_not_found_errors(client: TestClient):
 
 def test_event_validation_errors(client: TestClient):
     """Verify that invalid inputs return HTTP 422 Unprocessable Entity."""
-    # Negative budget
     res = client.post("/events", json={
         "event_name": "Invalid Budget Event",
         "event_type": "Party",
@@ -123,7 +118,6 @@ def test_event_validation_errors(client: TestClient):
     })
     assert res.status_code == 422
 
-    # Negative guests
     res = client.post("/events", json={
         "event_name": "Invalid Guests Event",
         "event_type": "Party",
@@ -132,7 +126,6 @@ def test_event_validation_errors(client: TestClient):
     })
     assert res.status_code == 422
 
-    # Blank event_name
     res = client.post("/events", json={
         "event_name": "   ",
         "event_type": "Party",
@@ -140,7 +133,6 @@ def test_event_validation_errors(client: TestClient):
     })
     assert res.status_code == 422
 
-    # Missing required event_type
     res = client.post("/events", json={"event_name": "No Type Event"})
     assert res.status_code == 422
 
@@ -153,7 +145,6 @@ def test_delete_event(client: TestClient, sample_event_payload):
     res_del = client.delete(f"/events/{event_id}")
     assert res_del.status_code == 200
 
-    # Ensure event no longer exists
     assert client.get(f"/events/{event_id}").status_code == 404
 
 

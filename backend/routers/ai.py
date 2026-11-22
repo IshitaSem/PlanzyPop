@@ -13,9 +13,6 @@ from suggestions import generate_event_suggestions
 router = APIRouter(prefix="/api", tags=["AI Planner & Chat"])
 
 
-# ============================================================================
-# Schemas for AI Planner (/api/plan)
-# ============================================================================
 
 class BudgetAllocationItem(BaseModel):
     category: str
@@ -65,9 +62,6 @@ class PlanResponse(BaseModel):
     errorMessage: Optional[str] = None
 
 
-# ============================================================================
-# Schemas for AI Chat (/api/chat)
-# ============================================================================
 
 class ChatRequest(BaseModel):
     message: str = Field(..., max_length=2000, min_length=1, description="User question or request")
@@ -83,9 +77,6 @@ class ChatResponse(BaseModel):
     errorMessage: Optional[str] = None
 
 
-# ============================================================================
-# Endpoints
-# ============================================================================
 
 @router.post(
     "/plan",

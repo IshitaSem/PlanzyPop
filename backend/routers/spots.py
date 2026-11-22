@@ -19,6 +19,7 @@ import schemas
 import spots_service
 import geoapify_client
 import chandigarh_boundary
+from auth_utils import get_current_user_optional
 
 logger = logging.getLogger("planzypop.spots_router")
 
@@ -56,6 +57,7 @@ def search_spots(
     page: Optional[int] = Query(1, ge=1, description="Page number for pagination"),
     page_size: Optional[int] = Query(15, ge=1, le=50, description="Items per page"),
     user_id: Optional[str] = Query("guest_default", description="User or guest session identifier"),
+    current_user: Optional[models.User] = Depends(get_current_user_optional),
     db: Session = Depends(get_db)
 ):
     """
@@ -69,10 +71,9 @@ def search_spots(
     5. Deduplication across Geoapify, OpenStreetMap, and authentic curated venues.
     6. Server-side pagination and honest data handling.
     """
-    uid = user_id or "guest_default"
+    uid = str(current_user.id) if current_user else (user_id or "guest_default")
     clean_loc = (location or "").strip()
 
-    # Pre-fetch saved favorite IDs for this user
     saved_spot_ids = set()
     try:
         fav_records = db.query(models.SavedSpot.spot_id).filter(
@@ -82,7 +83,6 @@ def search_spots(
     except Exception:
         pass
 
-    # CASE A: GPS / Explicit coordinate search
     if latitude is not None or longitude is not None:
         if latitude is None or longitude is None:
             raise HTTPException(
@@ -98,7 +98,6 @@ def search_spots(
         center_lon = float(longitude)
         location_name = clean_loc or f"Coordinates ({center_lat:.4f}, {center_lon:.4f})"
 
-        # Strict validation: Coordinates must lie within Chandigarh UT boundary polygon
         if not chandigarh_boundary.is_point_in_chandigarh(center_lat, center_lon):
             return schemas.SpotSearchResponse(
                 status="outside_chandigarh",
@@ -202,15 +201,12 @@ def search_spots(
             spots=spot_items
         )
 
-    # CASE B: AUTOMATIC TERRITORY-WIDE DISCOVERY
-    # If location is explicitly passed as empty or whitespace (e.g. '?location='), reject with 400
     if location is not None and not clean_loc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Please provide a valid location name or geographic coordinates (latitude and longitude)."
         )
 
-    # Triggers automatic discovery when location is omitted, or generic 'Chandigarh'
     is_territory_discovery = (
         location is None or
         clean_loc.lower() in (
@@ -292,10 +288,8 @@ def search_spots(
             spots=spot_items
         )
 
-    # CASE C: Explicit Sector or Landmark Search
     search_query = clean_loc
 
-    # Reject explicitly excluded neighboring cities upfront
     if chandigarh_boundary.is_explicitly_excluded_text(search_query):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -419,6 +413,7 @@ def get_chandigarh_sectors():
 )
 def save_favorite(
     fav: schemas.FavoriteCreate,
+    current_user: Optional[models.User] = Depends(get_current_user_optional),
     db: Session = Depends(get_db)
 ):
     """
@@ -431,7 +426,7 @@ def save_favorite(
             detail="Cannot bookmark spot: venue coordinates are outside Chandigarh Union Territory."
         )
 
-    uid = fav.user_id or "guest_default"
+    uid = str(current_user.id) if current_user else (fav.user_id or "guest_default")
     existing = db.query(models.SavedSpot).filter(
         models.SavedSpot.user_id == uid,
         models.SavedSpot.spot_id == fav.spot_id
@@ -468,12 +463,13 @@ def save_favorite(
 )
 def get_favorites(
     user_id: Optional[str] = Query("guest_default", description="User or guest session identifier"),
+    current_user: Optional[models.User] = Depends(get_current_user_optional),
     db: Session = Depends(get_db)
 ):
     """
     Retrieves all bookmarked spots for the specific user or isolated guest session.
     """
-    uid = user_id or "guest_default"
+    uid = str(current_user.id) if current_user else (user_id or "guest_default")
     favs = db.query(models.SavedSpot).filter(
         models.SavedSpot.user_id == uid
     ).order_by(models.SavedSpot.saved_at.desc()).all()
@@ -487,12 +483,13 @@ def get_favorites(
 def remove_favorite(
     spot_id: str,
     user_id: Optional[str] = Query("guest_default", description="User or guest session identifier"),
+    current_user: Optional[models.User] = Depends(get_current_user_optional),
     db: Session = Depends(get_db)
 ):
     """
     Deletes a saved spot from the user's favorites by spot_id or database ID.
     """
-    uid = user_id or "guest_default"
+    uid = str(current_user.id) if current_user else (user_id or "guest_default")
     query = db.query(models.SavedSpot).filter(models.SavedSpot.user_id == uid)
     if spot_id.isdigit():
         fav = query.filter((models.SavedSpot.id == int(spot_id)) | (models.SavedSpot.spot_id == spot_id)).first()
@@ -533,13 +530,14 @@ def get_spot_photo(photo_ref: str):
 def get_spot_details(
     spot_id: str,
     user_id: Optional[str] = Query("guest_default"),
+    current_user: Optional[models.User] = Depends(get_current_user_optional),
     db: Session = Depends(get_db)
 ):
     """
     Retrieves information for a single spot by ID.
     Looks up in SQLite saved spots, Geoapify, or curated Chandigarh spots dataset.
     """
-    uid = user_id or "guest_default"
+    uid = str(current_user.id) if current_user else (user_id or "guest_default")
     saved = db.query(models.SavedSpot).filter(
         models.SavedSpot.spot_id == spot_id,
         models.SavedSpot.user_id == uid

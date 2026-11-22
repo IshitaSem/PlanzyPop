@@ -66,7 +66,6 @@ def test_create_and_timeline_sorting(client: TestClient, test_event):
     future_date_1 = (date.today() + timedelta(days=3)).isoformat()
     future_date_2 = (date.today() + timedelta(days=5)).isoformat()
 
-    # Create 4 tasks
     t_past = client.post(f"/events/{event_id}/tasks", json={"task_name": "Book Venue", "due_date": past_date}).json()
     t_fut1 = client.post(f"/events/{event_id}/tasks", json={"task_name": "Order Gifts", "due_date": future_date_1}).json()
     t_nodate = client.post(f"/events/{event_id}/tasks", json={"task_name": "Music Playlist"}).json()
@@ -109,21 +108,18 @@ def test_task_status_toggle_and_overdue_logic(client: TestClient, test_event):
     past_date = (date.today() - timedelta(days=2)).isoformat()
     future_date = (date.today() + timedelta(days=4)).isoformat()
 
-    # Overdue task (past date, incomplete)
     t_overdue = client.post(f"/events/{event_id}/tasks", json={
         "task_name": "Overdue Task",
         "due_date": past_date,
         "is_completed": False
     }).json()
 
-    # Regular future task
     t_future = client.post(f"/events/{event_id}/tasks", json={
         "task_name": "Future Task",
         "due_date": future_date,
         "is_completed": False
     }).json()
 
-    # Initial summary: 2 total, 0 completed, 2 pending, 1 overdue, 0% progress
     s1 = client.get(f"/events/{event_id}/tasks/summary").json()
     assert s1["total_tasks"] == 2
     assert s1["completed_tasks"] == 0
@@ -131,14 +127,12 @@ def test_task_status_toggle_and_overdue_logic(client: TestClient, test_event):
     assert s1["overdue_tasks"] == 1
     assert s1["progress_percentage"] == 0.0
 
-    # Mark the overdue task as completed
     client.put(f"/tasks/{t_overdue['id']}", json={"is_completed": True})
     s2 = client.get(f"/events/{event_id}/tasks/summary").json()
     assert s2["completed_tasks"] == 1
     assert s2["overdue_tasks"] == 0  # Completed overdue task is NOT counted as overdue
     assert s2["progress_percentage"] == 50.0
 
-    # Toggle it back to pending
     client.put(f"/tasks/{t_overdue['id']}", json={"is_completed": False})
     s3 = client.get(f"/events/{event_id}/tasks/summary").json()
     assert s3["completed_tasks"] == 0
@@ -153,10 +147,8 @@ def test_delete_task_and_summary_update(client: TestClient, test_event):
     t2 = client.post(f"/events/{event_id}/tasks", json={"task_name": "Task 2", "is_completed": False}).json()
     t3 = client.post(f"/events/{event_id}/tasks", json={"task_name": "Task 3", "is_completed": False}).json()
 
-    # Delete task 3
     assert client.delete(f"/tasks/{t3['id']}").status_code == 200
 
-    # Now 2 tasks remaining, 1 completed = 50.0% progress
     summary = client.get(f"/events/{event_id}/tasks/summary").json()
     assert summary["total_tasks"] == 2
     assert summary["completed_tasks"] == 1
@@ -168,20 +160,15 @@ def test_task_validation_errors(client: TestClient, test_event):
     event_id = test_event["id"]
     t = client.post(f"/events/{event_id}/tasks", json={"task_name": "Valid Name"}).json()
 
-    # Blank task name
     assert client.post(f"/events/{event_id}/tasks", json={"task_name": "   "}).status_code == 422
     assert client.put(f"/tasks/{t['id']}", json={"task_name": "   "}).status_code == 422
 
-    # Null task name
     assert client.put(f"/tasks/{t['id']}", json={"task_name": None}).status_code == 422
 
-    # Invalid calendar date
     assert client.post(f"/events/{event_id}/tasks", json={"task_name": "Bad Date", "due_date": "2026-13-45"}).status_code == 422
 
-    # Non-ISO date
     assert client.post(f"/events/{event_id}/tasks", json={"task_name": "Bad Date", "due_date": "2026/11/20"}).status_code == 422
 
-    # Relative text date
     assert client.put(f"/tasks/{t['id']}", json={"due_date": "tomorrow"}).status_code == 422
 
 
@@ -194,7 +181,6 @@ def test_task_not_found_and_cascade_deletion(client: TestClient):
     assert client.put(f"/tasks/{ghost_id}", json={"task_name": "Ghost"}).status_code == 404
     assert client.delete(f"/tasks/{ghost_id}").status_code == 404
 
-    # Create event and task to test cascade
     res_ev = client.post("/events", json={
         "event_name": "Cascade Task Event",
         "event_type": "Farewell",
@@ -205,10 +191,8 @@ def test_task_not_found_and_cascade_deletion(client: TestClient):
     res_t = client.post(f"/events/{ev_id}/tasks", json={"task_name": "Orphaned Task"})
     t_id = res_t.json()["id"]
 
-    # Delete event
     client.delete(f"/events/{ev_id}")
 
-    # Task should be gone
     assert client.put(f"/tasks/{t_id}", json={"is_completed": True}).status_code == 404
 
 

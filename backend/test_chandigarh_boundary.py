@@ -76,7 +76,6 @@ def test_search_endpoint_rejects_outside_coordinates():
     Verifies that querying /api/spots/search with coordinates in Mohali, Panchkula,
     or Zirakpur returns status="outside_chandigarh" with 0 spots and an informative message.
     """
-    # 1. Mohali Phase 3B2
     resp_mohali = client.get("/api/spots/search?latitude=30.7107&longitude=76.7118")
     assert resp_mohali.status_code == 200
     data_mohali = resp_mohali.json()
@@ -85,14 +84,12 @@ def test_search_endpoint_rejects_outside_coordinates():
     assert data_mohali["spots"] == []
     assert "outside Chandigarh" in data_mohali["message"]
 
-    # 2. Panchkula Sector 5
     resp_panchkula = client.get("/api/spots/search?latitude=30.6923&longitude=76.8617")
     assert resp_panchkula.status_code == 200
     data_panchkula = resp_panchkula.json()
     assert data_panchkula["status"] == "outside_chandigarh"
     assert data_panchkula["total_found"] == 0
 
-    # 3. Zirakpur VIP Road
     resp_zirakpur = client.get("/api/spots/search?latitude=30.6425&longitude=76.8173")
     assert resp_zirakpur.status_code == 200
     data_zirakpur = resp_zirakpur.json()
@@ -164,7 +161,6 @@ def test_budget_filter_excludes_unknown_price():
     """
     Verifies that places with 'Price not available' do NOT pass strict numeric budget filters.
     """
-    # Query with budget "Under ₹100"
     resp = client.get("/api/spots/search?location=Sector%2017&budget=Under%20%E2%82%B9100")
     assert resp.status_code == 200
     data = resp.json()
@@ -184,11 +180,9 @@ def test_empty_results_no_fallback_outside():
     Verifies that if a query with tight filters yields no results,
     it returns total_found=0 and does NOT fallback to outside cities.
     """
-    # Tight filter for non-existent category in small radius
     resp = client.get("/api/spots/search?location=Sector%2017&category=activities&budget=Under%20%E2%82%B9100&distance=Within%202%20km&vibe=Peaceful")
     assert resp.status_code == 200
     data = resp.json()
-    # Spots returned (if any) must be strictly inside Chandigarh
     for s in data["spots"]:
         assert chandigarh_boundary.is_point_in_chandigarh(s["latitude"], s["longitude"]) is True
 
@@ -198,7 +192,6 @@ def test_geoapify_formatting_filters_outside_places():
     Verifies that geoapify_client.format_geoapify_place returns None
     for features whose coordinates are outside Chandigarh UT.
     """
-    # Feature in Mohali
     mohali_feature = {
         "properties": {
             "name": "Mohali Cafe Lounge",
@@ -211,7 +204,6 @@ def test_geoapify_formatting_filters_outside_places():
     result = geoapify_client.format_geoapify_place(mohali_feature)
     assert result is None, "Place in Mohali should be rejected by formatter!"
 
-    # Feature in Chandigarh Sector 17
     chd_feature = {
         "properties": {
             "name": "Sector 17 Special Coffee",

@@ -15,13 +15,11 @@ Run this script to verify:
 import sys
 import os
 
-# Safe UTF-8 console output on Windows
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
 if hasattr(sys.stderr, "reconfigure"):
     sys.stderr.reconfigure(encoding="utf-8")
 
-# Ensure backend directory is in the module search path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from starlette.testclient import TestClient
@@ -34,7 +32,6 @@ def run_stage3_tests():
 
     client = TestClient(app)
 
-    # 1. CREATE an Event (POST /events)
     payload = {
         "event_name": "Rohan's Hostel Birthday Party",
         "event_type": "Birthday",
@@ -53,7 +50,6 @@ def run_stage3_tests():
     assert created["budget"] == 2500.0
     print(f"[PASS] POST /events created event successfully (ID: {event_id})")
 
-    # 2. GET All Events (GET /events)
     res = client.get("/events")
     assert res.status_code == 200, f"Expected 200, got {res.status_code}"
     events = res.json()
@@ -61,7 +57,6 @@ def run_stage3_tests():
     assert any(e["id"] == event_id for e in events)
     print(f"[PASS] GET /events returned {len(events)} event(s)")
 
-    # 3. GET Event by ID (GET /events/{id})
     res = client.get(f"/events/{event_id}")
     assert res.status_code == 200, f"Expected 200, got {res.status_code}"
     event = res.json()
@@ -69,7 +64,6 @@ def run_stage3_tests():
     assert event["location"] == "Hostel Common Room, Block B"
     print(f"[PASS] GET /events/{event_id} retrieved matching record")
 
-    # 4. UPDATE Event (PUT /events/{id})
     update_payload = {
         "budget": 3000.0,
         "guests": 18,
@@ -84,7 +78,6 @@ def run_stage3_tests():
     assert updated["event_name"] == payload["event_name"]
     print(f"[PASS] PUT /events/{event_id} updated fields correctly")
 
-    # 5. 404 NOT FOUND for non-existent event ID
     ghost_id = 999999
     res = client.get(f"/events/{ghost_id}")
     assert res.status_code == 404, f"Expected 404, got {res.status_code}"
@@ -98,7 +91,6 @@ def run_stage3_tests():
     assert res.status_code == 404, f"Expected 404, got {res.status_code}"
     print(f"[PASS] DELETE /events/{ghost_id} correctly returned 404 Not Found")
 
-    # 6. DATA VALIDATION (422 Unprocessable Entity)
     res = client.post("/events", json={
         "event_name": "Invalid Budget Event",
         "event_type": "Party",
@@ -129,12 +121,10 @@ def run_stage3_tests():
     assert res.status_code == 422, f"Expected 422, got {res.status_code}"
     print("[PASS] Rejected missing required fields with HTTP 422")
 
-    # 7. DELETE Event (DELETE /events/{id})
     res = client.delete(f"/events/{event_id}")
     assert res.status_code == 200, f"Expected 200, got {res.status_code}"
     print(f"[PASS] DELETE /events/{event_id} deleted successfully")
 
-    # Verify event no longer exists
     res = client.get(f"/events/{event_id}")
     assert res.status_code == 404
     print(f"[PASS] Verified event {event_id} no longer exists in database")

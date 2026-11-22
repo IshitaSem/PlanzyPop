@@ -181,3 +181,72 @@ The café and venue discovery feature connects hosts to verified local businesse
 3. **Real-time Connection Indicator:** The global desktop header checks the backend `/health` endpoint and displays a live indicator:
    - Green `LIVE API` badge when the server is connected.
    - Amber `OFFLINE` badge if the backend is paused.
+
+---
+
+## 9. User Authentication & Session Data Isolation
+
+PlanzyPop implements user authentication with strict account data isolation:
+
+```
+[User Registration / Login]
+           │
+           ▼
+[FastAPI /auth/register or /auth/login]
+           │
+           ├── Passwords hashed using bcrypt
+           ├── Cryptographically random Bearer token generated
+           └── Stored in 'user_tokens' table referencing 'users.id'
+           │
+           ▼ HTTP Response: { access_token, user }
+[Frontend AuthContext]
+           │
+           ├── Stores token in localStorage ('planzypop_auth_token')
+           └── Automatically injects 'Authorization: Bearer <token>' in all API requests
+```
+
+### Data Isolation Rules:
+1. **Authenticated Users:**
+   - All `GET /events` requests filter events by `Event.user_id == current_user.id`.
+   - All `POST /events` automatically assign the authenticated user's ID on the server.
+   - All `PUT` and `DELETE` operations verify record ownership before modification.
+   - Newly created accounts start with a completely empty dashboard (no sample/demo data).
+2. **Guest Demo Mode:**
+   - When a user enters Guest Mode, the application displays curated sample celebrations, budgets, and tasks for demonstration purposes.
+   - Guest actions never overwrite or pollute database records belonging to registered accounts.
+   - If an authenticated user's API request fails, the application displays an error message rather than silently falling back to demo records.
+
+---
+
+## 10. PopSpots Geofenced Venue Discovery & Ray-Casting
+
+PopSpots provides authentic local hangout discovery strictly geofenced within Chandigarh Union Territory:
+
+```
+[User Searches or Browses PopSpots]
+           │
+           ▼
+[Coordinate / Sector Input]
+           │
+           ▼
+[Point-in-Polygon Ray Casting: chandigarh_boundary.py]
+           ├── Inside Chandigarh UT Boundary ──> Allowed
+           └── Outside Chandigarh Boundary ─────> Rejection (HTTP 400 Bad Request)
+           │
+           ▼
+[Venue Aggregation: spots_service.py]
+           ├── Geoapify Places API v2 (live places, bakeries, cafes)
+           ├── OpenStreetMap Overpass API (student hangout POIs)
+           └── Curated Authentic Chandigarh Sector Venues
+           │
+           ▼
+[Deduplication & Distance Computation]
+Calculates Haversine distance from search center and sorts by proximity/rating.
+           │
+           ▼
+[Interactive Leaflet Map & Bookmarks in SQLite]
+```
+
+- **Algorithm:** The ray-casting algorithm counts boundary intersections along a horizontal ray cast from the query coordinates:
+  $$\text{inside} = (\text{intersection\_count} \pmod 2) == 1$$
+- **Rejection of Surrounding Towns:** Coordinates or locations outside Chandigarh UT (such as Mohali, Panchkula, Zirakpur, or Kharar) are rejected to ensure genuine municipal data alignment.

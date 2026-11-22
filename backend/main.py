@@ -12,7 +12,6 @@ Core FastAPI Application Entry Point:
 import sys
 from pathlib import Path
 
-# Ensure backend directory is in the module search path
 BACKEND_DIR = Path(__file__).resolve().parent
 if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
@@ -22,12 +21,23 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from database import engine
 import models
-from routers import events, expenses, tasks, suggestions, spots, ai
+from routers import events, expenses, tasks, suggestions, spots, ai, auth
 
-# Automatically create all database tables (events, expenses, tasks, saved_spots) defined in models.py
-models.Base.metadata.create_all(bind=engine)
+def init_db():
+    models.Base.metadata.create_all(bind=engine)
+    try:
+        from sqlalchemy import inspect, text
+        inspector = inspect(engine)
+        if "events" in inspector.get_table_names():
+            cols = [c["name"] for c in inspector.get_columns("events")]
+            if "user_id" not in cols:
+                with engine.begin() as conn:
+                    conn.execute(text("ALTER TABLE events ADD COLUMN user_id VARCHAR(100)"))
+    except Exception:
+        pass
 
-# Initialize FastAPI application
+init_db()
+
 app = FastAPI(
     title="PlanzyPop - Event Planning and Budget Management System",
     description=(
@@ -37,7 +47,6 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Configure CORS (Cross-Origin Resource Sharing)
 origins = [
     "https://planzy-pop.vercel.app",
     "https://planzy-pop.vercel.app/",
@@ -62,9 +71,6 @@ app.add_middleware(
 )
 
 
-# ============================================================================
-# Basic System Endpoints (Stage 1)
-# ============================================================================
 
 @app.get("/", tags=["General"], summary="Root endpoint & service information")
 def read_root():
@@ -90,9 +96,6 @@ def health_check():
     }
 
 
-# ============================================================================
-# Mount Modular Domain Routers
-# ============================================================================
 
 app.include_router(events.router)
 app.include_router(expenses.router)
@@ -100,11 +103,9 @@ app.include_router(tasks.router)
 app.include_router(suggestions.router)
 app.include_router(spots.router)
 app.include_router(ai.router)
+app.include_router(auth.router)
 
 
-# ============================================================================
-# Backward Compatibility Re-exports
-# ============================================================================
 
 create_event = events.create_event
 get_all_events = events.get_all_events

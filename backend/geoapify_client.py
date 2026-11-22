@@ -28,7 +28,6 @@ load_dotenv(dotenv_path=_env_path)
 GEOAPIFY_PLACES_URL = "https://api.geoapify.com/v2/places"
 GEOAPIFY_DETAILS_URL = "https://api.geoapify.com/v2/place-details"
 
-# Mapping PopSpots category IDs to Geoapify Places API v2 categories
 GEOAPIFY_CATEGORY_MAP: Dict[str, str] = {
     "all": (
         "catering.cafe,catering.restaurant,catering.fast_food,catering.food_court,"
@@ -167,7 +166,6 @@ def format_geoapify_place(feature: Dict[str, Any], center_lat: Optional[float] =
     lat = float(lat)
     lon = float(lon)
 
-    # STRICT CHANDIGARH VALIDATION
     if not chandigarh_boundary.is_point_in_chandigarh(lat, lon):
         return None
 
@@ -182,7 +180,6 @@ def format_geoapify_place(feature: Dict[str, Any], center_lat: Optional[float] =
     cat_id, cat_label = _classify_geoapify_categories(raw_categories, raw_name)
     vibe, occasion = _infer_geoapify_vibe_and_occasion(cat_id, raw_name)
 
-    # Address resolution
     address = properties.get("formatted") or properties.get("address_line2") or properties.get("street")
     if not address:
         parts = []
@@ -194,28 +191,23 @@ def format_geoapify_place(feature: Dict[str, Any], center_lat: Optional[float] =
             parts.append(properties["city"])
         address = ", ".join(parts) if parts else "Chandigarh, India"
 
-    # Opening hours
     opening_hours = properties.get("opening_hours") or properties.get("datasource", {}).get("raw", {}).get("opening_hours")
     if not opening_hours:
         opening_hours = "Not available"
 
-    # Price information: Honest handling without fabrication
     price_info = "Price not available"
     if cat_id == "parks":
         price_info = "Free entry"
     elif "dhaba" in raw_name.lower() or "chai" in raw_name.lower():
         price_info = "Under ₹150"
 
-    # Distance calculation
     distance_km = None
     if center_lat is not None and center_lon is not None:
         import spots_service
         distance_km = spots_service.haversine_distance_km(center_lat, center_lon, lat, lon)
 
-    # Contact / Website
     website_uri = properties.get("website") or properties.get("contact", {}).get("website")
 
-    # Sector extraction
     sector = None
     sec_match = re.search(r"Sector\s*(\d+[A-Za-z]?)", address, re.IGNORECASE)
     if sec_match:
@@ -225,10 +217,8 @@ def format_geoapify_place(feature: Dict[str, Any], center_lat: Optional[float] =
     elif "sukhna" in address.lower():
         sector = "Sukhna Lake (Sector 1)"
 
-    # Photo URL (only if real image is present in source)
     photo_url = properties.get("image") or properties.get("wiki_and_media", {}).get("image")
 
-    # Description (from brand, cuisine, or verified tags)
     description = properties.get("description") or properties.get("catering", {}).get("cuisine")
 
     return {
@@ -284,7 +274,6 @@ def search_geoapify_places(
     if not key:
         raise GeoapifyUnconfiguredError("Geoapify API key is not configured in backend/.env.")
 
-    # Validate center is within Chandigarh
     if not chandigarh_boundary.is_point_in_chandigarh(center_lat, center_lon):
         return []
 
@@ -314,7 +303,6 @@ def search_geoapify_places(
             for f in features:
                 item = format_geoapify_place(f, center_lat=center_lat, center_lon=center_lon)
                 if item:
-                    # Deduplicate by normalized name
                     norm_n = item["name"].lower().strip()
                     if norm_n not in seen_names:
                         seen_names.add(norm_n)

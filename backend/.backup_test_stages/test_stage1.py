@@ -11,13 +11,11 @@ Run this script to verify:
 import sys
 import os
 
-# Safe UTF-8 console output on Windows
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
 if hasattr(sys.stderr, "reconfigure"):
     sys.stderr.reconfigure(encoding="utf-8")
 
-# Ensure the current directory (backend/) is in the Python module search path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 def run_checks():
@@ -28,7 +26,6 @@ def run_checks():
     print(f"Python Version     : {sys.version.split()[0]}")
     print("-" * 60)
 
-    # 1. Dependency checks
     try:
         import fastapi
         print(f"[PASS] FastAPI installed (version: {fastapi.__version__})")
@@ -57,7 +54,6 @@ def run_checks():
         print(f"[FAIL] HTTPX not found: {e}")
         return False
 
-    # 2. Application import check
     try:
         from main import app
         print(f"[PASS] Successfully loaded 'app' from main.py ('{app.title}')")
@@ -65,18 +61,15 @@ def run_checks():
         print(f"[FAIL] Could not import 'app' from main.py: {e}")
         return False
 
-    # 3. Endpoint testing with Starlette TestClient
     try:
         from starlette.testclient import TestClient
         client = TestClient(app)
 
-        # Test '/'
         res_root = client.get("/")
         assert res_root.status_code == 200, f"Expected 200, got {res_root.status_code}"
         assert res_root.json().get("status") == "online"
         print(f"[PASS] GET '/' returned 200 OK -> {res_root.json()}")
 
-        # Test '/health'
         res_health = client.get("/health")
         assert res_health.status_code == 200, f"Expected 200, got {res_health.status_code}"
         assert res_health.json().get("status") == "healthy"

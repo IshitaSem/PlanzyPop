@@ -19,7 +19,6 @@ import re
 from typing import Dict, List, Optional, Any, Tuple
 
 
-# Known common food items to detect in authentic review comments
 COMMON_FOOD_ITEMS = [
     "cold coffee", "hazelnut cold coffee", "filter coffee", "masala chai", "adrak chai",
     "paneer tikka", "paneer roll", "butter chicken", "dal makhani", "chole bhature",
@@ -33,7 +32,6 @@ COMMON_FOOD_ITEMS = [
     "cheesecake", "brownie", "hot chocolate brownie", "waffle", "pastry"
 ]
 
-# Negative sentiment indicator patterns for common complaints
 COMPLAINT_PATTERNS = [
     (r"\b(slow|delayed|waiting|wait time|waited too long)\b", "Slow service / long wait times during rush"),
     (r"\b(overpriced|expensive|not worth|pricey|costly)\b", "Priced higher than average for portion size"),
@@ -65,7 +63,6 @@ def extract_dish_recommendations(reviews: List[Dict[str, Any]]) -> List[Dict[str
 
     for rev in reviews:
         rating = rev.get("rating", 0)
-        # Only consider positive reviews (rating >= 4 or rating is absent)
         if rating is not None and rating < 4:
             continue
 
@@ -84,7 +81,6 @@ def extract_dish_recommendations(reviews: List[Dict[str, Any]]) -> List[Dict[str
 
         for dish in COMMON_FOOD_ITEMS:
             if dish in text_lower and dish not in seen_dishes:
-                # Find matching sentence
                 sentences = re.split(r"[.!?\n]", raw_text)
                 matching_sentence = ""
                 for s in sentences:
@@ -129,14 +125,12 @@ def extract_sentiment_highlights(reviews: List[Dict[str, Any]]) -> Tuple[List[st
         text_lower = raw_text.lower()
         rating = rev.get("rating")
 
-        # Positives
         if rating is None or rating >= 4:
             for pattern, label in POSITIVE_PATTERNS:
                 if label not in seen_pos and re.search(pattern, text_lower):
                     seen_pos.add(label)
                     positives.append(label)
 
-        # Complaints
         if rating is None or rating <= 3:
             for pattern, label in COMPLAINT_PATTERNS:
                 if label not in seen_neg and re.search(pattern, text_lower):

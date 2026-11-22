@@ -16,11 +16,7 @@ Viva Concept (Data Science & Expert Systems):
 from typing import Dict, List, Any
 
 
-# ============================================================================
-# 1. Knowledge Base: Configurable Thresholds & Category Weights
-# ============================================================================
 
-# Budget Tier Thresholds in INR (₹)
 TIER_ZERO = "Zero Budget / Free Celebration"
 TIER_VERY_LOW = "Very Low Budget (Under ₹1,500)"
 TIER_LOW = "Low Budget (₹1,500 – ₹4,000)"
@@ -28,7 +24,6 @@ TIER_MODERATE = "Moderate Budget (₹4,000 – ₹10,000)"
 TIER_HIGH = "Higher Budget (Above ₹10,000)"
 
 # Budget Allocation Ratios per Event Type (Each set must sum to 100%)
-# In your viva: Weight matrices represent domain heuristics on spending priorities.
 CATEGORY_ALLOCATION_RULES: Dict[str, Dict[str, float]] = {
     "birthday": {
         "Food": 40.0,
@@ -82,9 +77,6 @@ CATEGORY_ALLOCATION_RULES: Dict[str, Dict[str, float]] = {
 }
 
 
-# ============================================================================
-# 2. Rule Classification Helpers
-# ============================================================================
 
 def normalize_event_type(raw_type: str) -> str:
     """
@@ -138,9 +130,6 @@ def classify_budget_tier(budget: float) -> str:
         return TIER_HIGH
 
 
-# ============================================================================
-# 3. Budget Allocation Calculation
-# ============================================================================
 
 def compute_budget_allocation(event_type_key: str, budget: float) -> List[Dict[str, Any]]:
     """
@@ -152,7 +141,6 @@ def compute_budget_allocation(event_type_key: str, budget: float) -> List[Dict[s
     accumulated_amount = 0.0
 
     if budget <= 0.0:
-        # Zero budget event: all allocated amounts are strictly 0.0
         for category, pct in ratios.items():
             allocations.append({
                 "category": category,
@@ -161,7 +149,6 @@ def compute_budget_allocation(event_type_key: str, budget: float) -> List[Dict[s
             })
         return allocations
 
-    # For positive budgets, calculate proportional share
     for category, pct in ratios.items():
         amount = round(budget * (pct / 100.0), 2)
         allocations.append({
@@ -180,9 +167,6 @@ def compute_budget_allocation(event_type_key: str, budget: float) -> List[Dict[s
     return allocations
 
 
-# ============================================================================
-# 4. Inference Engine: Recommendation Rules
-# ============================================================================
 
 def generate_event_suggestions(
     event_type: str,
@@ -198,23 +182,17 @@ def generate_event_suggestions(
     style_key = normalize_style(celebration_style)
     budget_tier = classify_budget_tier(budget)
 
-    # 1. Determine Suggested Theme
     theme = _rule_theme(event_key, style_key, budget_tier)
 
-    # 2. Determine Food Suggestions
     food = _rule_food(event_key, style_key, budget_tier, guests)
 
-    # 3. Determine Decoration Suggestions
     decorations = _rule_decorations(event_key, style_key, budget_tier)
 
-    # 4. Determine Activity Suggestions
     activities = _rule_activities(event_key, style_key, guests)
 
-    # 5. Compute Precise Category Allocations
     allocations = compute_budget_allocation(event_key, budget)
     total_allocated = round(sum(item["allocated_amount"] for item in allocations), 2)
 
-    # 6. Synthesize Budget-Saving Tips
     saving_tips = _rule_budget_tips(budget_tier, guests, event_key)
 
     disclaimer = (
@@ -239,9 +217,6 @@ def generate_event_suggestions(
     }
 
 
-# ============================================================================
-# Rule Sub-Functions (Production Rules)
-# ============================================================================
 
 def _rule_theme(event_key: str, style_key: str, tier: str) -> str:
     """Selects an affordable, stylish event theme based on event type, style, and budget."""
@@ -285,7 +260,6 @@ def _rule_food(event_key: str, style_key: str, tier: str, guests: int) -> List[s
     """Generates food items considering budget tier, event type, and guest scaling."""
     food_list = []
 
-    # Free / Zero-budget fallback
     if tier == TIER_ZERO:
         return [
             "Potluck style: Each friend brings one homemade snack or finger food",
@@ -293,7 +267,6 @@ def _rule_food(event_key: str, style_key: str, tier: str, guests: int) -> List[s
             "Sharing favorite hostel snacks or homemade cookies"
         ]
 
-    # Very Low Budget (under 1500)
     if tier == TIER_VERY_LOW:
         food_list.append("Affordable local samosas, kachoris, or aloo patties")
         food_list.append("Homemade popcorn, spiced chips, and mixed biscuits")
@@ -303,7 +276,6 @@ def _rule_food(event_key: str, style_key: str, tier: str, guests: int) -> List[s
         elif event_key == "hostel party":
             food_list.append("Late-night customized Maggi noodles bar with toppings")
 
-    # Low Budget (1500 - 4000)
     elif tier == TIER_LOW:
         food_list.append("Pani Puri / Chaat DIY DIY table or sandwich platter")
         food_list.append("Spring rolls, crispy fries, and dips")
@@ -313,7 +285,6 @@ def _rule_food(event_key: str, style_key: str, tier: str, guests: int) -> List[s
         elif event_key == "picnic":
             food_list.append("Easy-to-pack veg club sandwiches, fruit skewers, and juice boxes")
 
-    # Moderate & Higher Budget (4000+)
     else:
         food_list.append("Mini burger sliders, pizza slices, or momos platter")
         food_list.append("Paneer tikka skewers, loaded nachos with cheese salsa")
@@ -323,7 +294,6 @@ def _rule_food(event_key: str, style_key: str, tier: str, guests: int) -> List[s
         elif event_key == "college party":
             food_list.append("Bulk biryani combo or buffet snack combo boxes")
 
-    # Scalable advice for large groups (> 15 guests)
     if guests > 15:
         food_list.append(f"Pro-tip for {guests} guests: Order finger-food combos in bulk to reduce cost per head")
 
