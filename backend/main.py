@@ -104,6 +104,7 @@ app.include_router(suggestions.router)
 app.include_router(spots.router)
 app.include_router(ai.router)
 app.include_router(auth.router)
+app.include_router(auth.router, prefix="/api")
 
 
 

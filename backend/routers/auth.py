@@ -33,17 +33,20 @@ def register(data: schemas.UserRegister, db: Session = Depends(get_db)):
     Registers a new user with name, email, and password.
     Returns an access token and user information.
     New accounts start with completely empty data (no sample events/plans).
+    Does NOT require email to exist in database before registration.
+    Rejects duplicate emails with a clear error message.
     """
-    existing = db.query(models.User).filter(models.User.email == data.email).first()
+    clean_email = data.email.strip().lower()
+    existing = db.query(models.User).filter(models.User.email == clean_email).first()
     if existing:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="An account with this email address already exists"
+            detail="Account already exists. Please log in."
         )
 
     new_user = models.User(
-        name=data.name,
-        email=data.email,
+        name=data.name.strip(),
+        email=clean_email,
         hashed_password=hash_password(data.password)
     )
     db.add(new_user)
@@ -72,7 +75,8 @@ def login(data: schemas.UserLogin, db: Session = Depends(get_db)):
     Authenticates a user via email and password.
     Returns an access token and user information.
     """
-    user = db.query(models.User).filter(models.User.email == data.email).first()
+    clean_email = data.email.strip().lower()
+    user = db.query(models.User).filter(models.User.email == clean_email).first()
     if not user or not verify_password(data.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

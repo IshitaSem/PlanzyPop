@@ -5847,8 +5847,15 @@ function SignupScreen({
       onSignupSuccess(res.user)
       go("registered")
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Registration failed. Try a different email."
-      setErrors({ email: msg })
+      const rawMsg = err instanceof Error ? err.message : "Registration failed. Try a different email."
+      const lower = rawMsg.toLowerCase()
+      if (lower.includes("already exists") || lower.includes("account already exists")) {
+        setErrors({ email: "Account already exists. Please log in." })
+      } else if (lower.includes("not found") || lower.includes("404")) {
+        setErrors({ form: "Registration service is temporarily unreachable. Please check backend connection." })
+      } else {
+        setErrors({ form: rawMsg })
+      }
     } finally {
       setLoading(false)
     }
@@ -5867,12 +5874,21 @@ function SignupScreen({
       </div>
 
       <form className="auth-form" onSubmit={submit} noValidate>
+        {errors.form && (
+          <div className="auth-alert error-alert">
+            <span>!</span>
+            <div>
+              <strong>Couldn’t create account</strong>
+              <p>{errors.form}</p>
+            </div>
+          </div>
+        )}
         <AuthField
           label="Full Name"
           value={name}
           onChange={(value) => {
             setName(value)
-            setErrors({ ...errors, name: "" })
+            setErrors({ ...errors, name: "", form: "" })
           }}
           placeholder="Meera Kapoor"
           error={errors.name}
@@ -5884,7 +5900,7 @@ function SignupScreen({
           value={email}
           onChange={(value) => {
             setEmail(value)
-            setErrors({ ...errors, email: "" })
+            setErrors({ ...errors, email: "", form: "" })
           }}
           placeholder="meera.kapoor@example.com"
           error={errors.email}
@@ -5896,7 +5912,7 @@ function SignupScreen({
           value={password}
           onChange={(value) => {
             setPassword(value)
-            setErrors({ ...errors, password: "", confirm: "" })
+            setErrors({ ...errors, password: "", confirm: "", form: "" })
           }}
           placeholder="At least 8 characters"
           error={errors.password}
@@ -5909,7 +5925,7 @@ function SignupScreen({
           value={confirm}
           onChange={(value) => {
             setConfirm(value)
-            setErrors({ ...errors, confirm: "" })
+            setErrors({ ...errors, confirm: "", form: "" })
           }}
           placeholder="Enter your password again"
           error={errors.confirm}

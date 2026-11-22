@@ -312,3 +312,104 @@ def test_guest_to_registered_user_switching_and_unauthenticated_guard(client: Te
     user_a_favs = client.get("/api/spots/favorites", headers=headers_a).json()
     user_a_fav_ids = [f["spot_id"] for f in user_a_favs]
     assert "guest_spot_42" not in user_a_fav_ids
+
+
+def test_registration_duplicate_email_and_validation(client: TestClient):
+    """
+    Verifies:
+    1. Valid email registration succeeds without requiring prior existence.
+    2. Duplicate email is rejected with 'Account already exists. Please log in.' (HTTP 400).
+    3. Invalid email formats rejected with HTTP 422.
+    4. Short passwords rejected with HTTP 422.
+    5. Both /auth and /api/auth routes function identically.
+    """
+    email = "unique_student_test@example.com"
+
+    # 1. New registration succeeds
+    reg1 = client.post("/auth/register", json={
+        "name": "First Host",
+        "email": email,
+        "password": "Password123"
+    })
+    assert reg1.status_code == 201
+    assert "access_token" in reg1.json()
+
+    # 2. Duplicate registration returns clear message
+    reg2 = client.post("/auth/register", json={
+        "name": "Second Host",
+        "email": email.upper(),  # Case-insensitive duplicate check
+        "password": "Password123"
+    })
+    assert reg2.status_code == 400
+    assert reg2.json()["detail"] == "Account already exists. Please log in."
+
+    # 3. Invalid email rejected with 422
+    inv_email = client.post("/auth/register", json={
+        "name": "Invalid Email",
+        "email": "not-an-email",
+        "password": "Password123"
+    })
+    assert inv_email.status_code == 422
+
+    # 4. Short password rejected with 422
+    short_pw = client.post("/auth/register", json={
+        "name": "Short PW",
+        "email": "valid_email@test.com",
+        "password": "123"
+    })
+    assert short_pw.status_code == 422
+
+    # 5. Dual route prefix verification: /api/auth/register and /api/auth/login work
+    api_reg = client.post("/api/auth/register", json={
+        "name": "API Route User",
+        "email": "api_route_user@test.com",
+        "password": "Password123"
+    })
+    assert api_reg.status_code == 201
+
+    api_login = client.post("/api/auth/login", json={
+        "email": "api_route_user@test.com",
+        "password": "Password123"
+    })
+    assert api_login.status_code == 200
+    assert "access_token" in api_login.json()
+
+
+def test_login_validation_separate_from_registration(client: TestClient):
+    """
+    Verifies:
+    1. Unregistered email login returns HTTP 401 with 'Invalid email or password' (NOT 404).
+    2. Wrong password returns HTTP 401 with 'Invalid email or password'.
+    3. Valid login returns token and user payload.
+    """
+    # 1. Unregistered email returns 401 (not 404)
+    res_unreg = client.post("/auth/login", json={
+        "email": "nonexistent_user_999@example.com",
+        "password": "SomePassword123"
+    })
+    assert res_unreg.status_code == 401
+    assert res_unreg.json()["detail"] == "Invalid email or password"
+
+    # 2. Register valid user
+    client.post("/auth/register", json={
+        "name": "Auth Tester",
+        "email": "authtester@example.com",
+        "password": "CorrectPassword123"
+    })
+
+    # 3. Wrong password returns 401
+    res_wrong_pw = client.post("/auth/login", json={
+        "email": "authtester@example.com",
+        "password": "WrongPassword123"
+    })
+    assert res_wrong_pw.status_code == 401
+    assert res_wrong_pw.json()["detail"] == "Invalid email or password"
+
+    # 4. Correct credentials returns 200
+    res_ok = client.post("/auth/login", json={
+        "email": "authtester@example.com",
+        "password": "CorrectPassword123"
+    })
+    assert res_ok.status_code == 200
+    assert "access_token" in res_ok.json()
+    assert res_ok.json()["user"]["email"] == "authtester@example.com"
