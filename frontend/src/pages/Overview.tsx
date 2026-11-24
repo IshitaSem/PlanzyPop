@@ -122,7 +122,7 @@ export function Overview({
         <div className="eyebrow">
           {backendConnected
             ? "LIVE FASTAPI BACKEND · SQLite"
-            : "OFFLINE MODE · DEMO DATA"}
+            : "OFFLINE MODE · "}
         </div>
         <div className="hero-title">
           Hey, {userName}!{" "}
