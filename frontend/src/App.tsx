@@ -6431,7 +6431,7 @@ function DesktopSidebar({
           <strong>
             {isGuest ? "Guest Mode" : currentUser?.name || "Member"}
           </strong>
-          <small>{isGuest ? "Demo Mode" : "Event Planner"}</small>
+          <small>{isGuest ? "" : "Event Planner"}</small>
         </div>
         <Icon name="chevron" size={16} />
       </div>
