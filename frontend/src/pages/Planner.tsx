@@ -50,12 +50,16 @@ export function Planner({
   const generate = async () => {
     setStep("loading")
     const numBudget = parseBudgetNum()
+    const validGuests = Math.max(1, Number(guests) || 1)
     try {
       const res = await generateSuggestions({
         event_type: eventType,
         budget: numBudget,
-        guests: guests || 15,
+        budget_range: budget,
+        guests: validGuests,
         celebration_style: style,
+        location: location || "TBD",
+        notes: notes || undefined,
       })
       setSuggestion(res)
       setStep("results")
@@ -69,13 +73,13 @@ export function Planner({
     setIsSaving(true)
     try {
       const numBudget = suggestion
-        ? suggestion.total_allocated_budget
+        ? (suggestion.target_budget ?? suggestion.total_allocated_budget)
         : parseBudgetNum()
       const newEvent = await createEvent({
         event_name: eventName || `${eventType} Party`,
         event_type: eventType,
         event_date: eventDate || "2026-11-20",
-        guests: guests || 15,
+        guests: Math.max(1, Number(guests) || 1),
         budget: numBudget,
         location: location || "TBD",
         celebration_style: style,
@@ -157,10 +161,11 @@ export function Planner({
   }
 
   if (step === "results") {
+    const validGuests = Math.max(1, Number(guests) || 1)
     const estCost = suggestion
-      ? suggestion.total_allocated_budget
+      ? (suggestion.estimated_expense ?? suggestion.total_allocated_budget)
       : parseBudgetNum()
-    const perPerson = Math.round(estCost / (guests || 1))
+    const perPerson = suggestion?.per_guest_cost ?? Math.round(estCost / validGuests)
     const themeName = suggestion
       ? suggestion.suggested_theme
       : `${style} ${eventType}`
@@ -185,13 +190,15 @@ export function Planner({
             <Icon name="sparkle" /> RULE-BASED PLAN
           </div>
           <div className="result-title">{themeName}</div>
-          <p>An affordable celebration for {guests} friends.</p>
+          <p>
+            An affordable celebration for {validGuests} {validGuests === 1 ? "guest" : "friends"}.
+          </p>
           <div className="result-stats">
             <span>
               <Icon name="wallet" size={16} /> {formatINR(estCost)}
             </span>
             <span>
-              <Icon name="people" size={16} /> {guests} guests
+              <Icon name="people" size={16} /> {validGuests} {validGuests === 1 ? "guest" : "guests"}
             </span>
             <span>
               <Icon name="wallet" size={16} /> {formatINR(perPerson)} / person

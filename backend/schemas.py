@@ -304,11 +304,26 @@ class BudgetAllocationItem(BaseModel):
 class SuggestionRequest(BaseModel):
     """
     Input schema for requesting event planning suggestions.
+    Supports budget range, guest count, celebration style, location, dietary, and setting preferences.
     """
     event_type: str = Field(..., min_length=1, description="Event type, e.g., Birthday, Picnic, Farewell")
     budget: float = Field(default=0.0, ge=0.0, description="Available budget in INR (must be >= 0.0)")
     guests: int = Field(default=0, ge=0, description="Expected guest count (must be >= 0)")
     celebration_style: str = Field(default="Casual", min_length=1, description="Style, e.g., Aesthetic, DIY / Budget-Friendly, Casual")
+    location: Optional[str] = Field(default=None, description="Event location or venue (e.g. Sector 17, Chandigarh)")
+    dietary_preference: Optional[str] = Field(default=None, description="Dietary preference: Vegetarian, Mixed, Vegan")
+    food_preference: Optional[str] = Field(default=None, description="Alias for dietary_preference")
+    setting: Optional[str] = Field(default=None, description="Event setting: Indoor, Outdoor, Open to both")
+    budget_range: Optional[str] = Field(default=None, description="Original selected budget range label, e.g., ₹500–₹1,000")
+    notes: Optional[str] = Field(default=None, description="Additional preferences or special notes")
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_dietary_alias(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            if not data.get("dietary_preference") and data.get("food_preference"):
+                data["dietary_preference"] = data["food_preference"]
+        return data
 
     @field_validator("event_type", "celebration_style")
     @classmethod
@@ -321,6 +336,7 @@ class SuggestionRequest(BaseModel):
 class SuggestionResponse(BaseModel):
     """
     Structured output returned by the rule-based suggestion engine.
+    Guarantees mathematical consistency, guest scaling, and budget constraint satisfaction.
     """
     event_type: str
     budget: float
@@ -335,6 +351,13 @@ class SuggestionResponse(BaseModel):
     total_allocated_budget: float
     budget_saving_tips: List[str]
     disclaimer: str
+    # Validated budget & calculation fields:
+    target_budget: Optional[float] = None
+    estimated_expense: Optional[float] = None
+    safety_buffer: Optional[float] = None
+    per_guest_cost: Optional[float] = None
+    category_estimates: Optional[Dict[str, float]] = None
+    shopping_items: Optional[List[Dict[str, Any]]] = None
 
 
 

@@ -1317,6 +1317,219 @@ function Planner({
   const [decorIndex, setDecorIndex] = useState(0)
   const [activityIndex, setActivityIndex] = useState(0)
 
+  const parseBudgetNum = (b: string): number => {
+    if (!b) return 1000
+    if (b.includes("500") && b.includes("1,000")) return 1000
+    if (b.includes("1,000") && b.includes("3,000")) return 2500
+    if (b.includes("3,000") && b.includes("5,000")) return 4500
+    if (b.includes("5,000+")) return 7500
+    if (b.includes("Under ₹500")) return 500
+    const digits = b.replace(/[^\d]/g, "")
+    return digits ? parseInt(digits, 10) : 1000
+  }
+
+  const currentGuestCount = Math.max(1, parseInt(String(guests).trim(), 10) || 1)
+  const targetBudgetNum = parseBudgetNum(budget)
+
+  const createSynchronizedShoppingItems = (
+    tgtBudget: number,
+    guestCount: number,
+    evType: string,
+    isVegPref: boolean,
+    apiResp?: SuggestionResponse | null
+  ): ShoppingItem[] => {
+    if (apiResp?.shopping_items && apiResp.shopping_items.length > 0) {
+      return apiResp.shopping_items.map((i: any) => ({
+        id: String(i.id),
+        name: String(i.name),
+        category: String(i.category),
+        quantity: String(i.quantity || "1x"),
+        cost: Number(i.cost ?? i.estimated_cost ?? 0),
+        completed: Boolean(i.completed ?? i.is_purchased ?? false),
+      }))
+    }
+
+    const items: ShoppingItem[] = []
+    let id = 1
+
+    // Food allocation: 40%
+    const foodAlloc = Math.round(tgtBudget * 0.40)
+    const snackCost = Math.round(foodAlloc * 0.65)
+    const drinkCost = Math.max(0, foodAlloc - snackCost)
+
+    if (guestCount === 1) {
+      items.push({
+        id: `s-${id++}`,
+        name: isVegPref ? "Personal vegetarian savory snack platter" : "Personal savory snack platter & dip",
+        category: "Food",
+        quantity: "1 platter",
+        cost: snackCost,
+        completed: false,
+      })
+      items.push({
+        id: `s-${id++}`,
+        name: "Chilled beverage or cold coffee",
+        category: "Food",
+        quantity: "1 bottle",
+        cost: drinkCost,
+        completed: false,
+      })
+    } else {
+      items.push({
+        id: `s-${id++}`,
+        name: isVegPref ? "Vegetarian party snack platters" : "Party savory snack platters & finger foods",
+        category: "Food",
+        quantity: `${Math.max(1, Math.round(guestCount / 4))} platters`,
+        cost: snackCost,
+        completed: false,
+      })
+      items.push({
+        id: `s-${id++}`,
+        name: "Beverages & cold drink cartons",
+        category: "Food",
+        quantity: `${Math.max(2, Math.round(guestCount / 3))} cartons`,
+        cost: drinkCost,
+        completed: false,
+      })
+    }
+
+    // Cake allocation: 25%
+    const cakeAlloc = Math.round(tgtBudget * 0.25)
+    const cakeCost = Math.round(cakeAlloc * 0.80)
+    const candleCost = Math.max(0, cakeAlloc - cakeCost)
+
+    if (guestCount === 1) {
+      items.push({
+        id: `s-${id++}`,
+        name: "Mini celebration bento cake (250g)",
+        category: "Cake",
+        quantity: "1 mini cake",
+        cost: cakeCost,
+        completed: false,
+      })
+      items.push({
+        id: `s-${id++}`,
+        name: "Celebration birthday candle & card",
+        category: "Cake",
+        quantity: "1 set",
+        cost: candleCost,
+        completed: true,
+      })
+    } else {
+      items.push({
+        id: `s-${id++}`,
+        name: `Custom celebration cake (${guestCount <= 5 ? "500g" : "1.2 kg"})`,
+        category: "Cake",
+        quantity: "1 cake",
+        cost: cakeCost,
+        completed: false,
+      })
+      items.push({
+        id: `s-${id++}`,
+        name: "Party candles & celebration sparklers",
+        category: "Cake",
+        quantity: "1 pack",
+        cost: candleCost,
+        completed: true,
+      })
+    }
+
+    // Decor allocation: 15%
+    const decorAlloc = Math.round(tgtBudget * 0.15)
+    const balloonCost = Math.round(decorAlloc * 0.50)
+    const diyCost = Math.max(0, decorAlloc - balloonCost)
+
+    items.push({
+      id: `s-${id++}`,
+      name: `Pastel party balloons (${guestCount === 1 ? "15 pcs" : "30 pcs"})`,
+      category: "Decor",
+      quantity: "1 pack",
+      cost: balloonCost,
+      completed: true,
+    })
+    items.push({
+      id: `s-${id++}`,
+      name: "Crepe paper streamer rolls & warm fairy lights",
+      category: "Decor",
+      quantity: "1 kit",
+      cost: diyCost,
+      completed: false,
+    })
+
+    // Activities allocation: 10%
+    const actAlloc = Math.round(tgtBudget * 0.10)
+    items.push({
+      id: `s-${id++}`,
+      name: guestCount === 1 ? "Solo photo memory prints & playlist setup" : "Party games kit & trivia printouts",
+      category: "Activities",
+      quantity: "1 kit",
+      cost: actAlloc,
+      completed: false,
+    })
+
+    // Supplies / Safety buffer: 10%
+    const miscAlloc = Math.max(0, tgtBudget - (foodAlloc + cakeAlloc + decorAlloc + actAlloc))
+    const suppliesCost = Math.round(miscAlloc * 0.60)
+    const bufferCost = Math.max(0, miscAlloc - suppliesCost)
+
+    items.push({
+      id: `s-${id++}`,
+      name: "Eco-friendly plates, cups & napkins",
+      category: "Supplies",
+      quantity: `${guestCount} sets`,
+      cost: suppliesCost,
+      completed: true,
+    })
+    if (bufferCost > 0) {
+      items.push({
+        id: `s-${id++}`,
+        name: "Safety reserve buffer for incidental essentials",
+        category: "Supplies",
+        quantity: "1 reserve",
+        cost: bufferCost,
+        completed: false,
+      })
+    }
+
+    return items
+  }
+
+  const [shoppingItems, setShoppingItems] = useState<ShoppingItem[]>(() =>
+    createSynchronizedShoppingItems(
+      parseBudgetNum(budget),
+      Number(guests) || 1,
+      eventType,
+      foodPreference === "Vegetarian"
+    )
+  )
+
+  const foodShoppingCost = shoppingItems
+    .filter((i) => i.category === "Food" || i.category === "Food & Drinks")
+    .reduce((acc, item) => acc + item.cost, 0)
+
+  const cakeShoppingCost = shoppingItems
+    .filter((i) => i.category === "Cake" || i.category === "Cake / Gifts" || i.category === "Cake & Desserts")
+    .reduce((acc, item) => acc + item.cost, 0)
+
+  const decorShoppingCost = shoppingItems
+    .filter((i) => i.category === "Decor" || i.category === "DIY" || i.category === "Decoration" || i.category === "Decorations")
+    .reduce((acc, item) => acc + item.cost, 0)
+
+  const activityShoppingCost = shoppingItems
+    .filter((i) => i.category === "Activities" || i.category === "Activity" || i.category === "Entertainment" || i.category === "Entertainment & Games")
+    .reduce((acc, item) => acc + item.cost, 0)
+
+  const suppliesShoppingCost = shoppingItems
+    .filter((i) => i.category === "Supplies" || i.category === "Custom" || i.category === "Other" || i.category === "Miscellaneous")
+    .reduce((acc, item) => acc + item.cost, 0)
+
+  const totalEstimated = shoppingItems.reduce((acc, item) => acc + item.cost, 0)
+  const displayTotal = totalEstimated
+  const currentSavings = targetBudgetNum - displayTotal
+  const isOverBudget = displayTotal > targetBudgetNum
+  const perGuestCost = Math.round(displayTotal / currentGuestCount)
+  const themeCost = Math.min(decorShoppingCost, Math.max(40, Math.round(targetBudgetNum * 0.05)))
+
   const themePresets = [
     {
       title: "Pastel Pop Celebration",
@@ -1329,7 +1542,7 @@ function Planner({
         { name: "Soft Yellow", color: "#FFF0A5" },
       ],
       colorNames: "Lavender · Blush · Peach · Soft Yellow",
-      themeCost: 850,
+      themeCost: themeCost,
     },
     {
       title: "Neon Glow & Midnight Arcade",
@@ -1342,7 +1555,7 @@ function Planner({
         { name: "Cyber Amber", color: "#FFBE0B" },
       ],
       colorNames: "Electric Purple · Neon Cyan · Hot Pink · Cyber Amber",
-      themeCost: 950,
+      themeCost: themeCost,
     },
     {
       title: "Boho Sunset Glow",
@@ -1355,317 +1568,338 @@ function Planner({
         { name: "Deep Ochre", color: "#F2CC8F" },
       ],
       colorNames: "Terracotta · Warm Sand · Sage Olive · Deep Ochre",
-      themeCost: 780,
+      themeCost: themeCost,
     },
   ]
 
   const foodPresets = [
     {
-      cakeTitle: "1.2 kg Customized Pastel Bento Cake",
+      cakeTitle:
+        currentGuestCount === 1
+          ? "Mini Bento Cake (250g)"
+          : currentGuestCount <= 5
+            ? "500g Custom Bento Cake"
+            : "1.2 kg Customized Pastel Bento Cake",
       cakeFlavor:
-        "Belgian Chocolate Truffle with buttercream florals and personalized lettering",
-      cakeCost: 700,
-      snackRecommendations: [
-        "Mini Paneer Tikka Sliders",
-        "Peri-Peri Crinkle Fries",
-        "Steamed Veg Dimsums",
-        "Cheesy Corn Triangles",
-        "Nachos with House Salsa",
-      ],
+        currentGuestCount === 1
+          ? "Single-serving Belgian Chocolate Truffle with buttercream florals"
+          : "Belgian Chocolate Truffle with buttercream florals and personalized lettering",
+      cakeCost: cakeShoppingCost,
+      snackRecommendations:
+        currentGuestCount === 1
+          ? [
+              "Mini Paneer Tikka Sliders",
+              "Peri-Peri Crinkle Fries",
+              "Steamed Veg Dimsums",
+              "Nachos with House Salsa",
+            ]
+          : [
+              "Mini Paneer Tikka Sliders",
+              "Peri-Peri Crinkle Fries",
+              "Steamed Veg Dimsums",
+              "Cheesy Corn Triangles",
+              "Nachos with House Salsa",
+            ],
       drinks: "Chilled Vanilla Cold Coffee & Fresh Mint Lemonade Spritzers",
-      dietTag: "100% Vegetarian Crowd-Pleaser",
-      foodCost: 1600,
+      dietTag: foodPreference === "Vegetarian" ? "100% Vegetarian Crowd-Pleaser" : "Popular Celebration Snacks",
+      foodCost: foodShoppingCost,
     },
     {
-      cakeTitle: "24-piece Tiered Cupcake Tower with Sparklers",
+      cakeTitle:
+        currentGuestCount === 1
+          ? "Celebration Cupcake Duo"
+          : currentGuestCount <= 5
+            ? "Tiered Cupcake Box (6 pcs)"
+            : "24-piece Tiered Cupcake Tower with Sparklers",
       cakeFlavor:
         "Red Velvet Cream Cheese & Salted Caramel with edible pearl dusting",
-      cakeCost: 750,
-      snackRecommendations: [
-        "Gourmet Pinwheel Sandwiches",
-        "Masala Garlic Breadsticks",
-        "Jalapeño Cheese Poppers",
-        "Crispy Potato Wedges",
-        "Hummus & Pita Bites",
-      ],
+      cakeCost: cakeShoppingCost,
+      snackRecommendations:
+        currentGuestCount === 1
+          ? [
+              "Gourmet Pinwheel Sandwiches",
+              "Masala Garlic Breadsticks",
+              "Crispy Potato Wedges",
+              "Hummus & Pita Bites",
+            ]
+          : [
+              "Gourmet Pinwheel Sandwiches",
+              "Masala Garlic Breadsticks",
+              "Jalapeño Cheese Poppers",
+              "Crispy Potato Wedges",
+              "Hummus & Pita Bites",
+            ],
       drinks: "Iced Peach Tea & Fizzy Blueberry Mocktails",
       dietTag: "Mixed / Vegetarian & Vegan Friendly",
-      foodCost: 1700,
+      foodCost: foodShoppingCost,
     },
     {
-      cakeTitle: "1.5 kg Classic Chocolate Fudge Party Slab",
+      cakeTitle:
+        currentGuestCount === 1
+          ? "Classic Chocolate Fudge Slice"
+          : currentGuestCount <= 5
+            ? "750g Chocolate Fudge Cake"
+            : "1.5 kg Classic Chocolate Fudge Party Slab",
       cakeFlavor:
         "Rich Dutch Chocolate Fudge with confetti sprinkles and sparklers",
-      cakeCost: 550,
-      snackRecommendations: [
-        "Samosa Chaat Platter",
-        "Butter Maggi Cups",
-        "Chilli Cheese Toasties",
-        "Popcorn Bar with peri-peri seasonings",
-        "Spiced Masala Peanuts",
-      ],
+      cakeCost: cakeShoppingCost,
+      snackRecommendations:
+        currentGuestCount === 1
+          ? [
+              "Samosa Chaat Platter (Personal)",
+              "Butter Maggi Cup",
+              "Chilli Cheese Toastie",
+              "Spiced Masala Peanuts",
+            ]
+          : [
+              "Samosa Chaat Platter",
+              "Butter Maggi Cups",
+              "Chilli Cheese Toasties",
+              "Popcorn Bar with peri-peri seasonings",
+              "Spiced Masala Peanuts",
+            ],
       drinks: "Nimbu Paani & Tang Mango Punch",
       dietTag: "Student Budget Friendly & Easy Clean-up",
-      foodCost: 1350,
+      foodCost: foodShoppingCost,
     },
   ]
 
   const decorPresets = [
     {
       recommendation:
-        "Fairy light curtain backdrop, pastel balloon clusters at the entrance, printed welcome banner, and table bunting.",
-      requiredMaterials: [
-        "Pastel balloons (30 pcs)",
-        "Crepe paper streamer rolls (3 rolls)",
-        "10m micro-LED warm fairy lights",
-        "Wall-safe double-sided tape",
-        "Cardstock paper party props & welcome banner",
-      ],
+        currentGuestCount === 1
+          ? "Cozy fairy-light corner, pastel balloon bunch, printed welcome card, and table bunting."
+          : "Fairy light curtain backdrop, pastel balloon clusters at the entrance, printed welcome banner, and table bunting.",
+      requiredMaterials:
+        currentGuestCount === 1
+          ? [
+              "Pastel balloons (15 pcs)",
+              "Crepe paper streamer rolls (1 roll)",
+              "Warm micro-LED fairy lights",
+              "Wall-safe double-sided tape",
+              "Cardstock photo props & milestone card",
+            ]
+          : [
+              "Pastel balloons (30 pcs)",
+              "Crepe paper streamer rolls (3 rolls)",
+              "10m micro-LED warm fairy lights",
+              "Wall-safe double-sided tape",
+              "Cardstock paper party props & welcome banner",
+            ],
       diyIdeas: [
         {
           title: "Paper streamer fringe backdrop",
-          cost: "Under ₹180",
+          cost: `Under ₹${Math.max(30, Math.round(targetBudgetNum * 0.04))}`,
           desc: "Layered crepe streamer fringe attached with wall-safe tape for photos",
         },
         {
           title: "Printed photo props & greeting cutouts",
-          cost: "Under ₹60",
+          cost: `Under ₹${Math.max(20, Math.round(targetBudgetNum * 0.02))}`,
           desc: "Fun celebration cardboard cutouts printed on local shop cardstock",
         },
         {
           title: "Reusable pastel pennant bunting",
-          cost: "Under ₹120",
+          cost: `Under ₹${Math.max(30, Math.round(targetBudgetNum * 0.03))}`,
           desc: "Triangular pennants threaded on natural baker's twine across walls",
         },
         {
           title: "Warm fairy-light selfie corner",
-          cost: "Under ₹250",
-          desc: "10-metre micro-LED copper wire draped gently along sheer curtains",
+          cost: `Under ₹${Math.max(40, Math.round(targetBudgetNum * 0.05))}`,
+          desc: "Micro-LED copper wire draped gently along sheer curtains or wall",
         },
       ],
-      decorCost: 610,
+      decorCost: decorShoppingCost,
     },
     {
       recommendation:
-        "Organic dual-tone balloon garland over seating, DIY polaroid photo memory string with wooden clips, ambient lighting.",
-      requiredMaterials: [
-        "Dual-tone balloon garland kit (40 balloons)",
-        "Natural jute string (15m) & mini wooden pegs",
-        "Polaroid prints of friend memories (20 prints)",
-        "Upcycled glass jar fairy lights",
-        "Kraft chalkboard card welcoming guests",
-      ],
+        currentGuestCount === 1
+          ? "Organic dual-tone balloons over seating, DIY polaroid photo memory string with wooden clips, ambient lighting."
+          : "Organic dual-tone balloon garland over seating, DIY polaroid photo memory string with wooden clips, ambient lighting.",
+      requiredMaterials:
+        currentGuestCount === 1
+          ? [
+              "Dual-tone balloon kit (20 balloons)",
+              "Natural jute string (10m) & mini wooden pegs",
+              "Polaroid prints of memories (10 prints)",
+              "Upcycled glass jar fairy lights",
+              "Kraft chalkboard card welcoming guest",
+            ]
+          : [
+              "Dual-tone balloon garland kit (40 balloons)",
+              "Natural jute string (15m) & mini wooden pegs",
+              "Polaroid prints of friend memories (20 prints)",
+              "Upcycled glass jar fairy lights",
+              "Kraft chalkboard card welcoming guests",
+            ],
       diyIdeas: [
         {
           title: "Organic balloon cluster garland",
-          cost: "Under ₹220",
+          cost: `Under ₹${Math.max(40, Math.round(targetBudgetNum * 0.04))}`,
           desc: "Dual-size balloons tied in clusters on fishing line or balloon tape",
         },
         {
           title: "Polaroid photo timeline on jute string",
-          cost: "Under ₹140",
-          desc: "Guest memories printed 2x3 on card with mini wooden pegs",
+          cost: `Under ₹${Math.max(30, Math.round(targetBudgetNum * 0.03))}`,
+          desc: "Memories printed on card with mini wooden pegs",
         },
         {
           title: "Upcycled glass bottle fairy lights",
-          cost: "Under ₹90",
+          cost: `Under ₹${Math.max(25, Math.round(targetBudgetNum * 0.02))}`,
           desc: "Cleaned glass jars with cork micro-LED wire lights for ambient glow",
         },
         {
           title: "Hand-lettered greeting chalkboard",
-          cost: "Under ₹70",
-          desc: "Kraft card with liquid chalk welcoming guests at the entrance",
+          cost: `Under ₹${Math.max(20, Math.round(targetBudgetNum * 0.02))}`,
+          desc: "Kraft card with liquid chalk welcoming at entrance",
         },
       ],
-      decorCost: 680,
+      decorCost: decorShoppingCost,
     },
     {
       recommendation:
         "Geometric paper lanterns, origami crane curtain, dried leaf table runners, warm micro-lights.",
-      requiredMaterials: [
-        "Accordion honeycomb paper lanterns (6 pcs)",
-        "Pastel tissue paper sheets for tassels",
-        "Natural craft jute twine",
-        "LED tea-light candles & decorative jars",
-        "Cardboard photo frame prop with painted border",
-      ],
+      requiredMaterials:
+        currentGuestCount === 1
+          ? [
+              "Accordion honeycomb paper lanterns (3 pcs)",
+              "Pastel tissue paper sheets for tassels",
+              "Natural craft jute twine",
+              "LED tea-light candles & decorative jar",
+              "Cardboard photo frame prop with painted border",
+            ]
+          : [
+              "Accordion honeycomb paper lanterns (6 pcs)",
+              "Pastel tissue paper sheets for tassels",
+              "Natural craft jute twine",
+              "LED tea-light candles & decorative jars",
+              "Cardboard photo frame prop with painted border",
+            ],
       diyIdeas: [
         {
           title: "Accordion paper honeycomb lanterns",
-          cost: "Under ₹150",
+          cost: `Under ₹${Math.max(35, Math.round(targetBudgetNum * 0.035))}`,
           desc: "Handmade folding paper spheres in pastel tones hung from ceiling",
         },
         {
           title: "Jute string paper tassel bunting",
-          cost: "Under ₹100",
+          cost: `Under ₹${Math.max(25, Math.round(targetBudgetNum * 0.025))}`,
           desc: "Tissue paper tassels twisted onto natural craft twine",
         },
         {
           title: "Tabletop confetti & tea-light holders",
-          cost: "Under ₹80",
+          cost: `Under ₹${Math.max(20, Math.round(targetBudgetNum * 0.02))}`,
           desc: "Perforated craft paper lanterns with safe LED tea lights",
         },
         {
           title: "Custom cardboard photo frame prop",
-          cost: "Under ₹60",
-          desc: "Upcycled shipping box cutout with hand-painted borders and lettering",
+          cost: `Under ₹${Math.max(15, Math.round(targetBudgetNum * 0.015))}`,
+          desc: "Upcycled box cutout with hand-painted borders and lettering",
         },
       ],
-      decorCost: 490,
+      decorCost: decorShoppingCost,
     },
   ]
 
   const activityPresets = [
     {
       activities:
-        "Bollywood Dumb Charades, Two Truths & a Lie, and 'Who Knows the Host Best?' speed trivia quiz",
+        currentGuestCount === 1
+          ? "Cake cutting countdown with celebration candle, solo milestone reflection recap, and cozy movie marathon with favorite snacks"
+          : "Bollywood Dumb Charades, Two Truths & a Lie, and 'Who Knows the Host Best?' speed trivia quiz",
       guestSuitability:
-        "Ideal for 10–25 friends in indoor living rooms, common halls or rooftop spaces",
-      requiredMaterials: [
-        "Trivia quiz printouts & pens (1 per team)",
-        "Bluetooth party speaker & Spotify Jam session",
-        "60-second digital stopwatch timer",
-      ],
+        currentGuestCount === 1
+          ? "Ideal for 1 guest (solo celebration) in living room, terrace, or room"
+          : currentGuestCount <= 5
+            ? "Best for small gathering of 2–5 close friends in cozy seating"
+            : `Ideal for ${currentGuestCount} friends in party space`,
+      requiredMaterials:
+        currentGuestCount === 1
+          ? [
+              "Celebration candle & lighter",
+              "Bluetooth speaker & Spotify milestone playlist",
+              "Streaming screen / laptop setup",
+            ]
+          : [
+              "Trivia quiz printouts & pens (1 per team)",
+              "Bluetooth party speaker & Spotify Jam session",
+              "60-second digital stopwatch timer",
+            ],
       entertainment:
-        "Collaborative party playlist queue, instant mobile polaroid challenge, celebratory toast moment",
-      cost: 0,
+        currentGuestCount === 1
+          ? "Collaborative friend playlist queue, personal milestone photo recap, celebratory self-toast"
+          : "Collaborative party playlist queue, instant mobile polaroid challenge, celebratory toast moment",
+      cost: activityShoppingCost,
     },
     {
       activities:
-        "Uno Flip & Exploding Kittens tournament, Mobile Karaoke showdown via Bluetooth mic, Pictionary on whiteboards",
+        currentGuestCount === 1
+          ? "Solo selfie challenge, video call toast with close friends, and personal playlist jam"
+          : "Uno Flip & Exploding Kittens tournament, Mobile Karaoke showdown via Bluetooth mic, Pictionary on whiteboards",
       guestSuitability:
-        "Best for 8–18 guests with comfortable table or lounge seating arrangements",
-      requiredMaterials: [
-        "Uno Flip and Exploding Kittens card decks",
-        "2 Mini whiteboards with dry-erase markers",
-        "Wireless Bluetooth karaoke microphone",
-        "Blindfolds for mystery snack tasting",
-      ],
+        currentGuestCount === 1
+          ? "Tailored for 1 guest (solo milestone celebration)"
+          : currentGuestCount <= 5
+            ? "Best for 2–5 friends with comfortable lounge seating"
+            : `Best for ${currentGuestCount} guests with comfortable seating`,
+      requiredMaterials:
+        currentGuestCount === 1
+          ? [
+              "Phone tripod for celebration photos",
+              "Favorite music playlist & headphones or speaker",
+              "Video call app for friend toast",
+            ]
+          : [
+              "Uno Flip and Exploding Kittens card decks",
+              "2 Mini whiteboards with dry-erase markers",
+              "Wireless Bluetooth karaoke microphone",
+              "Blindfolds for mystery snack tasting",
+            ],
       entertainment:
-        "Chill Lo-Fi & acoustic party stream, snack-tasting blindfold challenge, mini prize ceremony",
-      cost: 150,
+        currentGuestCount === 1
+          ? "Chill Lo-Fi & acoustic party stream, snack tasting, personal milestone memory"
+          : "Chill Lo-Fi & acoustic party stream, snack-tasting blindfold challenge, mini prize ceremony",
+      cost: activityShoppingCost,
     },
     {
       activities:
-        "Name That Tune 5-second buzzer round, Freeze Dance showdown, and Group Reel video memory challenge",
+        currentGuestCount === 1
+          ? "Chill acoustic party stream, digital scrapbook photo review, and relaxed evening"
+          : "Name That Tune 5-second buzzer round, Freeze Dance showdown, and Group Reel video memory challenge",
       guestSuitability:
-        "High energy format tailored for 15–40 lively guests with open standing or dancing area",
-      requiredMaterials: [
-        "Buzzer bells or buzzer mobile app",
-        "High-output Bluetooth speaker system",
-        "Glow-in-the-dark wristbands for evening games",
-      ],
+        currentGuestCount === 1
+          ? "Tailored for 1 guest evening relaxation"
+          : currentGuestCount <= 5
+            ? "Fun relaxed format for close friends"
+            : `High energy format tailored for ${currentGuestCount} lively guests`,
+      requiredMaterials:
+        currentGuestCount === 1
+          ? [
+              "Bluetooth speaker or sound system",
+              "Warm room lighting / lamp",
+              "Digital photo album or scrapbook",
+            ]
+          : [
+              "Buzzer bells or buzzer mobile app",
+              "High-output Bluetooth speaker system",
+              "Glow-in-the-dark wristbands for evening games",
+            ],
       entertainment:
-        "High-energy DJ soundscape, glow accessory photo station, synchronized memory reel shoot",
-      cost: 100,
+        currentGuestCount === 1
+          ? "Relaxing evening soundscape, photo review, quiet reflection"
+          : "High-energy DJ soundscape, glow accessory photo station, synchronized memory reel shoot",
+      cost: activityShoppingCost,
     },
   ]
 
-  const [shoppingItems, setShoppingItems] = useState<ShoppingItem[]>([
-    {
-      id: "s1",
-      name: "Pastel balloons (Lavender & Peach)",
-      category: "Decor",
-      quantity: "30 pcs",
-      cost: 240,
-      completed: true,
-    },
-    {
-      id: "s2",
-      name: "Crepe paper streamer rolls",
-      category: "Decor",
-      quantity: "3 rolls",
-      cost: 180,
-      completed: true,
-    },
-    {
-      id: "s3",
-      name: "Warm fairy string lights (10m)",
-      category: "Decor",
-      quantity: "1 set",
-      cost: 250,
-      completed: false,
-    },
-    {
-      id: "s4",
-      name: "Custom celebration cake",
-      category: "Food",
-      quantity: "1.2 kg",
-      cost: 700,
-      completed: false,
-    },
-    {
-      id: "s5",
-      name: "Party snack platters & finger foods",
-      category: "Food",
-      quantity: "4 platters",
-      cost: 1600,
-      completed: false,
-    },
-    {
-      id: "s6",
-      name: "Beverages & cold coffee cartons",
-      category: "Food",
-      quantity: "6 cartons",
-      cost: 650,
-      completed: false,
-    },
-    {
-      id: "s7",
-      name: "Eco-friendly paper plates & cups",
-      category: "Supplies",
-      quantity: "20 sets",
-      cost: 160,
-      completed: false,
-    },
-    {
-      id: "s8",
-      name: "Double-sided tape & photo props",
-      category: "DIY",
-      quantity: "1 pack",
-      cost: 80,
-      completed: true,
-    },
-  ])
   const [newShoppingName, setNewShoppingName] = useState("")
   const [newShoppingQuantity, setNewShoppingQuantity] = useState("1x")
-  const [newShoppingCost, setNewShoppingCost] = useState("100")
+  const [newShoppingCost, setNewShoppingCost] = useState("50")
   const [newShoppingCategory, setNewShoppingCategory] = useState("Custom")
 
-  const currentTheme = themePresets[themeIndex]
-  const currentFood = foodPresets[foodIndex]
-  const currentDecor = decorPresets[decorIndex]
-  const currentActivity = activityPresets[activityIndex]
-
-  const themeCost = currentTheme.themeCost
-  const decorCost = currentDecor.decorCost
-  const foodCost = currentFood.foodCost
-  const cakeCost = currentFood.cakeCost
-  const drinksCost = 650
-  const activityCost = currentActivity.cost + 300
-  const bufferCost = 350
-  const totalEstimated =
-    themeCost +
-    decorCost +
-    foodCost +
-    cakeCost +
-    drinksCost +
-    activityCost +
-    bufferCost
-
-  const parseBudgetNum = (b: string) => {
-    if (b.includes("500") && b.includes("1,000")) return 1000
-    if (b.includes("1,000")) return 2500
-    if (b.includes("3,000")) return 5000
-    if (b.includes("5,000+")) return 7500
-    return 5000
-  }
-  const targetBudgetNum = parseBudgetNum(budget)
-  const displayTotal = apiSuggestion?.total_allocated_budget
-    ? Math.round(apiSuggestion.total_allocated_budget)
-    : totalEstimated
-  const currentSavings = targetBudgetNum - displayTotal
-  const isOverBudget = displayTotal > targetBudgetNum
+  const currentTheme = themePresets[themeIndex] || themePresets[0]
+  const currentFood = foodPresets[foodIndex] || foodPresets[0]
+  const currentDecor = decorPresets[decorIndex] || decorPresets[0]
+  const currentActivity = activityPresets[activityIndex] || activityPresets[0]
 
   const toggleShoppingItem = (id: string) => {
     setShoppingItems((prev) =>
@@ -1682,13 +1916,18 @@ function Planner({
 
   const addShoppingItem = (e: FormEvent) => {
     e.preventDefault()
-    if (!newShoppingName.trim()) return
-    const cost = Number(newShoppingCost) || 100
+    const trimmed = newShoppingName.trim()
+    if (!trimmed) return
+    if (shoppingItems.some((i) => i.name.toLowerCase() === trimmed.toLowerCase())) {
+      notify("Item already exists in your shopping list!")
+      return
+    }
+    const cost = Math.max(0, Number(newShoppingCost) || 50)
     setShoppingItems((prev) => [
       ...prev,
       {
         id: `s-${Date.now()}`,
-        name: newShoppingName.trim(),
+        name: trimmed,
         category: newShoppingCategory || "Custom",
         quantity: newShoppingQuantity.trim() || "1x",
         cost,
@@ -1697,7 +1936,7 @@ function Planner({
     ])
     setNewShoppingName("")
     setNewShoppingQuantity("1x")
-    setNewShoppingCost("100")
+    setNewShoppingCost("50")
     notify("Shopping item added!")
   }
 
@@ -1710,7 +1949,17 @@ function Planner({
     setBudget(editBudget)
     setStyle(editStyle)
     setIsEditingBasics(false)
-    notify("Event details updated successfully!")
+    const newTarget = parseBudgetNum(editBudget)
+    const newGuests = Math.max(1, Number(editGuests) || 1)
+    setShoppingItems(
+      createSynchronizedShoppingItems(
+        newTarget,
+        newGuests,
+        editOccasion,
+        foodPreference === "Vegetarian"
+      )
+    )
+    notify("Event details and budget updated successfully!")
   }
 
   const handleSavePlan = () => {
@@ -1806,80 +2055,33 @@ function Planner({
         budget: numericBudget,
         guests: numGuests,
         celebration_style: style,
+        location: location,
+        dietary_preference: foodPreference,
+        setting: setting,
+        notes: notes,
       })
       if (resp) {
         setApiSuggestion(resp)
-        const items: ShoppingItem[] = []
-        let idCounter = 1
-
-        if (resp.food_suggestions && resp.food_suggestions.length > 0) {
-          resp.food_suggestions.forEach((food) => {
-            const isCake = food.toLowerCase().includes("cake")
-            const cost = isCake
-              ? Math.round(numericBudget * 0.15)
-              : Math.round(
-                  (numericBudget * 0.25) /
-                    Math.max(1, resp.food_suggestions.length - 1),
-                )
-            items.push({
-              id: `s-${idCounter++}`,
-              name: food,
-              category: isCake ? "Cake" : "Food",
-              quantity: isCake ? "1.2 kg" : `${Math.max(1, Math.round(numGuests / 4))} platters`,
-              cost: Math.max(100, cost),
-              completed: idCounter % 3 === 0,
-            })
-          })
-        }
-
-        if (
-          resp.decoration_suggestions &&
-          resp.decoration_suggestions.length > 0
-        ) {
-          resp.decoration_suggestions.forEach((decor) => {
-            const cost = Math.round(
-              (numericBudget * 0.15) / resp.decoration_suggestions.length,
-            )
-            items.push({
-              id: `s-${idCounter++}`,
-              name: decor,
-              category: "Decor",
-              quantity: "1 set",
-              cost: Math.max(80, cost),
-              completed: idCounter % 2 === 0,
-            })
-          })
-        }
-
-        if (
-          resp.activity_suggestions &&
-          resp.activity_suggestions.length > 0
-        ) {
-          items.push({
-            id: `s-${idCounter++}`,
-            name: `${resp.activity_suggestions[0]} (props & kit)`,
-            category: "Activities",
-            quantity: "1 kit",
-            cost: Math.max(100, Math.round(numericBudget * 0.08)),
-            completed: false,
-          })
-        }
-
-        items.push({
-          id: `s-${idCounter++}`,
-          name: "Eco-friendly plates, cups & napkins",
-          category: "Supplies",
-          quantity: `${numGuests} sets`,
-          cost: Math.max(80, Math.round(numGuests * 12)),
-          completed: true,
-        })
-
-        if (items.length > 0) {
-          setShoppingItems(items)
-        }
+        setShoppingItems(
+          createSynchronizedShoppingItems(
+            numericBudget,
+            numGuests,
+            eventType,
+            foodPreference === "Vegetarian",
+            resp
+          )
+        )
       }
     } catch (err) {
       console.warn("Backend suggestions API error, using curated presets:", err)
+      setShoppingItems(
+        createSynchronizedShoppingItems(
+          parseBudgetNum(budget),
+          numGuests,
+          eventType,
+          foodPreference === "Vegetarian"
+        )
+      )
       notify("Rule engine offline; loaded curated celebration plan.")
     } finally {
       setIsAiLoading(false)
@@ -1934,46 +2136,40 @@ function Planner({
       eventName.trim() ||
       `${eventType} Celebration at ${location.split(",")[0]}`
 
-    const budgetRows =
-      apiSuggestion?.budget_allocations &&
-      apiSuggestion.budget_allocations.length > 0
-        ? apiSuggestion.budget_allocations.map((alloc) => [
-            alloc.category,
-            `₹${Math.round(alloc.allocated_amount).toLocaleString("en-IN")}`,
-            Math.round(alloc.percentage),
-          ] as const)
-        : ([
-            [
-              "Food & celebration cake",
-              `₹${(foodCost + cakeCost).toLocaleString("en-IN")}`,
-              Math.round(((foodCost + cakeCost) / totalEstimated) * 100),
-            ],
-            [
-              "Theme styling",
-              `₹${themeCost.toLocaleString("en-IN")}`,
-              Math.round((themeCost / totalEstimated) * 100),
-            ],
-            [
-              "Decorations & DIY",
-              `₹${decorCost.toLocaleString("en-IN")}`,
-              Math.round((decorCost / totalEstimated) * 100),
-            ],
-            [
-              "Drinks & refreshments",
-              `₹${drinksCost.toLocaleString("en-IN")}`,
-              Math.round((drinksCost / totalEstimated) * 100),
-            ],
-            [
-              "Activities & party games",
-              `₹${activityCost.toLocaleString("en-IN")}`,
-              Math.round((activityCost / totalEstimated) * 100),
-            ],
-            [
-              "Safety reserve buffer",
-              `₹${bufferCost.toLocaleString("en-IN")}`,
-              Math.round((bufferCost / totalEstimated) * 100),
-            ],
-          ] as const)
+    const budgetRows: [string, string, number][] = [
+      [
+        "Food & snacks",
+        `₹${foodShoppingCost.toLocaleString("en-IN")}`,
+        Math.round((foodShoppingCost / (targetBudgetNum || 1)) * 100),
+      ],
+      [
+        "Celebration cake & mementos",
+        `₹${cakeShoppingCost.toLocaleString("en-IN")}`,
+        Math.round((cakeShoppingCost / (targetBudgetNum || 1)) * 100),
+      ],
+      [
+        "Decorations & theme styling",
+        `₹${decorShoppingCost.toLocaleString("en-IN")}`,
+        Math.round((decorShoppingCost / (targetBudgetNum || 1)) * 100),
+      ],
+      [
+        "Activities & entertainment",
+        `₹${activityShoppingCost.toLocaleString("en-IN")}`,
+        Math.round((activityShoppingCost / (targetBudgetNum || 1)) * 100),
+      ],
+      [
+        "Supplies & essentials",
+        `₹${suppliesShoppingCost.toLocaleString("en-IN")}`,
+        Math.round((suppliesShoppingCost / (targetBudgetNum || 1)) * 100),
+      ],
+    ]
+    if (currentSavings > 0) {
+      budgetRows.push([
+        "Safety reserve cushion",
+        `₹${currentSavings.toLocaleString("en-IN")}`,
+        Math.round((currentSavings / (targetBudgetNum || 1)) * 100),
+      ])
+    }
 
     const renderSectionA = (
       <section id="section-overview" className="planner-section-card">
@@ -2219,10 +2415,10 @@ function Planner({
             <span className="food-subcard-title">
               <Icon name="cake" size={16} />
               {apiSuggestion?.food_suggestions?.find((f) =>
-                f.toLowerCase().includes("cake"),
+                f.toLowerCase().includes("cake") || f.toLowerCase().includes("cupcake")
               ) || currentFood.cakeTitle}
             </span>
-            <span className="food-price-tag">₹{currentFood.cakeCost}</span>
+            <span className="food-price-tag">₹{cakeShoppingCost}</span>
           </div>
           <p className="food-subcard-desc">{currentFood.cakeFlavor}</p>
         </div>
@@ -2232,10 +2428,11 @@ function Planner({
             <span className="food-subcard-title">
               <Icon name="food" size={15} /> Snacks & Finger Food Platters
             </span>
+            <span className="food-price-tag">₹{foodShoppingCost}</span>
           </div>
           <div className="food-snack-tags">
             {(apiSuggestion?.food_suggestions && apiSuggestion.food_suggestions.length > 0
-              ? apiSuggestion.food_suggestions.filter((f) => !f.toLowerCase().includes("cake"))
+              ? apiSuggestion.food_suggestions.filter((f) => !f.toLowerCase().includes("cake") && !f.toLowerCase().includes("cupcake"))
               : currentFood.snackRecommendations
             ).map((snack, idx) => (
               <span key={idx} className="food-tag-pill">
@@ -2261,10 +2458,10 @@ function Planner({
           </span>
           <div className="food-cost-breakdown">
             <span className="per-guest-text">
-              ~₹{Math.round((foodCost + cakeCost) / Math.max(1, Number(guests) || 1))} / guest
+              ~₹{Math.round((foodShoppingCost + cakeShoppingCost) / currentGuestCount)} / guest
             </span>
             <strong className="food-total-text">
-              ₹{(foodCost + cakeCost).toLocaleString("en-IN")} est.
+              ₹{(foodShoppingCost + cakeShoppingCost).toLocaleString("en-IN")} est.
             </strong>
           </div>
         </div>
@@ -2322,7 +2519,7 @@ function Planner({
 
         <div className="theme-cost-footer" style={{ marginTop: 16 }}>
           <span>Estimated decoration expense:</span>
-          <strong>₹{decorCost.toLocaleString("en-IN")}</strong>
+          <strong>₹{decorShoppingCost.toLocaleString("en-IN")}</strong>
         </div>
       </section>
     )
@@ -2349,13 +2546,15 @@ function Planner({
           <div className="activity-box-header">
             <span className="section-subheading" style={{ margin: 0 }}>RECOMMENDED PARTY GAMES</span>
             <span className="guest-badge-pill">
-              <Icon name="people" size={12} /> For {guests} guests
+              <Icon name="people" size={12} /> For {guests} {Number(guests) === 1 ? "guest" : "friends"}
             </span>
           </div>
           <p className="activity-main-text">
             {apiSuggestion?.activity_suggestions &&
             apiSuggestion.activity_suggestions.length > 0
-              ? apiSuggestion.activity_suggestions.join(" · ")
+              ? (currentGuestCount === 1
+                  ? apiSuggestion.activity_suggestions.filter(a => !a.toLowerCase().includes("teams") && !a.toLowerCase().includes("10-25") && !a.toLowerCase().includes("10–25")).join(" · ") || currentActivity.activities
+                  : apiSuggestion.activity_suggestions.join(" · "))
               : currentActivity.activities}
           </p>
           <small className="activity-sub-context">
@@ -2381,10 +2580,10 @@ function Planner({
         <div className="activity-footer-row">
           <span className="diet-pill" style={{ background: "#fefce8", color: "#854d0e", border: "1px solid #fef08a" }}>
             <Icon name="sparkle" size={12} />
-            {currentActivity.cost === 0 ? "100% Free Games & Quizzes" : `₹${currentActivity.cost} props budget`}
+            {activityShoppingCost === 0 ? "100% Free Games & Quizzes" : `₹${activityShoppingCost} props budget`}
           </span>
           <span className="activity-timing-text">
-            60–90 min celebration itinerary
+            {currentGuestCount === 1 ? "Flexible celebration timeline" : "60–90 min celebration itinerary"}
           </span>
         </div>
       </section>

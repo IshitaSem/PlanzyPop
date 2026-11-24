@@ -27,6 +27,10 @@ def get_event_suggestions(request: schemas.SuggestionRequest):
         event_type=request.event_type,
         budget=request.budget,
         guests=request.guests,
-        celebration_style=request.celebration_style
+        celebration_style=request.celebration_style,
+        location=request.location,
+        dietary_preference=request.dietary_preference,
+        setting=request.setting,
+        notes=request.notes
     )
     return suggestions

@@ -29,6 +29,8 @@ from suggestions import (
     generate_event_suggestions,
     CATEGORY_ALLOCATION_RULES,
     compute_budget_allocation,
+    validate_celebration_plan,
+    generate_synchronized_shopping_items,
 )
 
 
@@ -162,6 +164,161 @@ def test_stateless_database_independence(client: TestClient, db_session):
     assert events_count_before == events_count_after
     assert expenses_count_before == expenses_count_after
     assert tasks_count_before == tasks_count_after
+
+
+def test_low_budget_range_500_to_1000():
+    """Verify that budget range ₹500–₹1,000 sets realistic allocations and affordable recommendations."""
+    for budget in [500.0, 750.0, 1000.0]:
+        res = generate_event_suggestions("Birthday", budget, 1, "Casual")
+        assert res["total_allocated_budget"] <= budget
+        assert res["budget_tier"] == "Very Low Budget (Under ₹1,500)"
+        # Affordable recommendations instead of premium
+        assert any("samosa" in f.lower() or "popcorn" in f.lower() or "bakery" in f.lower() for f in res["food_suggestions"])
+        assert not any("premium designer custom birthday cake" in f.lower() for f in res["food_suggestions"])
+        # Mathematical consistency
+        sum_alloc = round(sum(a["allocated_amount"] for a in res["budget_allocations"]), 2)
+        assert sum_alloc == round(budget, 2)
+        # Shopping items match allocations
+        if budget > 0:
+            assert res["shopping_items"] is not None
+            sum_shopping = round(sum(i["cost"] for i in res["shopping_items"]), 2)
+            assert sum_shopping == round(res["total_allocated_budget"], 2)
+            # Safety buffer is present
+            assert res["safety_buffer"] >= 0.0
+
+
+def test_solo_guest_count_consistency():
+    """Verify that guests=1 suggests solo-appropriate activities and scaled food without large-group games."""
+    res = generate_event_suggestions("Birthday", 1000.0, 1, "Casual")
+    # Must not contain 10-25 or team-based games
+    for act in res["activity_suggestions"]:
+        act_l = act.lower()
+        assert "10–25" not in act_l and "10-25" not in act_l
+        assert "two teams" not in act_l and "large groups" not in act_l
+    # Must contain solo/personal celebration activities
+    act_str = " ".join(res["activity_suggestions"]).lower()
+    assert "solo" in act_str or "personal" in act_str or "reflection" in act_str or "video call" in act_str or "movie" in act_str
+    # Food is scaled for 1 person (mini cake / personal portion)
+    food_str = " ".join(res["food_suggestions"]).lower()
+    assert "mini" in food_str or "cupcake" in food_str or "personal" in food_str or "samosa" in food_str
+    # Per-guest cost equals estimated total / 1
+    assert res["per_guest_cost"] == res["estimated_expense"]
+
+
+def test_dietary_and_setting_preferences():
+    """Verify that dietary preference (Vegetarian) and setting (Outdoor/Indoor) are respected."""
+    res_veg = generate_event_suggestions(
+        "Birthday", 2000.0, 4, "Casual",
+        dietary_preference="Vegetarian", setting="Outdoor"
+    )
+    food_str = " ".join(res_veg["food_suggestions"]).lower()
+    assert "samosa" in food_str or "veg" in food_str or "chaat" in food_str
+    # Outdoor setting reflection in decor / activities
+    assert len(res_veg["decoration_suggestions"]) > 0
+    assert len(res_veg["activity_suggestions"]) > 0
+
+
+def test_plan_validation_and_integrity():
+    """Verify backend celebration plan validation logic catches inconsistencies and handles missing values."""
+    valid_plan = {
+        "budget": 1000.0,
+        "guests": 1,
+        "total_allocated_budget": 1000.0,
+        "estimated_expense": 950.0,
+        "per_guest_cost": 950.0,
+        "suggested_theme": "Cozy Birthday Celebration",
+        "food_suggestions": ["Mini bento cake", "Personal samosa combo"],
+        "decoration_suggestions": ["Pastel balloons (15 pcs)"],
+        "activity_suggestions": ["Solo cake cutting & movie marathon"],
+        "budget_allocations": [
+            {"category": "Food", "allocated_amount": 400.0, "percentage": 40.0},
+            {"category": "Cake / Gifts", "allocated_amount": 250.0, "percentage": 25.0},
+            {"category": "Decorations", "allocated_amount": 150.0, "percentage": 15.0},
+            {"category": "Entertainment", "allocated_amount": 100.0, "percentage": 10.0},
+            {"category": "Miscellaneous", "allocated_amount": 100.0, "percentage": 10.0},
+        ],
+        "budget_saving_tips": ["Pre-order local cake"]
+    }
+    # Valid plan passes
+    assert validate_celebration_plan(valid_plan) == valid_plan
+
+    # Budget exceeded raises ValueError
+    invalid_overbudget = dict(valid_plan, total_allocated_budget=1500.0)
+    with pytest.raises(ValueError, match="exceeds target budget"):
+        validate_celebration_plan(invalid_overbudget)
+
+    # Category allocations mismatch raises ValueError
+    invalid_alloc = dict(valid_plan, budget_allocations=[
+        {"category": "Food", "allocated_amount": 100.0, "percentage": 10.0}
+    ])
+    with pytest.raises(ValueError, match="Sum of allocations"):
+        validate_celebration_plan(invalid_alloc)
+
+    # 1 guest with 10-25 group game raises ValueError
+    invalid_guest_activity = dict(
+        valid_plan,
+        activity_suggestions=["Ideal for 10–25 friends in living room"]
+    )
+    with pytest.raises(ValueError, match="incompatible with single guest count"):
+        validate_celebration_plan(invalid_guest_activity)
+
+    # Missing AI values safely handled with fallbacks
+    incomplete_plan = {
+        "budget": 500.0,
+        "guests": 2,
+        "total_allocated_budget": 500.0,
+        "estimated_expense": 500.0,
+        "budget_allocations": [
+            {"category": "Food", "allocated_amount": 500.0, "percentage": 100.0}
+        ],
+        "food_suggestions": None,
+        "decoration_suggestions": None,
+        "activity_suggestions": None,
+        "budget_saving_tips": None,
+        "suggested_theme": None
+    }
+    validated = validate_celebration_plan(incomplete_plan)
+    assert len(validated["food_suggestions"]) > 0
+    assert validated["suggested_theme"] is not None
+
+
+def test_api_endpoint_with_new_fields_and_synchronized_shopping(client: TestClient):
+    """Verify POST /suggestions/generate with location, dietary, setting returns synchronized shopping list."""
+    payload = {
+        "event_type": "Birthday",
+        "budget": 1000.0,
+        "guests": 1,
+        "celebration_style": "Casual",
+        "location": "Sector 17, Chandigarh",
+        "dietary_preference": "Vegetarian",
+        "setting": "Indoor"
+    }
+    res = client.post("/suggestions/generate", json=payload)
+    assert res.status_code == 200
+    data = res.json()
+    assert data["target_budget"] == 1000.0
+    assert data["total_allocated_budget"] == 1000.0
+    assert data["per_guest_cost"] is not None
+    assert data["category_estimates"] is not None
+
+    # Verify shopping items synchronize with categories
+    items = data["shopping_items"]
+    assert items is not None and len(items) > 0
+    # Total of shopping items equals total allocated budget
+    total_shopping = round(sum(i["cost"] for i in items), 2)
+    assert total_shopping == 1000.0
+
+    # Food shopping items sum to Food category estimate
+    food_items_sum = round(sum(i["cost"] for i in items if i["category"] == "Food"), 2)
+    assert food_items_sum == round(data["category_estimates"]["Food"], 2)
+
+    # Cake shopping items sum to Cake / Gifts category estimate
+    cake_items_sum = round(sum(i["cost"] for i in items if i["category"] == "Cake"), 2)
+    assert cake_items_sum == round(data["category_estimates"]["Cake / Gifts"], 2)
+
+    # Decor shopping items sum to Decorations category estimate
+    decor_items_sum = round(sum(i["cost"] for i in items if i["category"] == "Decor"), 2)
+    assert decor_items_sum == round(data["category_estimates"]["Decorations"], 2)
 
 
 if __name__ == "__main__":

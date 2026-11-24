@@ -143,11 +143,26 @@ export interface BudgetAllocationItem {
   allocated_amount: number
 }
 
+export interface ShoppingItemResponse {
+  id: string
+  name: string
+  category: string
+  quantity: string
+  cost: number
+  completed: boolean
+}
+
 export interface SuggestionRequest {
   event_type: string
   budget: number
   guests: number
   celebration_style?: string
+  location?: string
+  dietary_preference?: string
+  food_preference?: string
+  setting?: string
+  budget_range?: string
+  notes?: string
 }
 
 export interface SuggestionResponse {
@@ -164,6 +179,12 @@ export interface SuggestionResponse {
   total_allocated_budget: number
   budget_saving_tips: string[]
   disclaimer: string
+  target_budget?: number
+  estimated_expense?: number
+  safety_buffer?: number
+  per_guest_cost?: number
+  category_estimates?: Record<string, number>
+  shopping_items?: ShoppingItemResponse[]
 }
 
 

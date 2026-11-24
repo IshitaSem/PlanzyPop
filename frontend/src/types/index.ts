@@ -22,6 +22,7 @@ export type {
   TaskUpdate,
   TaskSummary,
   BudgetAllocationItem,
+  ShoppingItemResponse,
   SuggestionRequest,
   SuggestionResponse,
   ExpenseCategory,

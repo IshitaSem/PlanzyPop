@@ -2,19 +2,22 @@
 PlanzyPop – Event Planning and Budget Management System
 Academic Mini-Project for M.Sc. Computer Science (Data Science)
 
-Stage 6: Rule-Based Event Suggestion Engine
+Stage 6: Rule-Based Event Suggestion Engine & Validated Budget Heuristics
 This module implements a transparent, deterministic Rule-Based Expert System (Inference Engine)
 that provides personalized, affordable celebration recommendations for students.
 
 Viva Concept (Data Science & Expert Systems):
 - Knowledge Base: Predefined domain facts regarding celebration styles, budget tiers, and category proportions.
-- Rule Base: IF-THEN heuristic production rules mapping (Event Type, Budget, Guests, Style) to recommendations.
+- Rule Base: IF-THEN heuristic production rules mapping (Event Type, Budget, Guests, Style, Setting, Dietary) to recommendations.
 - Inference Engine: Forward-chaining evaluation that classifies inputs, resolves constraints,
   and synthesizes personalized themes, menus, DIY decor, activities, and budget allocations.
+- Mathematical Consistency Guarantee:
+  Total Estimated Expense = sum(Category Expenses) <= Target Budget
+  Remaining Cushion = Target Budget - Estimated Expense >= 0
+  Per-Guest Cost = Estimated Expense / max(1, Guests)
 """
 
-from typing import Dict, List, Any
-
+from typing import Dict, List, Any, Optional
 
 
 TIER_ZERO = "Zero Budget / Free Celebration"
@@ -77,12 +80,11 @@ CATEGORY_ALLOCATION_RULES: Dict[str, Dict[str, float]] = {
 }
 
 
-
 def normalize_event_type(raw_type: str) -> str:
     """
     Normalizes user input to recognized canonical event types.
     """
-    cleaned = raw_type.strip().lower()
+    cleaned = (raw_type or "").strip().lower()
     if "birth" in cleaned:
         return "birthday"
     elif "college" in cleaned or "fresh" in cleaned or "fest" in cleaned:
@@ -102,7 +104,7 @@ def normalize_style(raw_style: str) -> str:
     """
     Normalizes celebration style to canonical categories.
     """
-    cleaned = raw_style.strip().lower()
+    cleaned = (raw_style or "").strip().lower()
     if "aesth" in cleaned:
         return "aesthetic"
     elif "diy" in cleaned or "budget" in cleaned:
@@ -128,7 +130,6 @@ def classify_budget_tier(budget: float) -> str:
         return TIER_MODERATE
     else:
         return TIER_HIGH
-
 
 
 def compute_budget_allocation(event_type_key: str, budget: float) -> List[Dict[str, Any]]:
@@ -167,44 +168,327 @@ def compute_budget_allocation(event_type_key: str, budget: float) -> List[Dict[s
     return allocations
 
 
+def generate_synchronized_shopping_items(
+    budget: float,
+    guests: int,
+    allocations: List[Dict[str, Any]],
+    event_key: str,
+    tier: str,
+    dietary_preference: Optional[str] = None
+) -> List[Dict[str, Any]]:
+    """
+    Generates itemized shopping items whose category sums exactly match the category allocations.
+    Guarantees that:
+    1. Food items sum to Food allocation.
+    2. Cake items sum to Cake / Gifts allocation.
+    3. Decor items sum to Decorations allocation.
+    4. Activity items sum to Entertainment allocation.
+    5. Supplies/Misc items sum to Miscellaneous allocation.
+    6. Overall sum of shopping items == total_allocated_budget <= budget.
+    """
+    if budget <= 0.0:
+        return []
+
+    alloc_map = {a["category"]: a["allocated_amount"] for a in allocations}
+    items: List[Dict[str, Any]] = []
+    item_id = 1
+
+    diet = (dietary_preference or "").lower().strip()
+    is_veg = "veg" in diet and "non" not in diet and "mix" not in diet
+
+    # 1. Food items
+    food_total = alloc_map.get("Food", 0.0)
+    if food_total > 0:
+        if guests == 1:
+            snack_cost = round(food_total * 0.65)
+            drink_cost = round(food_total - snack_cost, 2)
+            items.append({
+                "id": f"s-{item_id}",
+                "name": "Personal veg samosa / patty & snack platter" if is_veg else "Personal savory snack platter & dip",
+                "category": "Food",
+                "quantity": "1 platter",
+                "cost": snack_cost,
+                "completed": False
+            })
+            item_id += 1
+            items.append({
+                "id": f"s-{item_id}",
+                "name": "Chilled beverage / iced tea",
+                "category": "Food",
+                "quantity": "1 bottle",
+                "cost": drink_cost,
+                "completed": False
+            })
+            item_id += 1
+        else:
+            snack_cost = round(food_total * 0.65)
+            drink_cost = round(food_total - snack_cost, 2)
+            items.append({
+                "id": f"s-{item_id}",
+                "name": "Crowd-favorite savory snack platters" if is_veg else "Party finger foods & snack platters",
+                "category": "Food",
+                "quantity": f"{max(1, round(guests / 4))} platters",
+                "cost": snack_cost,
+                "completed": False
+            })
+            item_id += 1
+            items.append({
+                "id": f"s-{item_id}",
+                "name": "Beverages & refreshment cartons",
+                "category": "Food",
+                "quantity": f"{max(2, round(guests / 3))} cartons",
+                "cost": drink_cost,
+                "completed": False
+            })
+            item_id += 1
+
+    # 2. Cake / Gifts items
+    cake_total = alloc_map.get("Cake / Gifts", 0.0)
+    if cake_total > 0:
+        if event_key == "birthday":
+            if guests == 1:
+                cake_cost = round(cake_total * 0.80)
+                prop_cost = round(cake_total - cake_cost, 2)
+                items.append({
+                    "id": f"s-{item_id}",
+                    "name": "Single mini celebration bento cake (250g)",
+                    "category": "Cake",
+                    "quantity": "1 mini cake",
+                    "cost": cake_cost,
+                    "completed": False
+                })
+                item_id += 1
+                items.append({
+                    "id": f"s-{item_id}",
+                    "name": "Celebration birthday candle & greeting card",
+                    "category": "Cake",
+                    "quantity": "1 set",
+                    "cost": prop_cost,
+                    "completed": True
+                })
+                item_id += 1
+            else:
+                cake_cost = round(cake_total * 0.80)
+                prop_cost = round(cake_total - cake_cost, 2)
+                cake_weight = "500g" if guests <= 5 else ("1.2 kg" if guests <= 15 else "2.0 kg")
+                items.append({
+                    "id": f"s-{item_id}",
+                    "name": f"Bakery celebration cake ({cake_weight})",
+                    "category": "Cake",
+                    "quantity": "1 cake",
+                    "cost": cake_cost,
+                    "completed": False
+                })
+                item_id += 1
+                items.append({
+                    "id": f"s-{item_id}",
+                    "name": "Party candles & celebration sparklers",
+                    "category": "Cake",
+                    "quantity": "1 pack",
+                    "cost": prop_cost,
+                    "completed": True
+                })
+                item_id += 1
+        else:
+            gift_cost = round(cake_total * 0.80)
+            wrap_cost = round(cake_total - gift_cost, 2)
+            items.append({
+                "id": f"s-{item_id}",
+                "name": "Celebration dessert / memento tribute gift",
+                "category": "Cake",
+                "quantity": "1 set",
+                "cost": gift_cost,
+                "completed": False
+            })
+            item_id += 1
+            items.append({
+                "id": f"s-{item_id}",
+                "name": "Gift packaging & greeting card",
+                "category": "Cake",
+                "quantity": "1 set",
+                "cost": wrap_cost,
+                "completed": True
+            })
+            item_id += 1
+
+    # 3. Decorations items
+    decor_total = alloc_map.get("Decorations", 0.0)
+    if decor_total > 0:
+        balloon_cost = round(decor_total * 0.50)
+        diy_cost = round(decor_total - balloon_cost, 2)
+        balloon_count = "15 pcs" if guests == 1 else ("30 pcs" if guests <= 10 else "50 pcs")
+        items.append({
+            "id": f"s-{item_id}",
+            "name": f"Pastel celebration balloons ({balloon_count})",
+            "category": "Decor",
+            "quantity": "1 pack",
+            "cost": balloon_cost,
+            "completed": True
+        })
+        item_id += 1
+        items.append({
+            "id": f"s-{item_id}",
+            "name": "Crepe paper streamer rolls & fairy lights",
+            "category": "Decor",
+            "quantity": "1 kit",
+            "cost": diy_cost,
+            "completed": False
+        })
+        item_id += 1
+
+    # 4. Activities / Entertainment items
+    act_total = alloc_map.get("Entertainment", 0.0)
+    if act_total > 0:
+        items.append({
+            "id": f"s-{item_id}",
+            "name": "Solo celebration photo prints & playlist setup" if guests == 1 else "Party games kit, quiz printouts & speaker props",
+            "category": "Activities",
+            "quantity": "1 kit",
+            "cost": act_total,
+            "completed": False
+        })
+        item_id += 1
+
+    # 5. Supplies / Miscellaneous items
+    misc_total = alloc_map.get("Miscellaneous", 0.0)
+    if misc_total > 0:
+        supplies_cost = round(misc_total * 0.60)
+        buffer_cost = round(misc_total - supplies_cost, 2)
+        items.append({
+            "id": f"s-{item_id}",
+            "name": "Eco-friendly plates, cups & party napkins",
+            "category": "Supplies",
+            "quantity": f"{max(1, guests)} sets",
+            "cost": supplies_cost,
+            "completed": True
+        })
+        item_id += 1
+        if buffer_cost > 0:
+            items.append({
+                "id": f"s-{item_id}",
+                "name": "Safety reserve cushion for unexpected essentials",
+                "category": "Supplies",
+                "quantity": "1 reserve",
+                "cost": buffer_cost,
+                "completed": False
+            })
+            item_id += 1
+
+    return items
+
+
+def validate_celebration_plan(plan_data: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Centralized validation engine:
+    1. Budget constraint: total estimated expense never exceeds selected budget.
+    2. Category allocations: sum of allocations equals total allocated budget without rounding drift.
+    3. Per-guest estimates: accurate division (estimated_total / max(1, guests)).
+    4. Guest count consistency: when guests == 1, rejects incompatible large-group games/quantities.
+    5. Missing/invalid values: safe fallbacks for missing lists or null fields.
+    """
+    budget = float(plan_data.get("budget", 0.0))
+    if budget < 0.0:
+        raise ValueError("Budget cannot be negative")
+
+    total_alloc = float(plan_data.get("total_allocated_budget", 0.0))
+    if total_alloc > budget + 0.01:
+        raise ValueError(f"Total allocated budget (₹{total_alloc}) exceeds target budget (₹{budget})")
+
+    allocations = plan_data.get("budget_allocations", [])
+    if not isinstance(allocations, list):
+        raise ValueError("budget_allocations must be a list")
+
+    if budget > 0.0:
+        sum_alloc = round(sum(a.get("allocated_amount", 0.0) for a in allocations), 2)
+        if abs(sum_alloc - total_alloc) > 0.05:
+            raise ValueError(f"Sum of allocations (₹{sum_alloc}) does not match total allocated budget (₹{total_alloc})")
+
+    guests = int(plan_data.get("guests", 1))
+    if guests < 0:
+        raise ValueError("Guest count cannot be negative")
+
+    # Guest count consistency check
+    if guests == 1:
+        for act in plan_data.get("activity_suggestions", []):
+            act_l = act.lower()
+            if "10–25" in act_l or "10-25" in act_l or "two teams" in act_l or "large groups" in act_l:
+                raise ValueError(f"Activity recommendation '{act}' is incompatible with single guest count")
+
+    # Safe defaults for missing/invalid fields
+    for list_key in ("food_suggestions", "decoration_suggestions", "activity_suggestions", "budget_saving_tips"):
+        val = plan_data.get(list_key)
+        if not val or not isinstance(val, list):
+            plan_data[list_key] = ["PlanzyPop curated recommendation"]
+
+    if not plan_data.get("suggested_theme"):
+        plan_data["suggested_theme"] = "Affordable Celebration with Friends"
+
+    return plan_data
+
 
 def generate_event_suggestions(
     event_type: str,
     budget: float,
     guests: int,
-    celebration_style: str
+    celebration_style: str = "Casual",
+    location: Optional[str] = None,
+    dietary_preference: Optional[str] = None,
+    setting: Optional[str] = None,
+    notes: Optional[str] = None
 ) -> Dict[str, Any]:
     """
     Main Rule-Based Suggestion Pipeline.
     Synthesizes tailored student celebration suggestions using forward-chaining rules.
+    Respects budget constraints, guest counts, dietary choices, and settings.
     """
-    event_key = normalize_event_type(event_type)
-    style_key = normalize_style(celebration_style)
-    budget_tier = classify_budget_tier(budget)
+    safe_budget = max(0.0, float(budget)) if budget is not None else 0.0
+    safe_guests = max(0, int(guests)) if guests is not None else 1
+    safe_event_type = event_type.strip() if event_type and event_type.strip() else "Celebration"
+    safe_style = celebration_style.strip() if celebration_style and celebration_style.strip() else "Casual"
 
-    theme = _rule_theme(event_key, style_key, budget_tier)
+    event_key = normalize_event_type(safe_event_type)
+    style_key = normalize_style(safe_style)
+    budget_tier = classify_budget_tier(safe_budget)
 
-    food = _rule_food(event_key, style_key, budget_tier, guests)
+    theme = _rule_theme(event_key, style_key, budget_tier, setting)
+    food = _rule_food(event_key, style_key, budget_tier, safe_guests, dietary_preference, setting)
+    decorations = _rule_decorations(event_key, style_key, budget_tier, setting)
+    activities = _rule_activities(event_key, style_key, safe_guests, setting)
 
-    decorations = _rule_decorations(event_key, style_key, budget_tier)
-
-    activities = _rule_activities(event_key, style_key, guests)
-
-    allocations = compute_budget_allocation(event_key, budget)
+    allocations = compute_budget_allocation(event_key, safe_budget)
     total_allocated = round(sum(item["allocated_amount"] for item in allocations), 2)
 
-    saving_tips = _rule_budget_tips(budget_tier, guests, event_key)
+    saving_tips = _rule_budget_tips(budget_tier, safe_guests, event_key)
 
     disclaimer = (
         "These are rule-based student planning estimates and practical recommendations. "
         "Actual costs may vary based on local store prices, group sizes, and DIY effort."
     )
 
-    return {
-        "event_type": event_type.strip(),
-        "budget": round(budget, 2),
-        "guests": guests,
-        "celebration_style": celebration_style.strip(),
+    # Generate synchronized shopping items & category estimates
+    shopping_items = generate_synchronized_shopping_items(
+        safe_budget,
+        safe_guests,
+        allocations,
+        event_key,
+        budget_tier,
+        dietary_preference
+    )
+
+    category_estimates = {a["category"]: a["allocated_amount"] for a in allocations}
+
+    # Safety buffer calculation
+    # If budget > 0, reserve part of Miscellaneous as safety buffer (e.g. 5-10% of total)
+    misc_alloc = category_estimates.get("Miscellaneous", 0.0)
+    safety_buffer = round(misc_alloc * 0.5, 2) if safe_budget > 0 else 0.0
+    estimated_expense = round(total_allocated - safety_buffer, 2) if safe_budget > 0 else 0.0
+    per_guest_cost = round(estimated_expense / max(1, safe_guests), 2) if safe_budget > 0 else 0.0
+
+    raw_plan: Dict[str, Any] = {
+        "event_type": safe_event_type,
+        "budget": round(safe_budget, 2),
+        "guests": safe_guests,
+        "celebration_style": safe_style,
         "budget_tier": budget_tier,
         "suggested_theme": theme,
         "food_suggestions": food,
@@ -213,13 +497,22 @@ def generate_event_suggestions(
         "budget_allocations": allocations,
         "total_allocated_budget": total_allocated,
         "budget_saving_tips": saving_tips,
-        "disclaimer": disclaimer
+        "disclaimer": disclaimer,
+        "target_budget": round(safe_budget, 2),
+        "estimated_expense": estimated_expense,
+        "safety_buffer": safety_buffer,
+        "per_guest_cost": per_guest_cost,
+        "category_estimates": category_estimates,
+        "shopping_items": shopping_items
     }
 
+    # Run backend validation
+    validated_plan = validate_celebration_plan(raw_plan)
+    return validated_plan
 
 
-def _rule_theme(event_key: str, style_key: str, tier: str) -> str:
-    """Selects an affordable, stylish event theme based on event type, style, and budget."""
+def _rule_theme(event_key: str, style_key: str, tier: str, setting: Optional[str] = None) -> str:
+    """Selects an affordable, stylish event theme based on event type, style, budget, and setting."""
     if tier == TIER_ZERO:
         return "DIY Zero-Cost Friendship Hangout & Memory Celebration"
 
@@ -256,19 +549,63 @@ def _rule_theme(event_key: str, style_key: str, tier: str) -> str:
     return "Affordable Everyday Celebration with Close Friends"
 
 
-def _rule_food(event_key: str, style_key: str, tier: str, guests: int) -> List[str]:
-    """Generates food items considering budget tier, event type, and guest scaling."""
+def _rule_food(
+    event_key: str,
+    style_key: str,
+    tier: str,
+    guests: int,
+    dietary_preference: Optional[str] = None,
+    setting: Optional[str] = None
+) -> List[str]:
+    """Generates food items considering budget tier, event type, guest scaling, dietary choice, and setting."""
     food_list = []
+    diet = (dietary_preference or "").lower().strip()
+    is_veg = "veg" in diet and "non" not in diet and "mix" not in diet
+    is_vegan = "vegan" in diet
 
     if tier == TIER_ZERO:
+        if guests == 1:
+            return [
+                "Homemade comfort meal or favorite snack",
+                "Homemade iced tea or fresh lemonade",
+                "Personal homemade sweet treat or cookie"
+            ]
         return [
             "Potluck style: Each friend brings one homemade snack or finger food",
             "Homemade lemonade / iced tea station",
             "Sharing favorite hostel snacks or homemade cookies"
         ]
 
+    # Solo celebration scaling (guests == 1)
+    if guests == 1:
+        if tier == TIER_VERY_LOW:
+            food_list.append("Affordable local bakery sponge cake or cupcakes")
+            if is_veg:
+                food_list.append("Affordable local samosas, kachoris, or aloo patties (personal portion)")
+            elif is_vegan:
+                food_list.append("Crispy spiced potato wedges or vegetable cutlets")
+            else:
+                food_list.append("Affordable local samosas or savory snack puff (personal portion)")
+            food_list.append("Homemade popcorn, spiced chips, or mixed biscuits")
+            food_list.append("Refreshing Rooh Afza, cold drinks, or homemade iced tea")
+        elif tier == TIER_LOW:
+            food_list.append("1.2 kg personalized chocolate truffle cake from a local bakery" if event_key == "birthday" else "Personal bakery dessert")
+            food_list.append("Pani Puri / Chaat DIY portion or grilled sandwich combo")
+            food_list.append("Crispy fries and chilled mocktail")
+        else:
+            food_list.append("Custom designer mini cake or gourmet pastry" if event_key == "birthday" else "Artisanal dessert platter")
+            food_list.append("Personal combo meal: mini burgers, fries, or momos")
+            food_list.append("Artisanal mocktail or iced cooler")
+        return food_list
+
+    # Group scaling (guests > 1)
     if tier == TIER_VERY_LOW:
-        food_list.append("Affordable local samosas, kachoris, or aloo patties")
+        if is_veg:
+            food_list.append("Affordable local samosas, kachoris, or aloo patties")
+        elif is_vegan:
+            food_list.append("Crispy spiced fries, potato patties, and vegetable spring rolls")
+        else:
+            food_list.append("Affordable local samosas, kachoris, or mixed savory patties")
         food_list.append("Homemade popcorn, spiced chips, and mixed biscuits")
         food_list.append("Refreshing Rooh Afza, cold drinks, or homemade iced tea")
         if event_key == "birthday":
@@ -277,7 +614,7 @@ def _rule_food(event_key: str, style_key: str, tier: str, guests: int) -> List[s
             food_list.append("Late-night customized Maggi noodles bar with toppings")
 
     elif tier == TIER_LOW:
-        food_list.append("Pani Puri / Chaat DIY DIY table or sandwich platter")
+        food_list.append("Pani Puri / Chaat DIY table or sandwich platter")
         food_list.append("Spring rolls, crispy fries, and dips")
         food_list.append("Chilled soft drinks and fruit mocktails")
         if event_key == "birthday":
@@ -287,7 +624,7 @@ def _rule_food(event_key: str, style_key: str, tier: str, guests: int) -> List[s
 
     else:
         food_list.append("Mini burger sliders, pizza slices, or momos platter")
-        food_list.append("Paneer tikka skewers, loaded nachos with cheese salsa")
+        food_list.append("Paneer tikka skewers, loaded nachos with cheese salsa" if is_veg else "Assorted tikka skewers, loaded nachos with cheese salsa")
         food_list.append("Artisanal mocktails and iced coolers")
         if event_key == "birthday":
             food_list.append("Premium designer custom birthday cake (chocolate/red velvet)")
@@ -300,8 +637,13 @@ def _rule_food(event_key: str, style_key: str, tier: str, guests: int) -> List[s
     return food_list
 
 
-def _rule_decorations(event_key: str, style_key: str, tier: str) -> List[str]:
-    """Recommends realistic, low-cost decor matching style and budget."""
+def _rule_decorations(
+    event_key: str,
+    style_key: str,
+    tier: str,
+    setting: Optional[str] = None
+) -> List[str]:
+    """Recommends realistic, low-cost decor matching style, budget tier, and setting."""
     if tier == TIER_ZERO:
         return [
             "Use fairy lights borrowed from friends' hostel rooms",
@@ -343,10 +685,46 @@ def _rule_decorations(event_key: str, style_key: str, tier: str) -> List[str]:
     return decor
 
 
-def _rule_activities(event_key: str, style_key: str, guests: int) -> List[str]:
-    """Generates engaging, zero-equipment or low-cost activities."""
+def _rule_activities(
+    event_key: str,
+    style_key: str,
+    guests: int,
+    setting: Optional[str] = None
+) -> List[str]:
+    """Generates engaging activities respecting guest count (solo vs group) and setting."""
     activities = []
 
+    # Solo celebration activities (guests == 1)
+    if guests == 1:
+        if event_key == "birthday":
+            activities.extend([
+                "Cake cutting countdown with celebration candle and birthday anthem playlist",
+                "Solo milestone reflection, gratitude recap, and photo memory journal",
+                "Cozy movie or series marathon with favorite snacks and treats",
+                "Video call celebration and digital toast with distant close friends and family"
+            ])
+        elif event_key == "farewell":
+            activities.extend([
+                "Personal senior tribute reflection and batch memory scrapbook review",
+                "Virtual video call farewell catch-up with close batchmates and mentors"
+            ])
+        elif event_key == "picnic":
+            activities.extend([
+                "Relaxed nature walk, candid photography, and acoustic playlist session on a picnic mat",
+                "Outdoor reading, sketch session, and badminton rally practice"
+            ])
+        elif event_key in ("college party", "hostel party"):
+            activities.extend([
+                "Curated Spotify celebration playlist and high-energy solo dance jam",
+                "Late-night movie or online gaming session with favorite snacks"
+            ])
+        else:
+            activities.extend([
+                "Relaxing celebration playlist, personal memory journal, and favorite movie stream"
+            ])
+        return activities
+
+    # Group activities (guests > 1)
     if event_key == "birthday":
         activities.extend([
             "Cake cutting countdown with party poppers and birthday anthem",
@@ -365,7 +743,7 @@ def _rule_activities(event_key: str, style_key: str, guests: int) -> List[str]:
             "Acoustic guitar sing-along and group dumb charades",
             "Nature walk and candid photography golden-hour session"
         ])
-    elif event_key == "college party" or event_key == "hostel party":
+    elif event_key in ("college party", "hostel party"):
         activities.extend([
             "Curated Spotify collaborative playlist with hostel dance face-offs",
             "Mafia or Undercover card game (engaging for large groups)",
@@ -389,6 +767,11 @@ def _rule_budget_tips(tier: str, guests: int, event_key: str) -> List[str]:
     tips = [
         "Host at home, a hostel terrace, or a free public park to avoid venue rental fees."
     ]
+
+    if guests == 1:
+        tips.append("For a solo celebration, treat yourself to a mini bakery bento cake and favorite comfort snacks.")
+        tips.append("Create an ambient room vibe with warm fairy lights and a personalized playlist for a cozy milestone memory.")
+        return tips
 
     if tier in (TIER_ZERO, TIER_VERY_LOW, TIER_LOW):
         tips.append("Opt for DIY balloon arches and fairy lights rather than hiring event planners.")

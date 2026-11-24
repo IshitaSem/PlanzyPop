@@ -92,7 +92,10 @@ def generate_ai_plan(req: PlanRequest):
         event_type=req.eventType,
         budget=float(req.budgetInr),
         guests=req.guests,
-        celebration_style=req.celebrationStyle or "Casual"
+        celebration_style=req.celebrationStyle or "Casual",
+        location=req.location,
+        dietary_preference=str(req.dietaryPreferences) if req.dietaryPreferences else None,
+        setting=req.setting
     )
 
     budget_allocations = [
