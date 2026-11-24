@@ -977,7 +977,7 @@ function MyEvents({
         <div className="event-list">
           <div className="month-label">
             {isGuest
-              ? "DEMO PREVIEW · 3 EVENTS"
+              ? " 3 EVENTS"
               : `${events.length} CELEBRATION${events.length > 1 ? "S" : ""}`}
           </div>
           {events.map((event) => (
@@ -5415,7 +5415,7 @@ function Profile({
     <div className="screen">
       <Header
         title="Profile"
-        eyebrow={isGuest ? "GUEST DEMO PREVIEW" : "MAKE IT YOURS"}
+        eyebrow={isGuest ? "PREVIEW" : "MAKE IT YOURS"}
         action={
           <IconButton
             icon="settings"
