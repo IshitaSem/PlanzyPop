@@ -494,7 +494,7 @@ function Overview({
         </div>
         <div className="desktop-page-context">
           <div className="eyebrow">
-            {isGuest ? "GUEST DEMO MODE · PREVIEW" : "PLANZYPOP WORKSPACE"}
+            {isGuest ? "GUEST · PREVIEW" : "PLANZYPOP WORKSPACE"}
           </div>
           <div>Overview</div>
         </div>
@@ -517,7 +517,7 @@ function Overview({
       <div className="hello">
         <div className="eyebrow">
           {isGuest
-            ? "WEDNESDAY, 6 NOV · GUEST DEMO MODE"
+            ? "WEDNESDAY, 6 NOV · GUEST"
             : "WEDNESDAY, 6 NOV · YOUR DASHBOARD"}
         </div>
         <div className="hero-title">
@@ -936,7 +936,7 @@ function MyEvents({
         title="My Plans"
         eyebrow={
           isGuest
-            ? "GUEST DEMO MODE · 3 SAMPLE PLANS"
+            ? "GUEST · 3 SAMPLE PLANS"
             : "CELEBRATIONS YOU’RE SHAPING"
         }
         action={
@@ -5437,7 +5437,7 @@ function Profile({
           </div>
           <p>{isGuest ? "guest@planzypop.local" : currentUser?.email || ""}</p>
           <span className="plan-badge">
-            {isGuest ? "GUEST DEMO MODE" : "VERIFIED MEMBER"}
+            {isGuest ? "GUEST" : "VERIFIED MEMBER"}
           </span>
         </div>
       </div>
